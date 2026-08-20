@@ -106,15 +106,15 @@ public partial class Tetris3D
         // Blok-blok hias melayang
         DrawMenuDeco(t);
 
-        // Judul KUBIKA TOWER 3D warna-warni pelangi + gerak naik-turun halus (lebih gede & agak ke bawah)
+        // Judul KUBIKA TOWER warna-warni pelangi + gerak naik-turun halus, '3D' besar di bawahnya
         float pulse = 0.75f + 0.25f * Mathf.Sin(t * 2.2f);
         float bob = Mathf.Sin(t * 1.6f) * 6f;
-        RainbowTitle(new Rect(0f, Screen.height * 0.17f + bob, Screen.width, 110f), "KUBIKA TOWER 3D", 68, pulse, t);
-        GlowText(new Rect(0f, Screen.height * 0.17f + 108f + bob, Screen.width, 76f), T("subtitle"), 52, new Color(1f, 0.86f, 0.30f), pulse);
+        RainbowTitle(new Rect(0f, Screen.height * 0.17f + bob, Screen.width, 110f), "KUBIKA TOWER", 80, pulse, t);
+        RainbowTitle(new Rect(0f, Screen.height * 0.17f + 104f + bob, Screen.width, 150f), "3D", 130, pulse, t);
 
         // Garis pemisah bercahaya
         float lw = Mathf.Min(Screen.width * 0.5f, 300f);
-        RoundRect(new Rect(cx - lw / 2f, Screen.height * 0.17f + 196f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
+        RoundRect(new Rect(cx - lw / 2f, Screen.height * 0.17f + 250f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
 
         // Kartu skor tertinggi + mahkota (selebar panel peringkat biar gagah)
         float hw = Mathf.Min(Screen.width * 0.94f, 520f);
@@ -476,14 +476,14 @@ public partial class Tetris3D
             GlowText(new Rect(0f, Screen.height * 0.24f, Screen.width, 84f), T("level") + " " + level + "!", 58, new Color(1f, 0.86f, 0.32f, la), la);
         }
 
-        // Teks COMBO! warna pelangi + makin gede pas streak naik
+        // Teks COMBO! warna pelangi + makin gede pas streak naik (maks 84)
         if (comboTime > 0f && !gameOver)
         {
             float ca = Mathf.Clamp01(comboTime / 1.3f);
             Color cc = Color.HSVToRGB((Time.time * 0.7f + comboShow * 0.13f) % 1f, 0.85f, 1f);
             cc.a = ca;
-            int csize = 48 + Mathf.Min(comboShow, 8) * 3;
-            GlowText(new Rect(0f, Screen.height * 0.31f, Screen.width, 72f), "COMBO x" + comboShow, csize, cc, ca);
+            int csize = 60 + Mathf.Min(comboShow, 8) * 3;
+            GlowText(new Rect(0f, Screen.height * 0.31f, Screen.width, 100f), "COMBO x" + comboShow, csize, cc, ca);
         }
 
         if (gameOver)

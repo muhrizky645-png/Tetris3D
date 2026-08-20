@@ -31,9 +31,9 @@ public partial class Tetris3D
         sfxRotate = MakeTone("rot", 720f, 0.07f, 0.42f, 0, 1010f);
         sfxLock = MakeTone("lock", 200f, 0.12f, 0.62f, 0, 120f);
         sfxDrop = MakeTone("drop", 300f, 0.16f, 0.62f, 1, 90f);
-        sfxClear = MakeArp("clr", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f }, 0.085f, 0.52f);
-        sfxGameOver = MakeArp("go", new float[] { 523.25f, 440.00f, 349.23f, 261.63f }, 0.18f, 0.55f);
-        sfxLevelUp = MakeArp("lvl", new float[] { 659.25f, 830.61f, 987.77f, 1318.51f }, 0.10f, 0.5f);
+        sfxClear = MakeArp("clr", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f, 1567.98f }, 0.07f, 0.55f);
+        sfxGameOver = MakeArp("go", new float[] { 587.33f, 493.88f, 392.00f, 293.66f, 261.63f }, 0.16f, 0.55f);
+        sfxLevelUp = MakeArp("lvl", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f }, 0.10f, 0.55f);
 
         musicClip = MakeMusic();
         music.clip = musicClip;
@@ -74,25 +74,30 @@ public partial class Tetris3D
         return clip;
     }
 
-    // Arpeggio pendek (nada berurutan) buat clear / level up / game over yang lebih jos
+    // Arpeggio meriah: nada beruntun + ekor bergema (overlap antar nada) + sparkle oktaf biar terasa perayaan
     AudioClip MakeArp(string name, float[] freqs, float noteDur, float vol)
     {
         int rate = 44100;
         int nPer = Mathf.Max(1, (int)(rate * noteDur));
-        int total = nPer * freqs.Length;
+        int tail = (int)(rate * 0.34f);               // ekor gema biar tiap nada nyambung & rame
+        int total = nPer * freqs.Length + tail;
         float[] data = new float[total];
         for (int k = 0; k < freqs.Length; k++)
         {
             float f = freqs[k];
-            for (int i = 0; i < nPer; i++)
+            int start = k * nPer;
+            int len = nPer + tail;                    // tiap nada dibiarkan bergema (overlap)
+            for (int i = 0; i < len && start + i < total; i++)
             {
-                float t = i / (float)nPer;
+                float t = i / (float)len;
                 float tt = i / (float)rate;
-                float s = Mathf.Sin(2f * Mathf.PI * f * tt) * 0.7f
-                        + Mathf.Sin(2f * Mathf.PI * f * 2.01f * tt) * 0.25f
-                        + Mathf.Sin(2f * Mathf.PI * f * 3f * tt) * 0.12f;
-                float env = Mathf.Min(1f, t / 0.01f) * Mathf.Exp(-3.5f * t);
-                data[k * nPer + i] = Mathf.Clamp(s * env * vol, -1f, 1f);
+                float s = Mathf.Sin(2f * Mathf.PI * f * tt) * 0.6f
+                        + Mathf.Sin(2f * Mathf.PI * f * 2.01f * tt) * 0.30f
+                        + Mathf.Sin(2f * Mathf.PI * f * 3f * tt) * 0.18f
+                        + Mathf.Sin(2f * Mathf.PI * f * 4f * tt) * 0.10f    // sparkle oktaf atas biar cerah
+                        + Mathf.Sin(2f * Mathf.PI * f * 0.5f * tt) * 0.22f; // bass biar berisi
+                float env = Mathf.Min(1f, t / 0.006f) * Mathf.Exp(-3.0f * t);
+                data[start + i] = Mathf.Clamp(data[start + i] + s * env * vol * 0.7f, -1f, 1f);
             }
         }
         AudioClip clip = AudioClip.Create(name, total, 1, rate, false);
