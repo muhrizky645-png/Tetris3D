@@ -11,7 +11,7 @@ public partial class Tetris3D
     void SpawnPiece()
     {
         curType = nextType;
-        nextType = Random.Range(0, shapes.Length);
+        nextType = PickNextType();
         curN = boxSize[curType];
         int[] s = shapes[curType];
         int n = s.Length / 2;
@@ -54,6 +54,100 @@ public partial class Tetris3D
 
         RedrawActive();
         UpdateTargetSpin();
+    }
+
+    // ---------- PEMILIHAN BENTUK CERDAS (progresif + "tempat rahasia") ----------
+    // Pilih tipe balok berikutnya: bentuk menyesuaikan kemajuan & condong ke balok yang ada tempatnya
+    int PickNextType()
+    {
+        List<int> pool = AllowedShapes();
+        float assist = Mathf.Max(assistMin, assistStart - (level - 1) * assistDecayPerLevel);
+        if (Random.value < assist)
+        {
+            int fit = FindFittingShape(pool);
+            if (fit >= 0) return fit;
+        }
+        return pool[Random.Range(0, pool.Count)];
+    }
+
+    // Bentuk yang boleh muncul sesuai level & jumlah kolom (awal sederhana, makin tinggi makin aneh)
+    List<int> AllowedShapes()
+    {
+        bool medium = level >= mediumShapeLevel || columns > startColumns;
+        bool weird = columns >= weirdShapeColumns || level >= weirdShapeLevel;
+        var pool = new List<int>();
+        for (int i = 0; i < shapes.Length; i++)
+        {
+            int tier = i < shapeTier.Length ? shapeTier[i] : 0;
+            if (tier == 0 || (tier == 1 && medium) || (tier == 2 && weird)) pool.Add(i);
+        }
+        if (pool.Count == 0) pool.Add(0);
+        return pool;
+    }
+
+    // Cari (acak) bentuk dari pool yang bisa mendarat rapi di celah sekarang -> tempatnya sudah ada, tapi dirahasiakan
+    int FindFittingShape(List<int> pool)
+    {
+        var order = new List<int>(pool);
+        for (int i = order.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+        }
+        for (int k = 0; k < order.Count; k++)
+            if (ShapeFitsSomewhere(order[k])) return order[k];
+        return -1;
+    }
+
+    // True kalau bentuk ini (di salah satu rotasi & kolom) bisa jatuh menempel tanpa nyisain lubang di bawahnya
+    bool ShapeFitsSomewhere(int type)
+    {
+        int n = boxSize[type];
+        int[] s = shapes[type];
+        int cnt = s.Length / 2;
+        Vector2Int[] box = new Vector2Int[cnt];
+        for (int i = 0; i < cnt; i++) box[i] = new Vector2Int(s[i * 2], s[i * 2 + 1]);
+        for (int rot = 0; rot < 4; rot++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                int row = DropRowFor(box, col);
+                if (row < -900) continue;
+                if (LandsFlush(box, col, row)) return true;
+            }
+            Vector2Int[] nb = new Vector2Int[cnt];
+            for (int i = 0; i < cnt; i++) nb[i] = new Vector2Int(box[i].y, (n - 1) - box[i].x);
+            box = nb;
+        }
+        return false;
+    }
+
+    // Baris terendah tempat bentuk berhenti jatuh di kolom tsb (-1000 kalau tak ada tempat)
+    int DropRowFor(Vector2Int[] box, int col)
+    {
+        for (int r = 0; r < height; r++)
+            if (Valid(box, col, r) && !Valid(box, col, r - 1)) return r;
+        return -1000;
+    }
+
+    // Menempel rapi: sel terendah tiap kolom balok punya tumpuan (lantai / blok terisi) tepat di bawahnya
+    bool LandsFlush(Vector2Int[] box, int col, int row)
+    {
+        var lowest = new Dictionary<int, int>();
+        for (int i = 0; i < box.Length; i++)
+        {
+            int c = Wrap(col + box[i].x);
+            int r = row + box[i].y;
+            if (!lowest.ContainsKey(c) || r < lowest[c]) lowest[c] = r;
+        }
+        foreach (var kv in lowest)
+        {
+            int c = kv.Key, r = kv.Value;
+            if (r <= 0) continue;
+            if (r - 1 >= height) return false;
+            if (grid[c, r - 1] == -1) return false;
+        }
+        return true;
     }
 
     bool Valid(Vector2Int[] box, int col, int row)
@@ -489,7 +583,7 @@ public partial class Tetris3D
         ClearBoard();
         paused = false;
         started = true;
-        nextType = Random.Range(0, shapes.Length);
+        nextType = PickNextType();
         SpawnPiece();
     }
 
@@ -498,7 +592,7 @@ public partial class Tetris3D
         ClearBoard();
         paused = false;
         started = false;
-        nextType = Random.Range(0, shapes.Length);
+        nextType = PickNextType();
     }
 
     // ---------- EFEK VISUAL ----------

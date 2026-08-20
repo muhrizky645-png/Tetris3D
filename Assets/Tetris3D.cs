@@ -91,6 +91,14 @@ public partial class Tetris3D : MonoBehaviour
     [Header("Gameplay")]
     public bool ghostPiece = true;
 
+    [Header("Progresi bentuk balok")]
+    public int mediumShapeLevel = 3;      // mulai level ini: bentuk sedang (pentomino rapi) ikut muncul
+    public int weirdShapeColumns = 20;    // mulai kolom sebanyak ini: bentuk aneh muncul
+    public int weirdShapeLevel = 12;      // atau mulai level ini: bentuk aneh muncul
+    [Range(0f, 1f)] public float assistStart = 0.85f;   // peluang balok pas di celah (level 1)
+    public float assistDecayPerLevel = 0.05f;           // bantuan berkurang tiap naik level
+    [Range(0f, 1f)] public float assistMin = 0.15f;     // batas bawah bantuan
+
     int columns;
     float baseRadius;
     int[,] grid;
@@ -100,25 +108,30 @@ public partial class Tetris3D : MonoBehaviour
     int nextLevelScore;
     bool stoneEnabled;
 
-    readonly int[] boxSize = { 2, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5 };
+    readonly int[] boxSize = { 2, 3, 3, 2, 2, 3, 3, 3, 3, 5, 4, 3, 3, 3, 3, 4, 4 };
     readonly int[][] shapes = new int[][]
     {
-        new int[]{0,0, 1,0},                    // 0  Domino (2 sel)
-        new int[]{0,0, 1,0, 2,0},               // 1  Garis-3
-        new int[]{0,1, 0,0, 1,0},               // 2  Sudut-3
-        new int[]{0,2, 1,2, 0,1, 1,1, 0,0},     // 3  Pentomino P
-        new int[]{1,2, 2,2, 0,1, 1,1, 1,0},     // 4  Pentomino F
-        new int[]{0,2, 1,2, 2,2, 1,1, 1,0},     // 5  Pentomino T
-        new int[]{0,1, 2,1, 0,0, 1,0, 2,0},     // 6  Pentomino U
-        new int[]{0,2, 0,1, 0,0, 1,0, 2,0},     // 7  Pentomino V
-        new int[]{0,2, 0,1, 1,1, 1,0, 2,0},     // 8  Pentomino W
-        new int[]{0,2, 1,2, 1,1, 1,0, 2,0},     // 9  Pentomino Z
-        new int[]{1,2, 0,1, 1,1, 2,1, 1,0},     // 10 Pentomino X (plus)
-        new int[]{1,3, 0,2, 1,2, 1,1, 1,0},     // 11 Pentomino Y
-        new int[]{1,3, 1,2, 0,1, 1,1, 0,0},     // 12 Pentomino N
-        new int[]{0,3, 0,2, 0,1, 0,0, 1,0},     // 13 L-panjang
-        new int[]{0,0, 1,0, 2,0, 3,0, 4,0},     // 14 Garis-5
+        new int[]{0,0, 1,0},                    // 0  Domino (tier 0)
+        new int[]{0,0, 1,0, 2,0},               // 1  Garis-3 (tier 0)
+        new int[]{0,0, 0,1, 0,2},               // 2  Garis-3 tegak (tier 0)
+        new int[]{0,0, 1,0, 0,1},               // 3  Sudut-3 / L kecil (tier 0)
+        new int[]{0,0, 1,0, 1,1},               // 4  Sudut-3 / L kecil cermin (tier 0)
+        new int[]{0,2, 1,2, 2,2, 1,1, 1,0},     // 5  Pentomino T (tier 1)
+        new int[]{0,1, 2,1, 0,0, 1,0, 2,0},     // 6  Pentomino U (tier 1)
+        new int[]{0,2, 0,1, 0,0, 1,0, 2,0},     // 7  Pentomino V (tier 1)
+        new int[]{1,2, 0,1, 1,1, 2,1, 1,0},     // 8  Pentomino X / plus (tier 1)
+        new int[]{0,0, 1,0, 2,0, 3,0, 4,0},     // 9  Garis-5 (tier 1)
+        new int[]{0,3, 0,2, 0,1, 0,0, 1,0},     // 10 L-panjang (tier 1)
+        new int[]{0,2, 1,2, 0,1, 1,1, 0,0},     // 11 Pentomino P (tier 2 - aneh)
+        new int[]{1,2, 2,2, 0,1, 1,1, 1,0},     // 12 Pentomino F (tier 2 - aneh)
+        new int[]{0,2, 0,1, 1,1, 1,0, 2,0},     // 13 Pentomino W (tier 2 - aneh)
+        new int[]{0,2, 1,2, 1,1, 1,0, 2,0},     // 14 Pentomino Z (tier 2 - aneh)
+        new int[]{1,3, 0,2, 1,2, 1,1, 1,0},     // 15 Pentomino Y (tier 2 - aneh)
+        new int[]{1,3, 1,2, 0,1, 1,1, 0,0},     // 16 Pentomino N (tier 2 - aneh)
     };
+
+    // Tingkat bentuk: 0 = sederhana (level awal), 1 = sedang, 2 = aneh (kolom 20+ / level tinggi)
+    readonly int[] shapeTier = { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 };
 
     int curType, curN, nextType;
     Vector2Int[] curBox;
@@ -215,7 +228,7 @@ public partial class Tetris3D : MonoBehaviour
         killLine = height;
         nextLevelScore = baseLevelScore;
         SetupScene();
-        nextType = Random.Range(0, shapes.Length);
+        nextType = PickNextType();
         LoadProfile();
         InitUGS();
     }
