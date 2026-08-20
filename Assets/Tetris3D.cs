@@ -100,22 +100,24 @@ public partial class Tetris3D : MonoBehaviour
     int nextLevelScore;
     bool stoneEnabled;
 
-    readonly int[] boxSize = { 4, 2, 3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 2 };
+    readonly int[] boxSize = { 2, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5 };
     readonly int[][] shapes = new int[][]
     {
-        new int[]{0,2, 1,2, 2,2, 3,2},
-        new int[]{0,0, 1,0, 0,1, 1,1},
-        new int[]{1,2, 0,1, 1,1, 2,1},
-        new int[]{1,2, 2,2, 0,1, 1,1},
-        new int[]{0,2, 1,2, 1,1, 2,1},
-        new int[]{0,2, 0,1, 1,1, 2,1},
-        new int[]{2,2, 0,1, 1,1, 2,1},
-        new int[]{0,1, 1,1, 2,1},
-        new int[]{0,1, 0,0, 1,0},
-        new int[]{1,2, 0,1, 1,1, 2,1, 1,0},
-        new int[]{0,2, 1,2, 2,2, 1,1, 1,0},
-        new int[]{0,2, 1,2, 0,1, 1,1, 0,0},
-        new int[]{0,0, 1,0},
+        new int[]{0,0, 1,0},                    // 0  Domino (2 sel)
+        new int[]{0,0, 1,0, 2,0},               // 1  Garis-3
+        new int[]{0,1, 0,0, 1,0},               // 2  Sudut-3
+        new int[]{0,2, 1,2, 0,1, 1,1, 0,0},     // 3  Pentomino P
+        new int[]{1,2, 2,2, 0,1, 1,1, 1,0},     // 4  Pentomino F
+        new int[]{0,2, 1,2, 2,2, 1,1, 1,0},     // 5  Pentomino T
+        new int[]{0,1, 2,1, 0,0, 1,0, 2,0},     // 6  Pentomino U
+        new int[]{0,2, 0,1, 0,0, 1,0, 2,0},     // 7  Pentomino V
+        new int[]{0,2, 0,1, 1,1, 1,0, 2,0},     // 8  Pentomino W
+        new int[]{0,2, 1,2, 1,1, 1,0, 2,0},     // 9  Pentomino Z
+        new int[]{1,2, 0,1, 1,1, 2,1, 1,0},     // 10 Pentomino X (plus)
+        new int[]{1,3, 0,2, 1,2, 1,1, 1,0},     // 11 Pentomino Y
+        new int[]{1,3, 1,2, 0,1, 1,1, 0,0},     // 12 Pentomino N
+        new int[]{0,3, 0,2, 0,1, 0,0, 1,0},     // 13 L-panjang
+        new int[]{0,0, 1,0, 2,0, 3,0, 4,0},     // 14 Garis-5
     };
 
     int curType, curN, nextType;
