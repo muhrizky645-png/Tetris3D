@@ -476,14 +476,16 @@ public partial class Tetris3D
             GlowText(new Rect(0f, Screen.height * 0.24f, Screen.width, 84f), T("level") + " " + level + "!", 58, new Color(1f, 0.86f, 0.32f, la), la);
         }
 
-        // Teks COMBO! warna pelangi + makin gede pas streak naik (maks 84)
+        // Teks COMBO! putih besar (seperti judul) + halo warna di belakang biar pop tapi tetap kebaca saat main
         if (comboTime > 0f && !gameOver)
         {
             float ca = Mathf.Clamp01(comboTime / 1.3f);
-            Color cc = Color.HSVToRGB((Time.time * 0.7f + comboShow * 0.13f) % 1f, 0.85f, 1f);
-            cc.a = ca;
-            int csize = 60 + Mathf.Min(comboShow, 8) * 3;
-            GlowText(new Rect(0f, Screen.height * 0.31f, Screen.width, 100f), "COMBO x" + comboShow, csize, cc, ca);
+            Color glowCol = Color.HSVToRGB((Time.time * 0.7f + comboShow * 0.13f) % 1f, 0.85f, 1f);
+            glowCol.a = ca;
+            int csize = 100 + Mathf.Min(comboShow, 8) * 4;
+            Rect comboRect = new Rect(0f, Screen.height * 0.31f, Screen.width, 150f);
+            GlowText(comboRect, "COMBO x" + comboShow, csize, glowCol, ca);
+            GuiText(comboRect, "COMBO x" + comboShow, csize, new Color(1f, 1f, 1f, ca), TextAnchor.MiddleCenter);
         }
 
         if (gameOver)
