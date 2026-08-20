@@ -69,8 +69,15 @@ public partial class Tetris3D
         // highlight kilau di atas (redup saat ditekan)
         RoundRect(new Rect(fr.x + rad * 0.5f, fr.y + 3f, fr.width - rad, fr.height * 0.34f),
             new Color(light.r, light.g, light.b, held ? 0.22f : 0.55f), rad * 0.7f);
-        // label
-        GuiText(new Rect(fr.x, fr.y + fr.height * 0.5f - 15f, fr.width, 30f), label, 22, Color.white, TextAnchor.MiddleCenter);
+        // label (ukuran auto: gede ngikut tinggi tombol, ngecil otomatis biar muat lebar)
+        int lblSize = Mathf.RoundToInt(Mathf.Clamp(fr.height * 0.52f, 22f, 58f));
+        if (uiFont != null)
+        {
+            GUIStyle ms = new GUIStyle { fontStyle = FontStyle.Bold, font = uiFont };
+            float maxW = fr.width * 0.86f;
+            while (lblSize > 14) { ms.fontSize = lblSize; if (ms.CalcSize(new GUIContent(label)).x <= maxW) break; lblSize -= 2; }
+        }
+        GuiText(new Rect(fr.x, fr.y, fr.width, fr.height), label, lblSize, Color.white, TextAnchor.MiddleCenter);
         return repeat ? GUI.RepeatButton(r, GUIContent.none, GUIStyle.none)
                       : GUI.Button(r, GUIContent.none, GUIStyle.none);
     }
@@ -133,23 +140,23 @@ public partial class Tetris3D
         float lbw = Mathf.Min(Screen.width * 0.86f, 460f);
         float lbx = cx - lbw / 2f;
         float lby = Screen.height * 0.61f;
-        float hdrH = 44f;
+        float hdrH = 54f;
         int showN = Mathf.Min(5, ranks.Count);
-        float lbRowH = 50f;
-        float bodyH = (!ugsReady || ranksLoading || ranks.Count == 0) ? 66f : showN * (lbRowH + 4f);
+        float lbRowH = 60f;
+        float bodyH = (!ugsReady || ranksLoading || ranks.Count == 0) ? 74f : showN * (lbRowH + 4f);
         float panelH = hdrH + 8f + bodyH + 10f;
 
         RoundRect(new Rect(lbx - 3f, lby - 3f, lbw + 6f, panelH + 6f), new Color(1f, 0.82f, 0.25f, 0.18f), 20f);
         RoundRect(new Rect(lbx, lby, lbw, panelH), new Color(0.06f, 0.07f, 0.12f, 0.92f), 18f);
         RoundRect(new Rect(lbx + 10f, lby + 8f, lbw - 20f, hdrH - 6f), new Color(0.95f, 0.75f, 0.15f, 0.16f), 12f);
         if (crownTex != null)
-            GUI.DrawTexture(new Rect(lbx + 20f, lby + 12f, 30f, 26f), crownTex, ScaleMode.StretchToFill, true, 0f, new Color(1f, 0.85f, 0.28f), Vector4.zero, Vector4.zero);
-        GuiText(new Rect(lbx + 58f, lby + 8f, lbw - 140f, hdrH - 6f), T("rankings"), 20, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleLeft);
-        GuiText(new Rect(lbx + lbw - 104f, lby + 8f, 92f, hdrH - 6f), T("viewAll"), 13, new Color(0.6f, 0.85f, 1f), TextAnchor.MiddleRight);
+            GUI.DrawTexture(new Rect(lbx + 20f, lby + 15f, 38f, 34f), crownTex, ScaleMode.StretchToFill, true, 0f, new Color(1f, 0.85f, 0.28f), Vector4.zero, Vector4.zero);
+        GuiText(new Rect(lbx + 72f, lby + 8f, lbw - 200f, hdrH - 6f), T("rankings"), 30, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleLeft);
+        GuiText(new Rect(lbx + lbw - 128f, lby + 8f, 116f, hdrH - 6f), T("viewAll"), 18, new Color(0.6f, 0.85f, 1f), TextAnchor.MiddleRight);
 
         float lY = lby + hdrH + 6f;
-        if (!ugsReady || ranksLoading) GuiText(new Rect(lbx, lY, lbw, 56f), T("connecting"), 20, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter);
-        else if (ranks.Count == 0) GuiText(new Rect(lbx, lY, lbw, 56f), T("noScores"), 20, new Color(1f, 1f, 1f, 0.7f), TextAnchor.MiddleCenter);
+        if (!ugsReady || ranksLoading) GuiText(new Rect(lbx, lY, lbw, 62f), T("connecting"), 28, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter);
+        else if (ranks.Count == 0) GuiText(new Rect(lbx, lY, lbw, 62f), T("noScores"), 28, new Color(1f, 1f, 1f, 0.7f), TextAnchor.MiddleCenter);
         else
         {
             for (int i = 0; i < showN; i++)
@@ -159,13 +166,13 @@ public partial class Tetris3D
                 Color rowCol = e.you ? new Color(0.20f, 0.55f, 0.42f, 0.95f) : (i < 3 ? new Color(0.18f, 0.16f, 0.28f, 0.95f) : new Color(0.10f, 0.12f, 0.18f, 0.9f));
                 RoundRect(rr, rowCol, 10f);
                 Color rankCol = i == 0 ? new Color(1f, 0.85f, 0.3f) : i == 1 ? new Color(0.82f, 0.86f, 0.92f) : i == 2 ? new Color(0.88f, 0.58f, 0.32f) : new Color(0.7f, 0.75f, 0.85f);
-                GuiText(new Rect(rr.x + 12f, rr.y, 52f, lbRowH), "#" + e.rank, 22, rankCol, TextAnchor.MiddleLeft);
+                GuiText(new Rect(rr.x + 12f, rr.y, 60f, lbRowH), "#" + e.rank, 30, rankCol, TextAnchor.MiddleLeft);
                 string nm = string.IsNullOrEmpty(e.name) ? "-" : e.name;
                 if (e.you) nm += "  (" + T("you") + ")";
-                GuiText(new Rect(rr.x + 64f, rr.y + 5f, rr.width - 180f, 24f), nm, 18, Color.white, TextAnchor.LowerLeft);
+                GuiText(new Rect(rr.x + 72f, rr.y + 6f, rr.width - 200f, 30f), nm, 25, Color.white, TextAnchor.LowerLeft);
                 if (!string.IsNullOrEmpty(e.country))
-                    GuiText(new Rect(rr.x + 64f, rr.y + 27f, rr.width - 180f, 18f), CountryName(e.country), 12, new Color(0.7f, 0.8f, 1f), TextAnchor.UpperLeft);
-                GuiText(new Rect(rr.xMax - 128f, rr.y, 116f, lbRowH), "" + e.score, 22, new Color(0.6f, 1f, 0.75f), TextAnchor.MiddleRight);
+                    GuiText(new Rect(rr.x + 72f, rr.y + 36f, rr.width - 200f, 22f), CountryName(e.country), 17, new Color(0.7f, 0.8f, 1f), TextAnchor.UpperLeft);
+                GuiText(new Rect(rr.xMax - 150f, rr.y, 138f, lbRowH), "" + e.score, 30, new Color(0.6f, 1f, 0.75f), TextAnchor.MiddleRight);
             }
         }
         if (GUI.Button(new Rect(lbx, lby, lbw, panelH), GUIContent.none, GUIStyle.none)) { showRanks = true; LoadRanks(); }
@@ -175,7 +182,7 @@ public partial class Tetris3D
         GuiText(new Rect(0f, lby + panelH + 14f, Screen.width, 30f), T("pressPlay"), 20, new Color(1f, 1f, 1f, ha), TextAnchor.MiddleCenter);
 
         // Chip profil (pojok kiri atas) - tap buat edit nama & negara kapan aja
-        string pf = string.IsNullOrEmpty(playerName) ? T("setProfile") : (playerName + "  ·  " + playerCountry);
+        string pf = string.IsNullOrEmpty(playerName) ? T("setProfile") : (playerName + "  \u00b7  " + playerCountry);
         float pcw = Mathf.Min(Screen.width * 0.52f, 240f);
         if (Btn3D(new Rect(16f, 16f, pcw, 46f), pf, new Color(0.30f, 0.40f, 0.62f), false))
         { editingProfile = true; showProfile = true; countryPicking = false; lbStatus = ""; }
@@ -382,12 +389,12 @@ public partial class Tetris3D
         float px = cx - pw / 2f;
         float py = Screen.height * 0.16f;
 
-        if (ranksLoading) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("loading"), 26, Color.white, TextAnchor.MiddleCenter); }
-        else if (!string.IsNullOrEmpty(lbStatus)) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), lbStatus, 22, new Color(1f, 0.8f, 0.4f), TextAnchor.MiddleCenter); }
-        else if (ranks.Count == 0) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("noScores"), 24, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter); }
+        if (ranksLoading) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("loading"), 30, Color.white, TextAnchor.MiddleCenter); }
+        else if (!string.IsNullOrEmpty(lbStatus)) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), lbStatus, 24, new Color(1f, 0.8f, 0.4f), TextAnchor.MiddleCenter); }
+        else if (ranks.Count == 0) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("noScores"), 26, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter); }
         else
         {
-            float rowH = 56f;
+            float rowH = 64f;
             float listTop = Screen.height * 0.15f;
             float listH = Screen.height * 0.66f;
             Rect view = new Rect(px, listTop, pw, listH);
@@ -400,17 +407,17 @@ public partial class Tetris3D
                 Color rowCol = e.you ? new Color(0.20f, 0.55f, 0.42f, 0.95f) : (i < 3 ? new Color(0.20f, 0.18f, 0.30f, 0.95f) : new Color(0.10f, 0.12f, 0.18f, 0.92f));
                 RoundRect(rr, rowCol, 12f);
                 Color rankCol = i == 0 ? new Color(1f, 0.85f, 0.3f) : i == 1 ? new Color(0.8f, 0.85f, 0.9f) : i == 2 ? new Color(0.85f, 0.55f, 0.3f) : new Color(0.7f, 0.75f, 0.85f);
-                GuiText(new Rect(rr.x + 14f, rr.y, 60f, rowH), "#" + e.rank, 24, rankCol, TextAnchor.MiddleLeft);
+                GuiText(new Rect(rr.x + 14f, rr.y, 68f, rowH), "#" + e.rank, 30, rankCol, TextAnchor.MiddleLeft);
                 string nm = string.IsNullOrEmpty(e.name) ? "-" : e.name;
                 if (e.you) nm += "  (" + T("you") + ")";
-                GuiText(new Rect(rr.x + 78f, rr.y + 6f, content.width - 220f, rowH - 24f), nm, 20, Color.white, TextAnchor.LowerLeft);
+                GuiText(new Rect(rr.x + 88f, rr.y + 8f, content.width - 240f, 32f), nm, 26, Color.white, TextAnchor.LowerLeft);
                 if (!string.IsNullOrEmpty(e.country))
-                    GuiText(new Rect(rr.x + 78f, rr.y + rowH - 24f, content.width - 220f, 20f), CountryName(e.country), 13, new Color(0.7f, 0.8f, 1f), TextAnchor.UpperLeft);
-                GuiText(new Rect(rr.width - 146f, rr.y, 132f, rowH), "" + e.score, 24, new Color(0.6f, 1f, 0.75f), TextAnchor.MiddleRight);
+                    GuiText(new Rect(rr.x + 88f, rr.y + rowH - 24f, content.width - 240f, 22f), CountryName(e.country), 17, new Color(0.7f, 0.8f, 1f), TextAnchor.UpperLeft);
+                GuiText(new Rect(rr.width - 160f, rr.y, 146f, rowH), "" + e.score, 30, new Color(0.6f, 1f, 0.75f), TextAnchor.MiddleRight);
             }
             GUI.EndScrollView();
             string mine = myRank > 0 ? T("yourRank") + "  #" + myRank : T("unranked");
-            GuiText(new Rect(px, Screen.height * 0.82f, pw, 34f), mine, 22, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
+            GuiText(new Rect(px, Screen.height * 0.82f, pw, 34f), mine, 28, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
         }
 
         float bw = Mathf.Min(Screen.width * 0.6f, 300f);
