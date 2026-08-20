@@ -29,8 +29,12 @@ public partial class Tetris3D
                     curBox[i] = new Vector2Int(curBox[i].y, (curN - 1) - curBox[i].x);
         }
 
-        int frontCol = Wrap(Mathf.RoundToInt((180f - spinDeg) * columns / 360f));
-        curCol = frontCol;
+        // Kolom depan diambil dari sudut ISTIRAHAT (targetSpin), bukan sudut animasi (spinDeg),
+        // biar balok baru selalu muncul pas di tengah walau tabung masih berputar.
+        int frontCol = Wrap(Mathf.RoundToInt((180f - targetSpin) * columns / 360f));
+        // Pusatkan KOTAK balok di kolom depan (bukan tepi kiri) -> titik jatuh di tengah &
+        // tabung tidak geser sendiri tiap balok baru muncul.
+        curCol = Wrap(frontCol - (curN - 1) / 2);
         curRow = height - curN;
 
         if (!Valid(curBox, curCol, curRow))
