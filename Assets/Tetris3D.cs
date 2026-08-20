@@ -334,10 +334,11 @@ public partial class Tetris3D : MonoBehaviour
         float centerY = towerH * 0.5f;
         float dist = towerH * cameraZoom + radius * 2.2f;
         float camY = centerY + Mathf.Tan(cameraAngle * Mathf.Deg2Rad) * dist;
+        float aimY = centerY - towerH * 0.06f; // arahin kamera agak ke bawah biar menara naik & ada jarak dari tombol
         if (cam != null)
         {
             cam.transform.position = new Vector3(0f, camY, -dist);
-            cam.transform.LookAt(new Vector3(0f, centerY, 0f));
+            cam.transform.LookAt(new Vector3(0f, aimY, 0f));
             camBasePos = cam.transform.position;
         }
         if (bgTf != null)
