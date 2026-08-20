@@ -451,23 +451,23 @@ public partial class Tetris3D
         // Menu jeda - gambar & stop di sini selagi paused
         if (paused) { DrawPauseMenu(); return; }
 
-        // ---- Papan skor (melengkung & cantik) ----
-        float spX = 14f, spY = 12f, spW = 264f, spH = 132f;
-        RoundRect(new Rect(spX - 3f, spY - 3f, spW + 6f, spH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.25f), 22f); // glow tepi
-        RoundRect(new Rect(spX, spY, spW, spH), new Color(0.06f, 0.08f, 0.12f, 0.90f), 20f);                    // panel utama
+        // ---- Papan skor (melengkung & cantik) - diperbesar ~1.5x biar kebaca ----
+        float spX = 14f, spY = 12f, spW = 396f, spH = 198f;
+        RoundRect(new Rect(spX - 3f, spY - 3f, spW + 6f, spH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.25f), 33f); // glow tepi
+        RoundRect(new Rect(spX, spY, spW, spH), new Color(0.06f, 0.08f, 0.12f, 0.90f), 30f);                    // panel utama
 
         // Baris SKOR TERTINGGI - mahkota BESAR + angka BESAR
-        RoundRect(new Rect(spX + 10f, spY + 10f, spW - 20f, 48f), new Color(0.95f, 0.75f, 0.15f, 0.18f), 14f);
+        RoundRect(new Rect(spX + 15f, spY + 15f, spW - 30f, 72f), new Color(0.95f, 0.75f, 0.15f, 0.18f), 21f);
         if (crownTex != null)
-            GUI.DrawTexture(new Rect(spX + 20f, spY + 15f, 42f, 38f), crownTex, ScaleMode.StretchToFill, true, 0f,
+            GUI.DrawTexture(new Rect(spX + 30f, spY + 23f, 63f, 57f), crownTex, ScaleMode.StretchToFill, true, 0f,
                 new Color(1f, 0.85f, 0.28f), Vector4.zero, Vector4.zero);
-        GuiText(new Rect(spX + 72f, spY + 10f, spW - 82f, 48f), "" + highScore, 38, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
+        GuiText(new Rect(spX + 108f, spY + 15f, spW - 120f, 72f), "" + highScore, 57, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
 
         // Aksen kiri + label SKOR + angka (tanpa mahkota)
-        RoundRect(new Rect(spX + 10f, spY + 66f, 6f, spH - 78f), new Color(0.20f, 0.85f, 0.48f, 0.95f), 3f);
-        GuiText(new Rect(spX + 26f, spY + 64f, spW - 34f, 16f), T("score"), 13, new Color(0.55f, 0.95f, 0.70f), TextAnchor.UpperLeft);
-        GuiText(new Rect(spX + 26f, spY + 80f, spW - 34f, 34f), "" + score, 30, Color.white, TextAnchor.UpperLeft);
-        GuiText(new Rect(spX + 26f, spY + 112f, spW - 34f, 18f), T("lines") + " " + lines + "   " + T("lvl") + " " + level + "   " + T("cols") + " " + columns, 13, new Color(0.80f, 0.92f, 1f), TextAnchor.UpperLeft);
+        RoundRect(new Rect(spX + 15f, spY + 99f, 9f, spH - 117f), new Color(0.20f, 0.85f, 0.48f, 0.95f), 4f);
+        GuiText(new Rect(spX + 39f, spY + 96f, spW - 51f, 24f), T("score"), 20, new Color(0.55f, 0.95f, 0.70f), TextAnchor.UpperLeft);
+        GuiText(new Rect(spX + 39f, spY + 120f, spW - 51f, 51f), "" + score, 45, Color.white, TextAnchor.UpperLeft);
+        GuiText(new Rect(spX + 39f, spY + 168f, spW - 51f, 27f), T("lines") + " " + lines + "   " + T("lvl") + " " + level + "   " + T("cols") + " " + columns, 20, new Color(0.80f, 0.92f, 1f), TextAnchor.UpperLeft);
 
         // Teks LEVEL UP! muncul sebentar tiap naik level
         if (levelUpTime > 0f && !gameOver)
