@@ -70,11 +70,11 @@ public partial class Tetris3D
         RoundRect(new Rect(fr.x + rad * 0.5f, fr.y + 3f, fr.width - rad, fr.height * 0.34f),
             new Color(light.r, light.g, light.b, held ? 0.22f : 0.55f), rad * 0.7f);
         // label (ukuran auto: gede ngikut tinggi tombol, ngecil otomatis biar muat lebar)
-        int lblSize = Mathf.RoundToInt(Mathf.Clamp(fr.height * 0.52f, 22f, 58f));
+        int lblSize = Mathf.RoundToInt(Mathf.Clamp(fr.height * 0.60f, 24f, 70f));
         if (uiFont != null)
         {
             GUIStyle ms = new GUIStyle { fontStyle = FontStyle.Bold, font = uiFont };
-            float maxW = fr.width * 0.86f;
+            float maxW = fr.width * 0.90f;
             while (lblSize > 14) { ms.fontSize = lblSize; if (ms.CalcSize(new GUIContent(label)).x <= maxW) break; lblSize -= 2; }
         }
         GuiText(new Rect(fr.x, fr.y, fr.width, fr.height), label, lblSize, Color.white, TextAnchor.MiddleCenter);
@@ -106,15 +106,15 @@ public partial class Tetris3D
         // Blok-blok hias melayang
         DrawMenuDeco(t);
 
-        // Judul TETRIS warna-warni pelangi + gerak naik-turun halus
+        // Judul BLOCK TOWER warna-warni pelangi + gerak naik-turun halus
         float pulse = 0.75f + 0.25f * Mathf.Sin(t * 2.2f);
         float bob = Mathf.Sin(t * 1.6f) * 6f;
-        RainbowTitle(new Rect(0f, Screen.height * 0.16f + bob, Screen.width, 100f), "TETRIS", 88, pulse, t);
-        GlowText(new Rect(0f, Screen.height * 0.16f + 96f + bob, Screen.width, 76f), T("subtitle"), 52, new Color(1f, 0.86f, 0.30f), pulse);
+        RainbowTitle(new Rect(0f, Screen.height * 0.15f + bob, Screen.width, 100f), "BLOCK TOWER", 70, pulse, t);
+        GlowText(new Rect(0f, Screen.height * 0.15f + 92f + bob, Screen.width, 76f), T("subtitle"), 52, new Color(1f, 0.86f, 0.30f), pulse);
 
         // Garis pemisah bercahaya
         float lw = Mathf.Min(Screen.width * 0.5f, 300f);
-        RoundRect(new Rect(cx - lw / 2f, Screen.height * 0.16f + 180f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
+        RoundRect(new Rect(cx - lw / 2f, Screen.height * 0.15f + 176f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
 
         // Kartu skor tertinggi + mahkota
         float hw = 300f;
@@ -128,9 +128,9 @@ public partial class Tetris3D
         GuiText(new Rect(hiCard.x + hw - 110f, hiCard.y, 98f, 60f), "" + highScore, 34, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
 
         // Tombol MAIN berdenyut + halo cahaya
-        float bw = Mathf.Min(Screen.width * 0.62f, 340f);
+        float bw = Mathf.Min(Screen.width * 0.64f, 360f);
         float grow = 6f * (0.5f + 0.5f * Mathf.Sin(t * 3f));
-        Rect btn = new Rect(cx - bw / 2f - grow, Screen.height * 0.53f - grow, bw + grow * 2f, 104f + grow * 2f);
+        Rect btn = new Rect(cx - bw / 2f - grow, Screen.height * 0.53f - grow, bw + grow * 2f, 122f + grow * 2f);
         RoundRect(new Rect(btn.x - 6f, btn.y - 6f, btn.width + 12f, btn.height + 12f), new Color(0.2f, 1f, 0.55f, 0.22f), 30f); // halo
         if (Btn3D(btn, T("play"), new Color(0.20f, 0.82f, 0.46f), false))
             StartGame();
@@ -139,7 +139,7 @@ public partial class Tetris3D
         if (ugsReady && !homeRanksRequested) { homeRanksRequested = true; LoadRanks(); }
         float lbw = Mathf.Min(Screen.width * 0.86f, 460f);
         float lbx = cx - lbw / 2f;
-        float lby = Screen.height * 0.61f;
+        float lby = Screen.height * 0.63f;
         float hdrH = 54f;
         int showN = Mathf.Min(5, ranks.Count);
         float lbRowH = 60f;
@@ -267,7 +267,7 @@ public partial class Tetris3D
         float bw = Mathf.Min(Screen.width * 0.64f, 360f);
         float bx = cx - bw / 2f;
         float by = Screen.height * 0.30f;
-        float bh = 74f, gap = 15f;
+        float bh = 84f, gap = 15f;
 
         if (Btn3D(new Rect(bx, by, bw, bh), T("resume"), new Color(0.20f, 0.82f, 0.46f), false)) paused = false;
         by += bh + gap;
@@ -491,15 +491,15 @@ public partial class Tetris3D
             if (score > highScore) { highScore = score; PlayerPrefs.SetInt("tetris3d_hi", highScore); PlayerPrefs.Save(); }
             FillRect(new Rect(0f, Screen.height * 0.28f, Screen.width, Screen.height * 0.26f), new Color(0f, 0f, 0f, 0.6f));
             GuiText(new Rect(0f, Screen.height * 0.30f, Screen.width, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
-            if (Btn3D(new Rect(Screen.width / 2f - 140f, Screen.height * 0.5f, 280f, 80f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RetryGame();
-            if (Btn3D(new Rect(Screen.width / 2f - 140f, Screen.height * 0.5f + 92f, 280f, 64f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
+            if (Btn3D(new Rect(Screen.width / 2f - 150f, Screen.height * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RetryGame();
+            if (Btn3D(new Rect(Screen.width / 2f - 150f, Screen.height * 0.5f + 100f, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
             return;
         }
 
         // Tombol JEDA (atas tengah)
-        if (Btn3D(new Rect(Screen.width / 2f - 55f, 16f, 110f, 52f), T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
+        if (Btn3D(new Rect(Screen.width / 2f - 62f, 16f, 124f, 58f), T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
 
-        float bw = Mathf.Min(Screen.width * 0.16f, 130f);
+        float bw = Mathf.Min(Screen.width * 0.20f, 168f);
         float bh = bw;
         float pad = 16f;
         float y = Screen.height - bh - pad;
