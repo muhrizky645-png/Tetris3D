@@ -106,10 +106,10 @@ public partial class Tetris3D
         // Blok-blok hias melayang
         DrawMenuDeco(t);
 
-        // Judul BLOCK TOWER warna-warni pelangi + gerak naik-turun halus (lebih gede & agak ke bawah)
+        // Judul KUBIKA TOWER 3D warna-warni pelangi + gerak naik-turun halus (lebih gede & agak ke bawah)
         float pulse = 0.75f + 0.25f * Mathf.Sin(t * 2.2f);
         float bob = Mathf.Sin(t * 1.6f) * 6f;
-        RainbowTitle(new Rect(0f, Screen.height * 0.17f + bob, Screen.width, 110f), "BLOCK TOWER", 84, pulse, t);
+        RainbowTitle(new Rect(0f, Screen.height * 0.17f + bob, Screen.width, 110f), "KUBIKA TOWER 3D", 68, pulse, t);
         GlowText(new Rect(0f, Screen.height * 0.17f + 108f + bob, Screen.width, 76f), T("subtitle"), 52, new Color(1f, 0.86f, 0.30f), pulse);
 
         // Garis pemisah bercahaya
