@@ -97,11 +97,11 @@ public partial class Tetris3D
     // ---- Menu depan (start screen) ----
     void DrawStartMenu()
     {
-        float cx = Screen.width / 2f;
+        float cx = VW / 2f;
         float t = Time.time;
 
         // Latar (lebih cerah & tembus pandang biar tema menyenangkan)
-        FillRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0.06f, 0.03f, 0.16f, 0.42f));
+        FillRect(new Rect(0f, 0f, VW, VH), new Color(0.06f, 0.03f, 0.16f, 0.42f));
 
         // Blok-blok hias melayang
         DrawMenuDeco(t);
@@ -109,16 +109,16 @@ public partial class Tetris3D
         // Judul KUBIKA TOWER warna-warni pelangi + gerak naik-turun halus, '3D' besar di bawahnya
         float pulse = 0.75f + 0.25f * Mathf.Sin(t * 2.2f);
         float bob = Mathf.Sin(t * 1.6f) * 6f;
-        RainbowTitle(new Rect(0f, Screen.height * 0.17f + bob, Screen.width, 110f), "KUBIKA TOWER", 80, pulse, t);
-        RainbowTitle(new Rect(0f, Screen.height * 0.17f + 104f + bob, Screen.width, 150f), "3D", 130, pulse, t);
+        RainbowTitle(new Rect(0f, VH * 0.17f + bob, VW, 110f), "KUBIKA TOWER", 80, pulse, t);
+        RainbowTitle(new Rect(0f, VH * 0.17f + 104f + bob, VW, 150f), "3D", 130, pulse, t);
 
         // Garis pemisah bercahaya
-        float lw = Mathf.Min(Screen.width * 0.5f, 300f);
-        RoundRect(new Rect(cx - lw / 2f, Screen.height * 0.17f + 250f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
+        float lw = Mathf.Min(VW * 0.5f, 300f);
+        RoundRect(new Rect(cx - lw / 2f, VH * 0.17f + 250f + bob, lw, 4f), new Color(0.4f, 0.9f, 1f, 0.55f), 2f);
 
         // Kartu skor tertinggi + mahkota (selebar panel peringkat biar gagah)
-        float hw = Mathf.Min(Screen.width * 0.94f, 520f);
-        Rect hiCard = new Rect(cx - hw / 2f, Screen.height * 0.40f, hw, 74f);
+        float hw = Mathf.Min(VW * 0.94f, 520f);
+        Rect hiCard = new Rect(cx - hw / 2f, VH * 0.40f, hw, 74f);
         RoundRect(new Rect(hiCard.x - 3f, hiCard.y - 3f, hiCard.width + 6f, hiCard.height + 6f), new Color(1f, 0.8f, 0.2f, 0.22f), 20f); // halo
         RoundRect(hiCard, new Color(0.10f, 0.08f, 0.03f, 0.85f), 18f);
         GuiText(new Rect(hiCard.x + 26f, hiCard.y, 220f, 74f), T("record"), 24, new Color(1f, 0.9f, 0.6f, 0.85f), TextAnchor.MiddleLeft);
@@ -128,18 +128,18 @@ public partial class Tetris3D
         GuiText(new Rect(hiCard.x + hw - 128f, hiCard.y, 116f, 74f), "" + highScore, 42, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
 
         // Tombol MAIN berdenyut + halo cahaya
-        float bw = Mathf.Min(Screen.width * 0.64f, 360f);
+        float bw = Mathf.Min(VW * 0.64f, 360f);
         float grow = 6f * (0.5f + 0.5f * Mathf.Sin(t * 3f));
-        Rect btn = new Rect(cx - bw / 2f - grow, Screen.height * 0.53f - grow, bw + grow * 2f, 122f + grow * 2f);
+        Rect btn = new Rect(cx - bw / 2f - grow, VH * 0.53f - grow, bw + grow * 2f, 122f + grow * 2f);
         RoundRect(new Rect(btn.x - 6f, btn.y - 6f, btn.width + 12f, btn.height + 12f), new Color(0.2f, 1f, 0.55f, 0.22f), 30f); // halo
         if (Btn3D(btn, T("play"), new Color(0.20f, 0.82f, 0.46f), false))
             StartGame();
 
         // ---- Panel leaderboard global (Top 5) - di-tap buka full Top 50 ----
         if (ugsReady && !homeRanksRequested) { homeRanksRequested = true; LoadRanks(); }
-        float lbw = Mathf.Min(Screen.width * 0.94f, 520f);
+        float lbw = Mathf.Min(VW * 0.94f, 520f);
         float lbx = cx - lbw / 2f;
-        float lby = Screen.height * 0.63f;
+        float lby = VH * 0.63f;
         float hdrH = 60f;
         int showN = Mathf.Min(5, ranks.Count);
         float lbRowH = 68f;
@@ -179,16 +179,16 @@ public partial class Tetris3D
 
         // Hint berkedip (di bawah panel leaderboard)
         float ha = 0.55f + 0.45f * Mathf.Sin(t * 3f);
-        GuiText(new Rect(0f, lby + panelH + 14f, Screen.width, 30f), T("pressPlay"), 20, new Color(1f, 1f, 1f, ha), TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, lby + panelH + 14f, VW, 30f), T("pressPlay"), 20, new Color(1f, 1f, 1f, ha), TextAnchor.MiddleCenter);
 
         // Chip profil (pojok kiri atas) - tap buat edit nama & negara kapan aja
         string pf = string.IsNullOrEmpty(playerName) ? T("setProfile") : (playerName + "  \u00b7  " + playerCountry);
-        float pcw = Mathf.Min(Screen.width * 0.52f, 240f);
+        float pcw = Mathf.Min(VW * 0.52f, 240f);
         if (Btn3D(new Rect(16f, 16f, pcw, 46f), pf, new Color(0.30f, 0.40f, 0.62f), false))
         { editingProfile = true; showProfile = true; countryPicking = false; lbStatus = ""; }
 
         // Pemilih bahasa (pojok kanan atas)
-        DrawLangPicker(Screen.width - 96f - 16f, 16f);
+        DrawLangPicker(VW - 96f - 16f, 16f);
     }
 
     // Teks dengan efek glow (lapisan glow pakai GuiLabel, teks inti pakai GuiText beroutline)
@@ -243,13 +243,13 @@ public partial class Tetris3D
     void DrawMenuDeco(float t)
     {
         int n = 7;
-        float sz = Mathf.Max(26f, Screen.width * 0.045f);
+        float sz = Mathf.Max(26f, VW * 0.045f);
         for (int i = 0; i < n; i++)
         {
             float fx = (i + 0.5f) / n;
-            float px = fx * Screen.width + Mathf.Sin(t * 0.6f + i * 1.3f) * 22f;
+            float px = fx * VW + Mathf.Sin(t * 0.6f + i * 1.3f) * 22f;
             float speed = 38f + (i % 3) * 20f;
-            float py = Screen.height - Mathf.Repeat(t * speed + i * 150f, Screen.height + 140f);
+            float py = VH - Mathf.Repeat(t * speed + i * 150f, VH + 140f);
             Color c = BlockColor(i % 6);
             c.a = 0.35f;
             RoundRect(new Rect(px - sz / 2f, py, sz, sz), c, sz * 0.28f);
@@ -260,13 +260,13 @@ public partial class Tetris3D
     // ---- Menu jeda (pause) ----
     void DrawPauseMenu()
     {
-        float cx = Screen.width / 2f;
-        FillRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0.02f, 0.01f, 0.06f, 0.72f));
-        GlowText(new Rect(0f, Screen.height * 0.16f, Screen.width, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
+        float cx = VW / 2f;
+        FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.72f));
+        GlowText(new Rect(0f, VH * 0.16f, VW, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
 
-        float bw = Mathf.Min(Screen.width * 0.64f, 360f);
+        float bw = Mathf.Min(VW * 0.64f, 360f);
         float bx = cx - bw / 2f;
-        float by = Screen.height * 0.30f;
+        float by = VH * 0.30f;
         float bh = 84f, gap = 15f;
 
         if (Btn3D(new Rect(bx, by, bw, bh), T("resume"), new Color(0.20f, 0.82f, 0.46f), false)) paused = false;
@@ -282,7 +282,7 @@ public partial class Tetris3D
         musicOn = DrawToggle(new Rect(bx, by, bw, 58f), T("music"), musicOn);
 
         // Pemilih bahasa (pojok kanan atas)
-        DrawLangPicker(Screen.width - 96f - 16f, 16f);
+        DrawLangPicker(VW - 96f - 16f, 16f);
     }
 
     // Baris toggle on/off ala switch
@@ -305,16 +305,16 @@ public partial class Tetris3D
     // ---- Layar Buat Profil (nama + negara), muncul saat game over pertama ----
     void DrawProfileScreen()
     {
-        float cx = Screen.width / 2f;
-        FillRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0.02f, 0.01f, 0.06f, 0.93f));
-        GlowText(new Rect(0f, Screen.height * 0.09f, Screen.width, 80f), T("profileTitle"), 50, new Color(0.5f, 0.9f, 1f), 1f);
+        float cx = VW / 2f;
+        FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.93f));
+        GlowText(new Rect(0f, VH * 0.09f, VW, 80f), T("profileTitle"), 50, new Color(0.5f, 0.9f, 1f), 1f);
 
         if (editingProfile && Btn3D(new Rect(16f, 16f, 120f, 48f), T("close"), new Color(0.55f, 0.42f, 0.55f), false))
         { editingProfile = false; showProfile = false; countryPicking = false; lbStatus = ""; }
 
-        float pw = Mathf.Min(Screen.width * 0.82f, 470f);
+        float pw = Mathf.Min(VW * 0.82f, 470f);
         float px = cx - pw / 2f;
-        float py = Screen.height * 0.20f;
+        float py = VH * 0.20f;
 
         GuiText(new Rect(px, py, pw, 28f), T("nameLabel"), 22, new Color(0.8f, 0.9f, 1f), TextAnchor.MiddleLeft);
         py += 34f;
@@ -333,7 +333,7 @@ public partial class Tetris3D
 
         if (countryPicking)
         {
-            float listH = Screen.height * 0.44f;
+            float listH = VH * 0.44f;
             RoundRect(new Rect(px, py, pw, listH), new Color(0.06f, 0.08f, 0.12f, 0.97f), 12f);
             Rect view = new Rect(px + 6f, py + 6f, pw - 12f, listH - 12f);
             float rowH = 52f;
@@ -381,22 +381,22 @@ public partial class Tetris3D
     // ---- Layar PERINGKAT (Top 10 global + peringkat kamu) ----
     void DrawRanksScreen()
     {
-        float cx = Screen.width / 2f;
-        FillRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0.02f, 0.01f, 0.06f, 0.95f));
-        GlowText(new Rect(0f, Screen.height * 0.05f, Screen.width, 80f), T("rankings"), 54, new Color(1f, 0.82f, 0.3f), 1f);
+        float cx = VW / 2f;
+        FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.95f));
+        GlowText(new Rect(0f, VH * 0.05f, VW, 80f), T("rankings"), 54, new Color(1f, 0.82f, 0.3f), 1f);
 
-        float pw = Mathf.Min(Screen.width * 0.9f, 540f);
+        float pw = Mathf.Min(VW * 0.9f, 540f);
         float px = cx - pw / 2f;
-        float py = Screen.height * 0.16f;
+        float py = VH * 0.16f;
 
-        if (ranksLoading) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("loading"), 30, Color.white, TextAnchor.MiddleCenter); }
-        else if (!string.IsNullOrEmpty(lbStatus)) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), lbStatus, 24, new Color(1f, 0.8f, 0.4f), TextAnchor.MiddleCenter); }
-        else if (ranks.Count == 0) { GuiText(new Rect(0f, Screen.height * 0.45f, Screen.width, 40f), T("noScores"), 26, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter); }
+        if (ranksLoading) { GuiText(new Rect(0f, VH * 0.45f, VW, 40f), T("loading"), 30, Color.white, TextAnchor.MiddleCenter); }
+        else if (!string.IsNullOrEmpty(lbStatus)) { GuiText(new Rect(0f, VH * 0.45f, VW, 40f), lbStatus, 24, new Color(1f, 0.8f, 0.4f), TextAnchor.MiddleCenter); }
+        else if (ranks.Count == 0) { GuiText(new Rect(0f, VH * 0.45f, VW, 40f), T("noScores"), 26, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter); }
         else
         {
             float rowH = 64f;
-            float listTop = Screen.height * 0.15f;
-            float listH = Screen.height * 0.66f;
+            float listTop = VH * 0.15f;
+            float listH = VH * 0.66f;
             Rect view = new Rect(px, listTop, pw, listH);
             Rect content = new Rect(0f, 0f, pw - 16f, ranks.Count * (rowH + 6f));
             ranksScroll = GUI.BeginScrollView(view, ranksScroll, content);
@@ -417,16 +417,20 @@ public partial class Tetris3D
             }
             GUI.EndScrollView();
             string mine = myRank > 0 ? T("yourRank") + "  #" + myRank : T("unranked");
-            GuiText(new Rect(px, Screen.height * 0.82f, pw, 34f), mine, 28, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
+            GuiText(new Rect(px, VH * 0.82f, pw, 34f), mine, 28, new Color(1f, 0.9f, 0.5f), TextAnchor.MiddleCenter);
         }
 
-        float bw = Mathf.Min(Screen.width * 0.6f, 300f);
-        if (Btn3D(new Rect(cx - bw / 2f, Screen.height * 0.88f, bw, 66f), T("close"), new Color(0.88f, 0.35f, 0.42f), false))
+        float bw = Mathf.Min(VW * 0.6f, 300f);
+        if (Btn3D(new Rect(cx - bw / 2f, VH * 0.88f, bw, 66f), T("close"), new Color(0.88f, 0.35f, 0.42f), false))
         { showRanks = false; countryPicking = false; }
     }
 
     void OnGUI()
     {
+        // Skala UI responsif: semua UI digambar di ruang logis 720px lalu
+        // diskalakan ke lebar layar asli. Pakai VW/VH (bukan Screen.width/height).
+        ApplyUiScale();
+
         // Lacak status tekan (buat efek tombol) lewat event IMGUI, bukan Input lama
         Event ev = Event.current;
         if (ev.type == EventType.MouseDown) pointerDown = true;
@@ -473,7 +477,7 @@ public partial class Tetris3D
         if (levelUpTime > 0f && !gameOver)
         {
             float la = Mathf.Clamp01(levelUpTime / 1.4f);
-            GlowText(new Rect(0f, Screen.height * 0.24f, Screen.width, 84f), T("level") + " " + level + "!", 58, new Color(1f, 0.86f, 0.32f, la), la);
+            GlowText(new Rect(0f, VH * 0.24f, VW, 84f), T("level") + " " + level + "!", 58, new Color(1f, 0.86f, 0.32f, la), la);
         }
 
         // Teks COMBO! putih besar (seperti judul) + halo warna di belakang biar pop tapi tetap kebaca saat main
@@ -483,7 +487,7 @@ public partial class Tetris3D
             Color glowCol = Color.HSVToRGB((Time.time * 0.7f + comboShow * 0.13f) % 1f, 0.85f, 1f);
             glowCol.a = ca;
             int csize = 100 + Mathf.Min(comboShow, 8) * 4;
-            Rect comboRect = new Rect(0f, Screen.height * 0.31f, Screen.width, 150f);
+            Rect comboRect = new Rect(0f, VH * 0.31f, VW, 150f);
             GlowText(comboRect, "COMBO x" + comboShow, csize, glowCol, ca);
             GuiText(comboRect, "COMBO x" + comboShow, csize, new Color(1f, 1f, 1f, ca), TextAnchor.MiddleCenter);
         }
@@ -491,29 +495,29 @@ public partial class Tetris3D
         if (gameOver)
         {
             if (score > highScore) { highScore = score; PlayerPrefs.SetInt("tetris3d_hi", highScore); PlayerPrefs.Save(); }
-            FillRect(new Rect(0f, Screen.height * 0.28f, Screen.width, Screen.height * 0.26f), new Color(0f, 0f, 0f, 0.6f));
-            GuiText(new Rect(0f, Screen.height * 0.30f, Screen.width, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
-            if (Btn3D(new Rect(Screen.width / 2f - 150f, Screen.height * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RetryGame();
-            if (Btn3D(new Rect(Screen.width / 2f - 150f, Screen.height * 0.5f + 100f, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
+            FillRect(new Rect(0f, VH * 0.28f, VW, VH * 0.26f), new Color(0f, 0f, 0f, 0.6f));
+            GuiText(new Rect(0f, VH * 0.30f, VW, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
+            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RetryGame();
+            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f + 100f, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
             return;
         }
 
         // Tombol JEDA (atas tengah)
-        if (Btn3D(new Rect(Screen.width / 2f - 62f, 16f, 124f, 58f), T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
+        if (Btn3D(new Rect(VW / 2f - 62f, 16f, 124f, 58f), T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
 
-        float bw = Mathf.Min(Screen.width * 0.20f, 168f);
+        float bw = Mathf.Min(VW * 0.20f, 168f);
         float bh = bw;
         float pad = 16f;
-        float y = Screen.height - bh - pad;
+        float y = VH - bh - pad;
 
         if (Btn3D(new Rect(pad, y, bw, bh), T("rotate"), new Color(0.16f, 0.78f, 0.40f), false)) Rotate();
-        if (Btn3D(new Rect(Screen.width / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false)) HardDrop();
-        if (Btn3D(new Rect(Screen.width - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true)) btnSoftDrop = true; // tahan buat turun cepat
+        if (Btn3D(new Rect(VW / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false)) HardDrop();
+        if (Btn3D(new Rect(VW - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true)) btnSoftDrop = true; // tahan buat turun cepat
 
         // ---- Kotak preview: bentuk balok BERIKUTNYA (kanan atas) ----
         {
-            float pvSize = Mathf.Min(Screen.width * 0.26f, 150f);
-            float pvX = Screen.width - pvSize - 16f;
+            float pvSize = Mathf.Min(VW * 0.26f, 150f);
+            float pvX = VW - pvSize - 16f;
             float pvY = 12f;
             float boxH = pvSize + 40f;
             RoundRect(new Rect(pvX - 11f, pvY - 9f, pvSize + 22f, boxH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.22f), 18f); // glow tepi
@@ -549,11 +553,11 @@ public partial class Tetris3D
         // ---- Tutorial PUTAR TABUNG (besar, di tengah) - hilang setelah sentuhan pertama ----
         if (!hintDone)
         {
-            float cxc = Screen.width / 2f;
-            float cyc = Screen.height * 0.5f;
-            FillRect(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.35f)); // redupin layar
+            float cxc = VW / 2f;
+            float cyc = VH * 0.5f;
+            FillRect(new Rect(0f, 0f, VW, VH), new Color(0f, 0f, 0f, 0.35f)); // redupin layar
 
-            float tubeW = Mathf.Min(Screen.width * 0.34f, 360f);
+            float tubeW = Mathf.Min(VW * 0.34f, 360f);
             float tubeH = tubeW * 0.32f;
             Rect tube = new Rect(cxc - tubeW / 2f, cyc - tubeH / 2f, tubeW, tubeH);
             FillRect(tube, new Color(0.9f, 0.95f, 1f, 0.95f));
@@ -574,8 +578,8 @@ public partial class Tetris3D
                 GUI.color = oldc;
             }
 
-            GuiText(new Rect(0f, cyc + tubeH, Screen.width, 60f), T("swipeBig"), 34, Color.white, TextAnchor.MiddleCenter);
-            GuiText(new Rect(0f, cyc + tubeH + 56f, Screen.width, 34f), T("touchStart"), 20, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter);
+            GuiText(new Rect(0f, cyc + tubeH, VW, 60f), T("swipeBig"), 34, Color.white, TextAnchor.MiddleCenter);
+            GuiText(new Rect(0f, cyc + tubeH + 56f, VW, 34f), T("touchStart"), 20, new Color(1f, 1f, 1f, 0.8f), TextAnchor.MiddleCenter);
         }
     }
 }

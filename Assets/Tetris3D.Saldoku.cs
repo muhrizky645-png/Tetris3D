@@ -223,7 +223,7 @@ public partial class Tetris3D
         EnsureCurrency();
         EnsureSaldoku();
 
-        float sw = Screen.width, sh = Screen.height;
+        float sw = VW, sh = VH;
 
         // backdrop gelap yang menelan klik (modal)
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
@@ -392,6 +392,7 @@ public class KubikaSaldokuUI : MonoBehaviour
         FindGame();
         if (game == null) return;
         GUI.depth = -1000; // chip menu + overlay di depan & terima input lebih dulu
+        game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
 
         if (game.CurrencyMenuVisible && !game.SaldokuOverlayOpen)
         {

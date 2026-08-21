@@ -15,7 +15,7 @@ using UnityEngine;
 //                     READ-ONLY di game; HANYA server (via AdMob SSV) yang
 //                     boleh menambah. Game cuma menampilkan nilai dari
 //                     server. Terkunci sampai akun SALDOKU terhubung
-//                     (fitur "Hubungkan Akun" menyusul).
+//                     (fitur \"Hubungkan Akun\" menyusul).
 // =====================================================================
 
 public partial class Tetris3D
@@ -216,6 +216,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
     {
         FindGame();
         if (game == null || !game.CurrencyHudVisible) return;
+        game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
         // Di bawah papan skor (papan skor: y 12..210). Chip mulai y = 218.
         game.DrawCurrencyHUD(14f, 218f);
     }
