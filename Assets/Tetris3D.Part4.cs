@@ -271,15 +271,26 @@ public partial class Tetris3D
 
         if (Btn3D(new Rect(bx, by, bw, bh), T("resume"), new Color(0.20f, 0.82f, 0.46f), false)) paused = false;
         by += bh + gap;
-        if (Btn3D(new Rect(bx, by, bw, bh), T("restart"), new Color(0.95f, 0.70f, 0.20f), false)) RetryGame();
+        if (Btn3D(new Rect(bx, by, bw, bh), T("restart"), new Color(0.95f, 0.70f, 0.20f), false)) RestartGameFull();
         by += bh + gap;
-        if (Btn3D(new Rect(bx, by, bw, bh), T("mainmenu"), new Color(0.88f, 0.35f, 0.42f), false)) GoHome();
+        if (Btn3D(new Rect(bx, by, bw, bh), T("mainmenu"), new Color(0.88f, 0.35f, 0.42f), false)) GoHomeFull();
         by += bh + gap + 12f;
 
         // Toggle on/off suara
         sfxOn = DrawToggle(new Rect(bx, by, bw, 58f), T("sfx"), sfxOn);
         by += 58f + gap;
         musicOn = DrawToggle(new Rect(bx, by, bw, 58f), T("music"), musicOn);
+        by += 58f + gap;
+
+        // Getar (haptic) on/off
+        bool newHaptic = DrawToggle(new Rect(bx, by, bw, 58f), T("haptic"), hapticOn);
+        if (newHaptic != hapticOn) { hapticOn = newHaptic; SaveHaptic(); }
+        by += 58f + gap;
+
+        // Slider sensitivitas geser (kiri: Santai, kanan: Sensitif)
+        float sVal = Mathf.InverseLerp(0.14f, 0.05f, dragStep);
+        float sNew = DrawSlider(new Rect(bx, by, bw, 74f), T("sens"), sVal, T("sensLow"), T("sensHigh"));
+        if (Mathf.Abs(sNew - sVal) > 0.0001f) { dragStep = Mathf.Lerp(0.14f, 0.05f, sNew); SaveDragStep(); }
 
         // Pemilih bahasa (pojok kanan atas)
         DrawLangPicker(VW - 96f - 16f, 16f);
@@ -426,9 +437,10 @@ public partial class Tetris3D
     }
 
     // Tata letak baris HUD atas (ala Block Blast): skor tertinggi | permata | koin | jeda
+    // rowY diturunkan otomatis di bawah kamera depan / notch (safe area).
     void GetHudRow(out Rect hsRect, out Rect gemRect, out Rect coinRect, out Rect pauseRect)
     {
-        float pad = 14f, rowY = 16f, rowH = 60f, gap = 12f;
+        float pad = 14f, rowY = 16f + SafeTopLogical(), rowH = 60f, gap = 12f;
         float pauseW = 92f;
         pauseRect = new Rect(VW - pad - pauseW, rowY, pauseW, rowH);
         float hsW = 172f;
@@ -510,9 +522,11 @@ public partial class Tetris3D
         if (gameOver)
         {
             if (score > highScore) { highScore = score; PlayerPrefs.SetInt("tetris3d_hi", highScore); PlayerPrefs.Save(); }
+            // Tawaran REVIVE dulu (hitung mundur + tonton iklan) sebelum layar game over biasa.
+            if (reviveOffer) { DrawReviveOffer(); return; }
             FillRect(new Rect(0f, VH * 0.28f, VW, VH * 0.26f), new Color(0f, 0f, 0f, 0.6f));
             GuiText(new Rect(0f, VH * 0.30f, VW, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
-            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RetryGame();
+            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RestartGameFull();
             if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f + 100f, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
             return;
         }

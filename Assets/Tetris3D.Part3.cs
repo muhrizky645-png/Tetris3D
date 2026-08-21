@@ -34,6 +34,7 @@ public partial class Tetris3D
         sfxClear = MakeArp("clr", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f, 1567.98f }, 0.07f, 0.55f);
         sfxGameOver = MakeArp("go", new float[] { 587.33f, 493.88f, 392.00f, 293.66f, 261.63f }, 0.16f, 0.55f);
         sfxLevelUp = MakeArp("lvl", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f }, 0.10f, 0.55f);
+        sfxTick = MakeTone("tick", 950f, 0.05f, 0.5f, 0, 950f);
 
         musicClip = MakeMusic();
         music.clip = musicClip;
@@ -134,13 +135,35 @@ public partial class Tetris3D
 
     void UpdateTargetSpin()
     {
-        float centerCol = curCol + (curN - 1) * 0.5f;
+        // Pusatkan tabung pada TITIK TENGAH KOLOM YANG BENAR-BENAR TERISI
+        // (bukan tengah kotak pembungkus), biar balok yang bentuknya tidak
+        // simetris (garis tegak, L, dsb.) tetap fokus pas di depan/tengah.
+        int minx = int.MaxValue, maxx = int.MinValue;
+        if (curBox != null)
+        {
+            for (int i = 0; i < curBox.Length; i++)
+            {
+                if (curBox[i].x < minx) minx = curBox[i].x;
+                if (curBox[i].x > maxx) maxx = curBox[i].x;
+            }
+        }
+        float mid = (minx <= maxx) ? (minx + maxx) * 0.5f : (curN - 1) * 0.5f;
+        float centerCol = curCol + mid;
         targetSpin = 180f - 360f * centerCol / columns;
     }
 
     // ---------- LOOP ----------
     void Update()
     {
+        LoadExtrasPrefs();
+        if (extrasToastTime > 0f) extrasToastTime -= Time.deltaTime;
+
+        // Getar (haptic) berbasis perubahan: line clear (baris nambah) & game over
+        if (lines > prevLines) Haptic(16);
+        prevLines = lines;
+        if (gameOver && !prevGameOver) Haptic(65);
+        prevGameOver = gameOver;
+
         if (levelUpTime > 0f) levelUpTime -= Time.deltaTime;
         if (comboTime > 0f) comboTime -= Time.deltaTime;
 
@@ -206,13 +229,29 @@ public partial class Tetris3D
 
         if (gameOver)
         {
+            // Tawaran REVIVE (maks 1x): 5 detik hitung mundur + SFX detikan sebelum benar-benar tamat.
+            if (!reviveUsed && !reviveDeclined && !reviveOffer && !gameOverHandled)
+            {
+                reviveOffer = true;
+                reviveTimer = REVIVE_SECONDS;
+                reviveTickAcc = 0f;
+            }
+            if (reviveOffer)
+            {
+                reviveTimer -= Time.deltaTime;
+                reviveTickAcc += Time.deltaTime;
+                if (reviveTickAcc >= 1f) { reviveTickAcc -= 1f; Sfx(sfxTick); Haptic(14); }
+                if (reviveTimer <= 0f) { reviveOffer = false; reviveDeclined = true; }
+                return;
+            }
+
             if (!gameOverHandled)
             {
                 gameOverHandled = true;
                 if (!profileDone) showProfile = true;
                 else SubmitScore();
             }
-            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame) RetryGame();
+            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame) RestartGameFull();
             return;
         }
 
@@ -257,6 +296,9 @@ public partial class Tetris3D
             fallTimer = 0f;
             if (!Move(0, -1)) LockPiece();
         }
+
+        // Tabung selalu ikut memusatkan balok aktif (termasuk SETELAH ROTATE), biar tetap fokus di tengah.
+        if (active != null && !clearing && !gameOver) UpdateTargetSpin();
 
         btnSoftDrop = false;
     }
@@ -419,7 +461,7 @@ public partial class Tetris3D
             { "lvl",        new[]{ "Lv", "Lv", "Nv", "Nv", "Niv" } },
             { "cols",       new[]{ "Cols", "Kolom", "Cols", "Cols", "Cols" } },
             { "level",      new[]{ "LEVEL", "LEVEL", "NIVEL", "NÍVEL", "NIVEAU" } },
-            { "playAgain",  new[]{ "PLAY AGAIN (R)", "MAIN LAGI (R)", "JUGAR OTRA VEZ (R)", "JOGAR DE NOVO (R)", "REJOUER (R)" } },
+            { "playAgain",  new[]{ "PLAY AGAIN", "MAIN LAGI", "JUGAR OTRA VEZ", "JOGAR DE NOVO", "REJOUER" } },
             { "rotate",     new[]{ "ROTATE", "ROTASI", "GIRAR", "GIRAR", "TOURNER" } },
             { "drop",       new[]{ "DROP", "JATUH", "CAER", "SOLTAR", "LÂCHER" } },
             { "down",       new[]{ "DOWN", "TURUN", "BAJAR", "DESCER", "BAS" } },
@@ -443,6 +485,14 @@ public partial class Tetris3D
             { "connecting", new[]{ "Connecting...", "Menyambung...", "Conectando...", "Conectando...", "Connexion..." } },
             { "noScores",   new[]{ "No scores yet", "Belum ada skor", "Sin puntajes aún", "Sem pontuações ainda", "Aucun score" } },
             { "sending",    new[]{ "Sending...", "Mengirim...", "Enviando...", "Enviando...", "Envoi..." } },
+            { "reviveAsk",  new[]{ "Continue playing?", "Lanjut main?", "¿Seguir jugando?", "Continuar jogando?", "Continuer ?" } },
+            { "watchAd",    new[]{ "WATCH AD & REVIVE", "TONTON IKLAN & LANJUT", "VER ANUNCIO Y SEGUIR", "VER ANÚNCIO E VOLTAR", "PUB & CONTINUER" } },
+            { "skipRevive", new[]{ "SKIP", "LEWATI", "OMITIR", "PULAR", "PASSER" } },
+            { "adNotReady", new[]{ "Ad not ready yet", "Iklan belum tersedia", "Anuncio no disponible", "Anúncio indisponível", "Pub indisponible" } },
+            { "sens",       new[]{ "Swipe sensitivity", "Sensitivitas geser", "Sensibilidad", "Sensibilidade", "Sensibilité" } },
+            { "sensLow",    new[]{ "Calm", "Santai", "Suave", "Calmo", "Doux" } },
+            { "sensHigh",   new[]{ "Sensitive", "Sensitif", "Sensible", "Sensível", "Sensible" } },
+            { "haptic",     new[]{ "Vibration", "Getaran", "Vibración", "Vibração", "Vibration" } },
         };
     }
 
