@@ -127,8 +127,9 @@ public partial class Tetris3D
         return v.ToString();
     }
 
-    // Gambar chip Permata & Koin di baris HUD atas (ala Block Blast),
-    // sejajar dengan chip skor tertinggi & tombol Jeda (posisi dari GetHudRow).
+    // ---- Versi IN-GAME (ala Block Blast): chip Permata & Koin di baris HUD
+    //      atas, sejajar dengan chip skor tertinggi & tombol Jeda.
+    //      Posisi diambil dari GetHudRow (Part4.cs). Dipanggil KubikaCurrencyHUD.
     public void DrawCurrencyHUD()
     {
         EnsureCurrency();
@@ -146,6 +147,31 @@ public partial class Tetris3D
         else
             DrawCurrencyChipCompact(coinRect, new Color(1f, 0.78f, 0.18f), false,
                 CurShort(cur_koin) + (cur_online ? "" : " (off)"), true);
+    }
+
+    // ---- Versi MENU AWAL (berposisi): dua chip ditumpuk vertikal mulai dari
+    //      (x, y). Chip Koin bisa di-tap untuk buka overlay SALDOKU; posisinya
+    //      cocok dengan KoinChipRect(x, y) di Tetris3D.Saldoku.cs.
+    //      Dipanggil KubikaSaldokuUI.
+    public void DrawCurrencyHUD(float x, float y)
+    {
+        EnsureCurrency();
+        float w = 300f, h = 76f, gap = 10f;
+        string gemName  = (lang == Lang.ID) ? "Permata" : "Gems";
+        string coinName = (lang == Lang.ID) ? "Koin" : "Coins";
+
+        // Permata (chip atas)
+        DrawCurrencyChip(new Rect(x, y, w, h), new Color(0.62f, 0.35f, 1f), true,
+            gemName, CurShort(cur_permata), true);
+
+        // Koin (chip bawah)
+        Rect koin = new Rect(x, y + h + gap, w, h);
+        if (!cur_linked)
+            DrawCurrencyChip(koin, new Color(1f, 0.78f, 0.18f), false,
+                coinName, CurConnect(), false);
+        else
+            DrawCurrencyChip(koin, new Color(1f, 0.78f, 0.18f), false,
+                coinName, CurShort(cur_koin) + (cur_online ? "" : " (off)"), true);
     }
 
     // Chip ringkas (buat baris atas): panel + ikon + nilai (tanpa label nama).
