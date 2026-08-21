@@ -61,15 +61,23 @@ public partial class Tetris3D
 
     // ---------- SAFE AREA ----------
     // Tinggi area atas yang ketutup (poni/kamera) dalam satuan LOGIS (ruang 720).
+    // Selalu turun minimal MIN_TOP_LOGICAL biar HUD tetap agak turun walau:
+    //   - di PC/Editor (tidak ada notch), dan
+    //   - di HP yang tidak melaporkan lubang kamera sebagai safe-area inset.
+    const float MIN_TOP_LOGICAL = 30f;
     float SafeTopLogical()
     {
+        float topInsetPx = 0f;
         Rect sa = Screen.safeArea;
         float h = Screen.height;
-        if (h <= 1f) return 0f;
-        float topInsetPx = h - (sa.y + sa.height);
-        if (topInsetPx < 0f) topInsetPx = 0f;
+        if (h > 1f)
+        {
+            topInsetPx = h - (sa.y + sa.height);
+            if (topInsetPx < 0f) topInsetPx = 0f;
+        }
         float scale = UiScale <= 0f ? 1f : UiScale;
-        return topInsetPx / scale;
+        float logical = topInsetPx / scale;
+        return Mathf.Max(MIN_TOP_LOGICAL, logical);
     }
 
     // ---------- GETAR (HAPTIC) ----------
