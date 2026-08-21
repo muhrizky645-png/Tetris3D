@@ -15,7 +15,7 @@ using UnityEngine;
 //                     READ-ONLY di game; HANYA server (via AdMob SSV) yang
 //                     boleh menambah. Game cuma menampilkan nilai dari
 //                     server. Terkunci sampai akun SALDOKU terhubung
-//                     (fitur \"Hubungkan Akun\" menyusul).
+//                     (fitur "Hubungkan Akun" menyusul).
 // =====================================================================
 
 public partial class Tetris3D
@@ -127,24 +127,49 @@ public partial class Tetris3D
         return v.ToString();
     }
 
-    // Gambar 2 chip mata uang mulai dari (x,y), stack ke bawah.
-    public void DrawCurrencyHUD(float x, float y)
+    // Gambar chip Permata & Koin di baris HUD atas (ala Block Blast),
+    // sejajar dengan chip skor tertinggi & tombol Jeda (posisi dari GetHudRow).
+    public void DrawCurrencyHUD()
     {
         EnsureCurrency();
-        float w = 300f, h = 76f, gap = 10f;
+        Rect hsRect, gemRect, coinRect, pauseRect;
+        GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
 
         // Permata (selalu tampil)
-        DrawCurrencyChip(new Rect(x, y, w, h), new Color(0.62f, 0.35f, 1f), true,
-            "Permata", CurShort(cur_permata), true);
+        DrawCurrencyChipCompact(gemRect, new Color(0.62f, 0.35f, 1f), true,
+            CurShort(cur_permata), true);
 
         // Koin (mirror SALDOKU; terkunci kalau belum terhubung)
-        float y2 = y + h + gap;
         if (!cur_linked)
-            DrawCurrencyChip(new Rect(x, y2, w, h), new Color(1f, 0.78f, 0.18f), false,
-                "Koin", CurConnect(), false);
+            DrawCurrencyChipCompact(coinRect, new Color(1f, 0.78f, 0.18f), false,
+                CurConnect(), false);
         else
-            DrawCurrencyChip(new Rect(x, y2, w, h), new Color(1f, 0.78f, 0.18f), false,
-                "Koin", CurShort(cur_koin) + (cur_online ? "" : " (offline)"), true);
+            DrawCurrencyChipCompact(coinRect, new Color(1f, 0.78f, 0.18f), false,
+                CurShort(cur_koin) + (cur_online ? "" : " (off)"), true);
+    }
+
+    // Chip ringkas (buat baris atas): panel + ikon + nilai (tanpa label nama).
+    // Ukuran teks otomatis mengecil biar muat (mis. "Hubungkan").
+    void DrawCurrencyChipCompact(Rect r, Color accent, bool gem, string value, bool active)
+    {
+        RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f),
+            new Color(accent.r, accent.g, accent.b, 0.22f), 20f);
+        RoundRect(r, new Color(0.06f, 0.08f, 0.12f, 0.92f), 18f);
+
+        float ic = r.height - 22f;
+        Rect ir = new Rect(r.x + 12f, r.y + 11f, ic, ic);
+        if (gem) DrawGemIcon(ir, accent); else DrawCoinIcon(ir, accent);
+
+        float tx = ir.xMax + 10f;
+        float tw = r.width - (tx - r.x) - 10f;
+        int fs = 30;
+        if (uiFont != null)
+        {
+            GUIStyle ms = new GUIStyle { fontStyle = FontStyle.Bold, font = uiFont };
+            while (fs > 14) { ms.fontSize = fs; if (ms.CalcSize(new GUIContent(value)).x <= tw) break; fs -= 2; }
+        }
+        GuiText(new Rect(tx, r.y, tw, r.height), value, fs,
+            active ? Color.white : new Color(1f, 0.85f, 0.5f), TextAnchor.MiddleLeft);
     }
 
     // Chip: panel melengkung + ikon (gem/coin digambar manual) + label + nilai.
@@ -217,7 +242,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
         FindGame();
         if (game == null || !game.CurrencyHudVisible) return;
         game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
-        // Di bawah papan skor (papan skor: y 12..210). Chip mulai y = 218.
-        game.DrawCurrencyHUD(14f, 218f);
+        // Chip permata & koin di baris HUD atas (posisi diambil dari GetHudRow).
+        game.DrawCurrencyHUD();
     }
 }
