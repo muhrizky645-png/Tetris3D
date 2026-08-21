@@ -77,11 +77,8 @@ MonoBehaviour:
       - rid: 6852985685364965392
       - rid: 6852985685364965394
       - rid: 8712630790384254976
-      - rid: 4405033251218653191
-      - rid: 4405033251218653192
       - rid: 4405033251218653193
       - rid: 4405033251218653194
-      - rid: 4405033251218653195
       - rid: 4405033251218653198
       - rid: 4405033251218653200
   m_AssetVersion: 10
@@ -303,7 +300,7 @@ MonoBehaviour:
       data:
         m_Version: 0
         m_StripUnusedPostProcessingVariants: 1
-        m_StripUnusedVariants: 0
+        m_StripUnusedVariants: 1
         m_StripScreenCoordOverrideVariants: 1
     - rid: 6852985685364965377
       type: {class: UniversalRenderPipelineEditorShaders, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.Runtime}
