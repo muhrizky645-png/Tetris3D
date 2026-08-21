@@ -131,7 +131,7 @@ public partial class Tetris3D
     public void DrawCurrencyHUD(float x, float y)
     {
         EnsureCurrency();
-        float w = 190f, h = 46f, gap = 8f;
+        float w = 300f, h = 76f, gap = 10f;
 
         // Permata (selalu tampil)
         DrawCurrencyChip(new Rect(x, y, w, h), new Color(0.62f, 0.35f, 1f), true,
@@ -150,19 +150,19 @@ public partial class Tetris3D
     // Chip: panel melengkung + ikon (gem/coin digambar manual) + label + nilai.
     void DrawCurrencyChip(Rect r, Color accent, bool gem, string name, string value, bool active)
     {
-        RoundRect(new Rect(r.x - 2f, r.y - 2f, r.width + 4f, r.height + 4f),
-            new Color(accent.r, accent.g, accent.b, 0.22f), 16f);
-        RoundRect(r, new Color(0.06f, 0.08f, 0.12f, 0.92f), 14f);
+        RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f),
+            new Color(accent.r, accent.g, accent.b, 0.22f), 20f);
+        RoundRect(r, new Color(0.06f, 0.08f, 0.12f, 0.92f), 18f);
 
-        float ic = r.height - 16f;
-        Rect ir = new Rect(r.x + 10f, r.y + 8f, ic, ic);
+        float ic = r.height - 24f;
+        Rect ir = new Rect(r.x + 14f, r.y + 12f, ic, ic);
         if (gem) DrawGemIcon(ir, accent); else DrawCoinIcon(ir, accent);
 
-        float tx = ir.xMax + 10f;
-        float tw = r.width - (tx - r.x) - 10f;
-        GuiText(new Rect(tx, r.y + 3f, tw, 18f), name, 14,
+        float tx = ir.xMax + 14f;
+        float tw = r.width - (tx - r.x) - 12f;
+        GuiText(new Rect(tx, r.y + 8f, tw, 26f), name, 22,
             new Color(accent.r, accent.g, accent.b, 0.95f), TextAnchor.UpperLeft);
-        GuiText(new Rect(tx, r.y + 17f, tw, 27f), value, 22,
+        GuiText(new Rect(tx, r.y + 34f, tw, 40f), value, 34,
             active ? Color.white : new Color(1f, 0.85f, 0.5f), TextAnchor.UpperLeft);
     }
 

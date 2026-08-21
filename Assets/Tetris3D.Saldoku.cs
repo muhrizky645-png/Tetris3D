@@ -57,7 +57,7 @@ public partial class Tetris3D
     // Kotak chip Koin (chip ke-2) relatif ke titik awal DrawCurrencyHUD(x,y).
     public Rect KoinChipRect(float x, float y)
     {
-        float w = 190f, h = 46f, gap = 8f;
+        float w = 300f, h = 76f, gap = 10f;
         return new Rect(x, y + h + gap, w, h);
     }
 
@@ -229,96 +229,96 @@ public partial class Tetris3D
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
         if (GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none)) { /* klik luar: biarkan */ }
 
-        float pw = Mathf.Min(560f, sw - 40f);
-        float ph = 470f;
+        float pw = Mathf.Min(sw * 0.88f, 760f);
+        float ph = Mathf.Min(sh * 0.82f, 640f);
         float px = (sw - pw) * 0.5f;
         float py = (sh - ph) * 0.5f;
 
-        RoundRect(new Rect(px - 3f, py - 3f, pw + 6f, ph + 6f), new Color(0.62f, 0.35f, 1f, 0.5f), 22f);
-        RoundRect(new Rect(px, py, pw, ph), new Color(0.06f, 0.08f, 0.12f, 0.98f), 20f);
+        RoundRect(new Rect(px - 4f, py - 4f, pw + 8f, ph + 8f), new Color(0.62f, 0.35f, 1f, 0.5f), 26f);
+        RoundRect(new Rect(px, py, pw, ph), new Color(0.06f, 0.08f, 0.12f, 0.98f), 24f);
 
-        float cx = px + 26f;
-        float cw = pw - 52f;
-        float yy = py + 22f;
+        float cx = px + 34f;
+        float cw = pw - 68f;
+        float yy = py + 30f;
 
-        GuiText(new Rect(cx, yy, cw, 34f), SalTitle(), 26, Color.white, TextAnchor.UpperLeft);
-        yy += 46f;
+        GuiText(new Rect(cx, yy, cw, 48f), SalTitle(), 38, Color.white, TextAnchor.UpperLeft);
+        yy += 64f;
 
         if (!cur_linked)
         {
-            GuiText(new Rect(cx, yy, cw, 130f), SalHowto(), 16,
+            GuiText(new Rect(cx, yy, cw, 200f), SalHowto(), 24,
                 new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperLeft);
-            yy += 128f;
+            yy += 190f;
 
-            GuiText(new Rect(cx, yy, cw, 20f), SalCodeLabel(), 14,
+            GuiText(new Rect(cx, yy, cw, 30f), SalCodeLabel(), 22,
                 new Color(0.62f, 0.70f, 1f), TextAnchor.UpperLeft);
-            yy += 24f;
+            yy += 38f;
 
             GUIStyle tf = new GUIStyle(GUI.skin.textField);
-            tf.fontSize    = 24;
+            tf.fontSize    = 40;
             tf.alignment   = TextAnchor.MiddleCenter;
-            tf.fixedHeight = 48f;
-            string typed = GUI.TextField(new Rect(cx, yy, cw, 48f), linkCode ?? "", 8, tf);
+            tf.fixedHeight = 72f;
+            string typed = GUI.TextField(new Rect(cx, yy, cw, 72f), linkCode ?? "", 8, tf);
             linkCode = typed.ToUpperInvariant();
-            yy += 60f;
+            yy += 88f;
 
             if (!string.IsNullOrEmpty(linkStatus))
-                GuiText(new Rect(cx, yy, cw, 22f), linkStatus, 15,
+                GuiText(new Rect(cx, yy, cw, 30f), linkStatus, 22,
                     new Color(1f, 0.85f, 0.5f), TextAnchor.UpperLeft);
-            yy += 30f;
+            yy += 44f;
 
-            float bw = (cw - 12f) * 0.5f;
-            if (SalButton(new Rect(cx, yy, bw, 52f), linkBusy ? "..." : CurConnect(),
+            float bw = (cw - 16f) * 0.5f;
+            if (SalButton(new Rect(cx, yy, bw, 72f), linkBusy ? "..." : CurConnect(),
                     new Color(0.62f, 0.35f, 1f)) && !linkBusy)
                 SubmitSaldokuCode();
-            if (SalButton(new Rect(cx + bw + 12f, yy, bw, 52f), SalClose(),
+            if (SalButton(new Rect(cx + bw + 16f, yy, bw, 72f), SalClose(),
                     new Color(0.30f, 0.34f, 0.42f)))
                 CloseSaldokuLink();
         }
         else
         {
-            GuiText(new Rect(cx, yy, cw, 24f),
+            GuiText(new Rect(cx, yy, cw, 34f),
                 SalLinkedAs() + " " + (string.IsNullOrEmpty(sal_nama) ? "SALDOKU" : sal_nama),
-                18, new Color(0.6f, 1f, 0.7f), TextAnchor.UpperLeft);
-            yy += 40f;
+                26, new Color(0.6f, 1f, 0.7f), TextAnchor.UpperLeft);
+            yy += 50f;
 
-            GuiText(new Rect(cx, yy, cw, 30f),
+            GuiText(new Rect(cx, yy, cw, 44f),
                 "Koin: " + CurShort(cur_koin) + (cur_online ? "" : " (offline)"),
-                24, Color.white, TextAnchor.UpperLeft);
-            yy += 42f;
+                36, Color.white, TextAnchor.UpperLeft);
+            yy += 56f;
 
-            GuiText(new Rect(cx, yy, cw, 24f),
+            GuiText(new Rect(cx, yy, cw, 32f),
                 SalPeti() + " " + peti_progress + "/" + iklanPerPeti +
                 "   " + SalToday() + " " + iklanHariIni + "/" + batasHarian,
-                15, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperLeft);
-            yy += 40f;
+                22, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperLeft);
+            yy += 50f;
 
             // --- Peti Koin: tonton iklan berhadiah (reward via server SSV) ---
-            if (SalButton(new Rect(cx, yy, cw, 54f),
+            if (SalButton(new Rect(cx, yy, cw, 74f),
                     petiBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : PetiKoinBtn(),
                     new Color(1f, 0.62f, 0.12f)) && !petiBusy)
                 WatchPetiAd();
-            yy += 62f;
+            yy += 86f;
 
             if (!string.IsNullOrEmpty(petiStatus))
-                GuiText(new Rect(cx, yy, cw, 22f), petiStatus, 14,
+                GuiText(new Rect(cx, yy, cw, 30f), petiStatus, 22,
                     new Color(0.75f, 1f, 0.8f), TextAnchor.UpperLeft);
-            yy += 28f;
+            yy += 40f;
 
             if (!string.IsNullOrEmpty(linkStatus))
-                GuiText(new Rect(cx, yy, cw, 22f), linkStatus, 15,
+                GuiText(new Rect(cx, yy, cw, 30f), linkStatus, 22,
                     new Color(1f, 0.85f, 0.5f), TextAnchor.UpperLeft);
-            yy += 30f;
+            yy += 42f;
 
-            float bw = (cw - 12f) * 0.5f;
-            if (SalButton(new Rect(cx, yy, bw, 52f), linkBusy ? "..." : SalRefresh(),
+            float bw = (cw - 16f) * 0.5f;
+            if (SalButton(new Rect(cx, yy, bw, 68f), linkBusy ? "..." : SalRefresh(),
                     new Color(0.20f, 0.60f, 1f)) && !linkBusy)
                 RefreshKoinNow();
-            if (SalButton(new Rect(cx + bw + 12f, yy, bw, 52f), SalUnlink(),
+            if (SalButton(new Rect(cx + bw + 16f, yy, bw, 68f), SalUnlink(),
                     new Color(0.70f, 0.25f, 0.30f)))
                 UnlinkSaldoku();
 
-            if (SalButton(new Rect(cx, yy + 64f, cw, 46f), SalClose(),
+            if (SalButton(new Rect(cx, yy + 80f, cw, 60f), SalClose(),
                     new Color(0.30f, 0.34f, 0.42f)))
                 CloseSaldokuLink();
         }
@@ -327,8 +327,8 @@ public partial class Tetris3D
     bool SalButton(Rect r, string label, Color accent)
     {
         bool hover = r.Contains(Event.current.mousePosition);
-        RoundRect(r, new Color(accent.r, accent.g, accent.b, hover ? 1f : 0.85f), 12f);
-        GuiText(r, label, 20, Color.white, TextAnchor.MiddleCenter);
+        RoundRect(r, new Color(accent.r, accent.g, accent.b, hover ? 1f : 0.85f), 14f);
+        GuiText(r, label, 28, Color.white, TextAnchor.MiddleCenter);
         return GUI.Button(r, GUIContent.none, GUIStyle.none);
     }
 
