@@ -425,6 +425,21 @@ public partial class Tetris3D
         { showRanks = false; countryPicking = false; }
     }
 
+    // Tata letak baris HUD atas (ala Block Blast): skor tertinggi | permata | koin | jeda
+    void GetHudRow(out Rect hsRect, out Rect gemRect, out Rect coinRect, out Rect pauseRect)
+    {
+        float pad = 14f, rowY = 16f, rowH = 60f, gap = 12f;
+        float pauseW = 92f;
+        pauseRect = new Rect(VW - pad - pauseW, rowY, pauseW, rowH);
+        float hsW = 172f;
+        hsRect = new Rect(pad, rowY, hsW, rowH);
+        float midStart = hsRect.xMax + gap;
+        float midEnd = pauseRect.x - gap;
+        float chipW = (midEnd - midStart - gap) / 2f;
+        gemRect = new Rect(midStart, rowY, chipW, rowH);
+        coinRect = new Rect(gemRect.xMax + gap, rowY, chipW, rowH);
+    }
+
     void OnGUI()
     {
         // Skala UI responsif: semua UI digambar di ruang logis 720px lalu
@@ -455,23 +470,23 @@ public partial class Tetris3D
         // Menu jeda - gambar & stop di sini selagi paused
         if (paused) { DrawPauseMenu(); return; }
 
-        // ---- Papan skor (melengkung & cantik) - diperbesar ~1.5x biar kebaca ----
-        float spX = 14f, spY = 12f, spW = 396f, spH = 198f;
-        RoundRect(new Rect(spX - 3f, spY - 3f, spW + 6f, spH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.25f), 33f); // glow tepi
-        RoundRect(new Rect(spX, spY, spW, spH), new Color(0.06f, 0.08f, 0.12f, 0.90f), 30f);                    // panel utama
+        // ---- HUD atas ala Block Blast: [skor tertinggi] [permata] [koin] [jeda] ----
+        // Permata & koin digambar komponen terpisah (KubikaCurrencyHUD) di gemRect/coinRect.
+        Rect hsRect, gemRect, coinRect, pauseRect;
+        GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
 
-        // Baris SKOR TERTINGGI - mahkota BESAR + angka BESAR
-        RoundRect(new Rect(spX + 15f, spY + 15f, spW - 30f, 72f), new Color(0.95f, 0.75f, 0.15f, 0.18f), 21f);
+        // Chip skor tertinggi (kiri) - mahkota + angka
+        RoundRect(new Rect(hsRect.x - 3f, hsRect.y - 3f, hsRect.width + 6f, hsRect.height + 6f), new Color(1f, 0.8f, 0.2f, 0.22f), 20f);
+        RoundRect(hsRect, new Color(0.06f, 0.08f, 0.12f, 0.92f), 18f);
         if (crownTex != null)
-            GUI.DrawTexture(new Rect(spX + 30f, spY + 23f, 63f, 57f), crownTex, ScaleMode.StretchToFill, true, 0f,
+            GUI.DrawTexture(new Rect(hsRect.x + 14f, hsRect.y + (hsRect.height - 32f) / 2f, 38f, 32f), crownTex, ScaleMode.StretchToFill, true, 0f,
                 new Color(1f, 0.85f, 0.28f), Vector4.zero, Vector4.zero);
-        GuiText(new Rect(spX + 108f, spY + 15f, spW - 120f, 72f), "" + highScore, 57, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
+        GuiText(new Rect(hsRect.x + 60f, hsRect.y, hsRect.width - 70f, hsRect.height), "" + highScore, 32, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
 
-        // Aksen kiri + label SKOR + angka (tanpa mahkota)
-        RoundRect(new Rect(spX + 15f, spY + 99f, 9f, spH - 117f), new Color(0.20f, 0.85f, 0.48f, 0.95f), 4f);
-        GuiText(new Rect(spX + 39f, spY + 96f, spW - 51f, 24f), T("score"), 20, new Color(0.55f, 0.95f, 0.70f), TextAnchor.UpperLeft);
-        GuiText(new Rect(spX + 39f, spY + 120f, spW - 51f, 51f), "" + score, 45, Color.white, TextAnchor.UpperLeft);
-        GuiText(new Rect(spX + 39f, spY + 168f, spW - 51f, 27f), T("lines") + " " + lines + "   " + T("lvl") + " " + level + "   " + T("cols") + " " + columns, 20, new Color(0.80f, 0.92f, 1f), TextAnchor.UpperLeft);
+        // Skor besar di tengah (fokus utama, mirip Block Blast)
+        float bigScoreY = hsRect.yMax + 12f;
+        GuiText(new Rect(0f, bigScoreY, VW, 100f), "" + score, 88, Color.white, TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, bigScoreY + 96f, VW, 26f), T("lines") + " " + lines + "   " + T("lvl") + " " + level + "   " + T("cols") + " " + columns, 20, new Color(0.80f, 0.92f, 1f), TextAnchor.MiddleCenter);
 
         // Teks LEVEL UP! muncul sebentar tiap naik level
         if (levelUpTime > 0f && !gameOver)
@@ -502,8 +517,8 @@ public partial class Tetris3D
             return;
         }
 
-        // Tombol JEDA (atas tengah)
-        if (Btn3D(new Rect(VW / 2f - 62f, 16f, 124f, 58f), T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
+        // Tombol JEDA / pengaturan (pojok kanan baris atas)
+        if (Btn3D(pauseRect, T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
 
         float bw = Mathf.Min(VW * 0.20f, 168f);
         float bh = bw;
@@ -514,11 +529,11 @@ public partial class Tetris3D
         if (Btn3D(new Rect(VW / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false)) HardDrop();
         if (Btn3D(new Rect(VW - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true)) btnSoftDrop = true; // tahan buat turun cepat
 
-        // ---- Kotak preview: bentuk balok BERIKUTNYA (kanan atas) ----
+        // ---- Kotak preview: bentuk balok BERIKUTNYA (di bawah tombol Jeda) ----
         {
-            float pvSize = Mathf.Min(VW * 0.26f, 150f);
-            float pvX = VW - pvSize - 16f;
-            float pvY = 12f;
+            float pvSize = Mathf.Min(VW * 0.22f, 132f);
+            float pvX = VW - pvSize - 14f;
+            float pvY = pauseRect.yMax + 14f;
             float boxH = pvSize + 40f;
             RoundRect(new Rect(pvX - 11f, pvY - 9f, pvSize + 22f, boxH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.22f), 18f); // glow tepi
             RoundRect(new Rect(pvX - 8f, pvY - 6f, pvSize + 16f, boxH), new Color(0.06f, 0.08f, 0.12f, 0.90f), 16f);       // panel
