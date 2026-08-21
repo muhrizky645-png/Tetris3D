@@ -293,6 +293,18 @@ public partial class Tetris3D
                 15, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperLeft);
             yy += 40f;
 
+            // --- Peti Koin: tonton iklan berhadiah (reward via server SSV) ---
+            if (SalButton(new Rect(cx, yy, cw, 54f),
+                    petiBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : PetiKoinBtn(),
+                    new Color(1f, 0.62f, 0.12f)) && !petiBusy)
+                WatchPetiAd();
+            yy += 62f;
+
+            if (!string.IsNullOrEmpty(petiStatus))
+                GuiText(new Rect(cx, yy, cw, 22f), petiStatus, 14,
+                    new Color(0.75f, 1f, 0.8f), TextAnchor.UpperLeft);
+            yy += 28f;
+
             if (!string.IsNullOrEmpty(linkStatus))
                 GuiText(new Rect(cx, yy, cw, 22f), linkStatus, 15,
                     new Color(1f, 0.85f, 0.5f), TextAnchor.UpperLeft);
