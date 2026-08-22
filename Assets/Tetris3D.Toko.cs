@@ -26,7 +26,8 @@ public partial class Tetris3D
     string tokoStatus = "";
 
     // Harga tiap buff (dalam Permata). Urutan: Bom, Bersihkan Baris, Perlambat.
-    static readonly int[] TOKO_PRICE = new int[] { 40, 35, 25 };
+    // Sengaja MAHAL (499) supaya pemain lebih terdorong nonton iklan.
+    static readonly int[] TOKO_PRICE = new int[] { 499, 499, 499 };
 
     void EnsureToko()
     {
@@ -52,9 +53,10 @@ public partial class Tetris3D
     public bool TokoOpen { get { return tokoOpen; } }
 
     // Tombol TOKO hanya di menu depan (bukan saat main / overlay lain).
+    // Disembunyikan saat dropdown bahasa (langOpen) kebuka biar tidak tabrakan.
     public bool TokoButtonVisible
     {
-        get { return !started && !showProfile && !showRanks && !SaldokuOverlayOpen && !tokoOpen; }
+        get { return !started && !showProfile && !showRanks && !SaldokuOverlayOpen && !tokoOpen && !langOpen; }
     }
 
     // Inventaris buff hanya tampil saat MAIN.
@@ -70,12 +72,16 @@ public partial class Tetris3D
     public void OpenToko() { EnsureToko(); tokoOpen = true; tokoStatus = ""; }
     void CloseToko() { tokoOpen = false; tokoStatus = ""; }
 
-    // ---- tombol pembuka TOKO di menu depan (pojok kiri atas, di bawah chip profil) ----
+    // ---- tombol pembuka TOKO: PAS DI BAWAH pemilih bahasa (pojok kanan atas) ----
+    // Pemilih bahasa: DrawLangPicker(VW-112, 16), ukuran 96x46, tepi kanan = VW-16.
+    // Tombol TOKO diselaraskan rata-kanan tepat di bawahnya.
     public void DrawTokoButton()
     {
-        float bw = Mathf.Min(VW * 0.4f, 200f);
+        float bw = Mathf.Min(VW * 0.42f, 150f);
         float bh = 52f;
-        Rect r = new Rect(16f, 16f + 46f + 12f, bw, bh);
+        float bx = VW - 16f - bw;        // rata kanan, tepi sama dengan pemilih bahasa
+        float by = 16f + 46f + 12f;      // tepat di bawah pemilih bahasa
+        Rect r = new Rect(bx, by, bw, bh);
         RoundRect(new Rect(r.x - 5f, r.y - 5f, r.width + 10f, r.height + 10f), new Color(0.85f, 0.45f, 0.95f, 0.22f), 18f);
         if (Btn3D(r, SalID ? "TOKO" : "SHOP", new Color(0.72f, 0.40f, 0.95f), false)) OpenToko();
     }
