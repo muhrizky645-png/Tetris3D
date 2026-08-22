@@ -245,9 +245,9 @@ public partial class Tetris3D
 
         float sw = VW, sh = VH;
 
-        // backdrop gelap yang menelan klik (modal)
+        // Backdrop gelap (VISUAL saja). Penelan klik LUAR digambar PALING AKHIR
+        // supaya tidak mencuri MouseDown/fokus dari input & tombol di dalam panel.
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
-        if (GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none)) { /* klik luar: biarkan */ }
 
         float pw = Mathf.Min(sw * 0.88f, 760f);
         float ph = Mathf.Min(sh * 0.90f, 720f);
@@ -278,6 +278,7 @@ public partial class Tetris3D
             tf.fontSize    = 40;
             tf.alignment   = TextAnchor.MiddleCenter;
             tf.fixedHeight = 72f;
+            GUI.SetNextControlName("SalCodeField");
             string typed = GUI.TextField(new Rect(cx, yy, cw, 72f), linkCode ?? "", 8, tf);
             linkCode = typed.ToUpperInvariant();
             yy += 88f;
@@ -313,6 +314,7 @@ public partial class Tetris3D
                 jf.fixedHeight = 60f;
                 float jbw = 150f;
                 float jtw = cw - jbw - 12f;
+                GUI.SetNextControlName("SalNickField");
                 sal_julukan = GUI.TextField(new Rect(cx, yy, jtw, 60f), sal_julukan ?? "", 16, jf);
                 if (SalButton(new Rect(cx + jtw + 12f, yy, jbw, 60f), SalSave(), new Color(0.20f, 0.60f, 1f)))
                     SaveJulukan();
@@ -359,6 +361,11 @@ public partial class Tetris3D
                     new Color(0.30f, 0.34f, 0.42f)))
                 CloseSaldokuLink();
         }
+
+        // --- Penelan klik LUAR panel: digambar PALING AKHIR supaya tidak
+        //     menutupi input & tombol (mereka digambar lebih dulu -> tangkap
+        //     MouseDown lebih awal). Klik di luar panel tidak menembus ke game.
+        GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none);
     }
 
     bool SalButton(Rect r, string label, Color accent)
