@@ -18,8 +18,8 @@ public partial class Tetris3D
 
     // ---- parameter (boleh diubah sesuai selera) ----
     const int   BUBBLE_MAX     = 3;
-    const float BUBBLE_MIN_GAP = 7f;    // jeda spawn minimum (detik)
-    const float BUBBLE_MAX_GAP = 13f;   // jeda spawn maksimum (detik)
+    const float BUBBLE_MIN_GAP = 24f;   // jeda spawn minimum (detik) - dibuat lebih jarang
+    const float BUBBLE_MAX_GAP = 40f;   // jeda spawn maksimum (detik) - dibuat lebih jarang
     const float BUBBLE_R       = 54f;   // radius gelembung (ruang logis) - diperkecil biar mungil
     const int   BOMB_COLS      = 3;     // lebar area bom (kolom)
     const int   GEM_BONUS      = 50;    // permata dari item Bonus Permata
@@ -163,12 +163,12 @@ public partial class Tetris3D
 
     int PickBubbleType()
     {
-        // Koin TIDAK lagi di sini - koin punya jadwal sendiri (SpawnCoinBubble).
+        // Koin TIDAK di sini - koin punya jadwal sendiri (SpawnCoinBubble).
+        // Gem/Permata DIHILANGKAN dari gelembung. Sisa: Bom, Bersihkan Baris, Perlambat.
         int roll = Random.Range(0, 100);
-        if (roll < 28) return IT_BOMB;
-        if (roll < 52) return IT_LINE;
-        if (roll < 76) return IT_SLOW;
-        return IT_GEM;
+        if (roll < 34) return IT_BOMB;
+        if (roll < 67) return IT_LINE;
+        return IT_SLOW;
     }
 
     // Sisa cooldown iklan buff (detik). 0 kalau sudah boleh nonton.
