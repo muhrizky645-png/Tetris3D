@@ -216,8 +216,8 @@ public partial class Tetris3D
     {
         if (!kbClaimOpen) return;
         float sw = VW, sh = VH;
+        // Latar gelap (VISUAL saja - jangan tombol, biar tak menelan klik).
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
-        if (GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none)) { /* modal: telan klik luar */ }
 
         float pw = Mathf.Min(sw * 0.86f, 620f);
         float ph = 540f;
@@ -246,10 +246,17 @@ public partial class Tetris3D
             GuiText(new Rect(cx, yy, cw, 28f), st, 20, new Color(1f, 0.85f, 0.5f), TextAnchor.UpperCenter);
         yy += 34f;
 
+        // --- Tombol aksi digambar DULU supaya menangkap klik lebih awal ---
         float bw = (cw - 16f) * 0.5f;
         string watch = kbAdBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : (SalID ? "Tonton Iklan" : "Watch Ad");
-        if (Btn3D(new Rect(cx, yy, bw, 84f), watch, new Color(1f, 0.62f, 0.12f), false) && !kbAdBusy) ClaimWatchAd();
-        if (Btn3D(new Rect(cx + bw + 16f, yy, bw, 84f), SalID ? "Nanti" : "Later", new Color(0.4f, 0.35f, 0.45f), false)) CloseBubbleClaim();
+        bool doWatch = Btn3D(new Rect(cx, yy, bw, 84f), watch, new Color(1f, 0.62f, 0.12f), false);
+        bool doLater = Btn3D(new Rect(cx + bw + 16f, yy, bw, 84f), SalID ? "Nanti" : "Later", new Color(0.4f, 0.35f, 0.45f), false);
+
+        // --- Penelan klik LUAR panel digambar TERAKHIR (tak menutupi tombol) ---
+        GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none);
+
+        if (doWatch && !kbAdBusy) ClaimWatchAd();
+        if (doLater) CloseBubbleClaim();
     }
 
     // ========================= AKSI =========================
