@@ -199,17 +199,88 @@ public partial class Tetris3D
         {
             case IT_GEM:  DrawGemIcon(r, new Color(0.62f, 0.35f, 1f)); break;
             case IT_COIN: DrawCoinIcon(r, new Color(1f, 0.78f, 0.18f)); break;
-            case IT_BOMB: DrawGlyph(r, new Color(0.16f, 0.16f, 0.22f), "B", new Color(1f, 0.5f, 0.4f)); break;
-            case IT_LINE: DrawGlyph(r, new Color(0.15f, 0.6f, 0.75f), "=", Color.white); break;
-            case IT_SLOW: DrawGlyph(r, new Color(0.2f, 0.45f, 1f), "S", Color.white); break;
+            case IT_BOMB: DrawBombIcon(r); break;
+            case IT_LINE: DrawClearRowIcon(r); break;
+            case IT_SLOW: DrawSlowIcon(r); break;
         }
     }
 
-    void DrawGlyph(Rect r, Color disc, string ch, Color txt)
+    // Rect melengkung yang diputar sekian derajat mengelilingi pivot (buat sumbu/jarum diagonal).
+    void DrawRectRot(Rect r, Color col, float radius, float deg, Vector2 pivot)
     {
-        RoundRect(r, disc, r.width / 2f);
-        RoundRect(new Rect(r.x + r.width * 0.14f, r.y + r.height * 0.12f, r.width * 0.72f, r.height * 0.26f), new Color(1f, 1f, 1f, 0.18f), r.width * 0.2f);
-        GuiText(r, ch, Mathf.RoundToInt(r.height * 0.6f), txt, TextAnchor.MiddleCenter);
+        Matrix4x4 m = GUI.matrix;
+        GUIUtility.RotateAroundPivot(deg, pivot);
+        RoundRect(r, col, radius);
+        GUI.matrix = m;
+    }
+
+    // Ikon BOM: bola hitam mengkilap + sumbu menyala.
+    void DrawBombIcon(Rect r)
+    {
+        float d = r.width * 0.70f;
+        Rect body = new Rect(r.center.x - d / 2f, r.yMax - d, d, d);
+        RoundRect(new Rect(body.x - 3f, body.y - 3f, body.width + 6f, body.height + 6f), new Color(0f, 0f, 0f, 0.35f), body.width);
+        RoundRect(body, new Color(0.13f, 0.13f, 0.19f, 1f), d / 2f);
+        RoundRect(new Rect(body.x + d * 0.18f, body.y + d * 0.14f, d * 0.34f, d * 0.24f), new Color(1f, 1f, 1f, 0.40f), d * 0.20f);
+        // tutup sumbu
+        float capW = d * 0.26f;
+        Rect cap = new Rect(body.center.x - capW / 2f, body.y - capW * 0.45f, capW, capW * 0.6f);
+        RoundRect(cap, new Color(0.85f, 0.70f, 0.30f, 1f), capW * 0.20f);
+        // sumbu (miring)
+        float fw = r.width * 0.10f;
+        float fTop = r.y + r.height * 0.10f;
+        Rect fuse = new Rect(cap.center.x - fw / 2f, fTop, fw, cap.y - fTop + 2f);
+        DrawRectRot(fuse, new Color(0.62f, 0.46f, 0.26f, 1f), fw * 0.5f, 16f, new Vector2(cap.center.x, cap.y));
+        // percikan api
+        float sp = r.width * 0.22f;
+        Rect spark = new Rect(cap.center.x + r.width * 0.02f, fTop - sp * 0.35f, sp, sp);
+        RoundRect(spark, new Color(1f, 0.55f, 0.15f, 1f), sp / 2f);
+        RoundRect(new Rect(spark.x + sp * 0.28f, spark.y + sp * 0.28f, sp * 0.44f, sp * 0.44f), new Color(1f, 0.95f, 0.6f, 1f), sp * 0.22f);
+    }
+
+    // Ikon BERSIHKAN BARIS: tumpukan blok dgn baris tengah menyala + sinar.
+    void DrawClearRowIcon(Rect r)
+    {
+        int cols = 4;
+        float pad = r.width * 0.06f;
+        float cellW = (r.width - pad * (cols + 1)) / cols;
+        float cellH = r.height * 0.20f;
+        float gap = r.height * 0.07f;
+        float startY = r.center.y - (cellH * 3f + gap * 2f) / 2f;
+        for (int row = 0; row < 3; row++)
+        {
+            float ry = startY + row * (cellH + gap);
+            bool lit = (row == 1);
+            for (int c = 0; c < cols; c++)
+            {
+                float rx = r.x + pad + c * (cellW + pad);
+                Color cc = lit ? new Color(1f, 1f, 1f, 0.98f) : new Color(0.28f, 0.55f, 0.75f, 1f);
+                RoundRect(new Rect(rx, ry, cellW, cellH), cc, cellW * 0.24f);
+            }
+        }
+        // sinar horizontal menembus baris tengah
+        float beamY = startY + (cellH + gap) - cellH * 0.20f;
+        RoundRect(new Rect(r.x - r.width * 0.04f, beamY, r.width * 1.08f, cellH * 1.4f), new Color(1f, 1f, 1f, 0.30f), cellH);
+    }
+
+    // Ikon PERLAMBAT: jam.
+    void DrawSlowIcon(Rect r)
+    {
+        float d = r.width * 0.84f;
+        Vector2 ctr = r.center;
+        Rect face = new Rect(ctr.x - d / 2f, ctr.y - d / 2f, d, d);
+        RoundRect(face, new Color(0.20f, 0.48f, 1f, 1f), d / 2f);           // cincin
+        float inD = d * 0.76f;
+        RoundRect(new Rect(ctr.x - inD / 2f, ctr.y - inD / 2f, inD, inD), new Color(0.93f, 0.96f, 1f, 1f), inD / 2f); // muka
+        // tombol atas jam
+        float knob = d * 0.14f;
+        RoundRect(new Rect(ctr.x - knob / 2f, face.y - knob * 0.55f, knob, knob * 0.6f), new Color(0.20f, 0.48f, 1f, 1f), knob * 0.25f);
+        // jarum
+        float hw = d * 0.075f;
+        Color hand = new Color(0.14f, 0.19f, 0.30f, 1f);
+        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.30f, hw, inD * 0.30f), hand, hw * 0.5f, 0f, ctr);    // jarum pendek (atas)
+        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.38f, hw, inD * 0.38f), hand, hw * 0.5f, 115f, ctr); // jarum panjang
+        RoundRect(new Rect(ctr.x - hw, ctr.y - hw, hw * 2f, hw * 2f), hand, hw); // poros tengah
     }
 
     public void DrawBubbleClaim()
