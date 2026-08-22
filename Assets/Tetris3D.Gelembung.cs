@@ -8,29 +8,7 @@ using GoogleMobileAds.Api;
 // =====================================================================
 //  KUBIKA TOWER x SALDOKU - GELEMBUNG ITEM DROP
 // ---------------------------------------------------------------------
-//  File TERPISAH (partial) - ADDITIVE. TIDAK mengubah file gameplay lama
-//  maupun Tetris3D.Currency.cs / .Saldoku.cs / .PetiKoin.cs / .Extras.cs.
-//
-//  Konsep (sesuai permintaan):
-//   * Gelembung berisi ITEM jatuh melayang saat MAIN. GRATIS muncul.
-//   * Pemain TAP gelembung -> panel klaim. Semua item DIDAPAT SETELAH
-//     NONTON IKLAN dulu.
-//   * Jenis item:
-//       - BUFF (lokal, aman): Bom (hancurkan area blok), Bersihkan 1
-//         baris, Perlambat jatuh, Bonus Permata.
-//       - KOIN drop -> masuk ke POIN SALDOKU. KOIN tetap READ-ONLY di
-//         game: reward dikreditkan SERVER via AdMob SSV. Client hanya
-//         refresh saldo (CoRefreshKoin). Pakai KUOTA HARIAN TERPISAH
-//         dari Peti Koin (dibedakan server lewat AD UNIT khusus drop).
-//
-//  CATATAN SERVER (di luar repo, upload manual cPanel):
-//   ssv_kubika_callback.php harus mengenali AD UNIT koin-drop lalu kredit
-//   poin dengan KUOTA HARIAN sendiri (ref_id idempotent). Buff TIDAK
-//   menyentuh server (custom_data kosong -> diabaikan server).
-//
-//  CATATAN BUILD: sama seperti Peti Koin. Tanpa define KUBIKA_ADMOB,
-//  di Editor reward diberi langsung (buat tes) & di perangkat menampilkan
-//  "fitur iklan belum aktif".
+//  File TERPISAH (partial) - ADDITIVE.
 // =====================================================================
 
 public partial class Tetris3D
@@ -42,7 +20,7 @@ public partial class Tetris3D
     const int   BUBBLE_MAX     = 3;
     const float BUBBLE_MIN_GAP = 7f;    // jeda spawn minimum (detik)
     const float BUBBLE_MAX_GAP = 13f;   // jeda spawn maksimum (detik)
-    const float BUBBLE_R       = 84f;   // radius gelembung (ruang logis)
+    const float BUBBLE_R       = 54f;   // radius gelembung (ruang logis) - diperkecil biar mungil
     const int   BOMB_COLS      = 3;     // lebar area bom (kolom)
     const int   GEM_BONUS      = 50;    // permata dari item Bonus Permata
     const float SLOW_SECONDS   = 8f;
@@ -62,7 +40,7 @@ public partial class Tetris3D
     string kbDropStatus = "";
 
     // ---- efek tertunda ----
-    int    kbPendingBuff = -1;   // buff yang menunggu papan aman utk diterapkan
+    int    kbPendingBuff = -1;
     float  kbSlowTimer;
     float  kbSlowOrig;
 
@@ -96,14 +74,12 @@ public partial class Tetris3D
 
         if (kbToastTime > 0f) kbToastTime -= Time.unscaledDeltaTime;
 
-        // Amankan: kalau panel klaim kebuka tapi kondisi sudah tak wajar, tutup & normalkan waktu
         if (kbClaimOpen && (!started || gameOver || showProfile || showRanks || SaldokuOverlayOpen))
         {
             kbClaimOpen = false;
             Time.timeScale = 1f;
         }
 
-        // Timer buff Perlambat
         if (kbSlowTimer > 0f)
         {
             if (started && !gameOver && !paused) kbSlowTimer -= dt;
@@ -111,30 +87,25 @@ public partial class Tetris3D
         }
         if ((!started || gameOver) && kbSlowTimer > 0f) { kbSlowTimer = 0f; fallInterval = kbSlowOrig; }
 
-        // Terapkan buff tertunda saat papan aman (bukan sedang clear/pause/game over)
         if (kbPendingBuff >= 0 && started && !gameOver && !clearing && !paused)
         {
             int b = kbPendingBuff; kbPendingBuff = -1;
             ApplyBuff(b);
         }
 
-        // Kalau tidak sedang main: kosongkan gelembung
         if (!started || gameOver) { if (kbubbles.Count > 0) kbubbles.Clear(); return; }
 
-        // Beku saat pause / overlay / klaim kebuka
         if (!BubblesActive) return;
 
-        // Gerakkan gelembung (jatuh + goyang halus)
         for (int i = kbubbles.Count - 1; i >= 0; i--)
         {
             var b = kbubbles[i];
             b.phase += dt;
             b.y += b.vy * dt;
             b.x += Mathf.Sin(b.phase * 1.6f) * b.drift * dt;
-            if (b.y > VH * 0.82f) kbubbles.RemoveAt(i);   // lewat area tombol kontrol -> hilang
+            if (b.y > VH * 0.82f) kbubbles.RemoveAt(i);
         }
 
-        // Spawn berkala
         kbSpawnTimer -= dt;
         if (kbSpawnTimer <= 0f && kbubbles.Count < BUBBLE_MAX)
         {
@@ -146,24 +117,28 @@ public partial class Tetris3D
     void SpawnBubble()
     {
         var b = new KBubble();
-        b.x = Random.Range(BUBBLE_R + 20f, Mathf.Max(BUBBLE_R + 40f, VW - BUBBLE_R - 20f));
+        // Muncul MELAYANG di PINGGIR (kiri/kanan) - jangan di tengah supaya tak
+        // menutupi menara balok. Pilih salah satu sisi secara acak.
+        bool left = Random.value < 0.5f;
+        float band = Mathf.Max(BUBBLE_R + 8f, VW * 0.22f);   // lebar area pinggir
+        if (left) b.x = Random.Range(BUBBLE_R + 6f, band);
+        else      b.x = Random.Range(VW - band, VW - BUBBLE_R - 6f);
         b.y = -BUBBLE_R;
         b.vy = Random.Range(70f, 105f);
-        b.drift = Random.Range(18f, 42f);
+        b.drift = Random.Range(8f, 20f);    // goyang lebih kecil biar tetap di pinggir
         b.phase = Random.Range(0f, 6.28f);
         b.type = PickBubbleType();
         kbubbles.Add(b);
     }
 
-    // Bobot kemunculan: koin paling langka (butuh akun + kuota server)
     int PickBubbleType()
     {
         int roll = Random.Range(0, 100);
-        if (roll < 25) return IT_BOMB;   // 25%
-        if (roll < 45) return IT_LINE;   // 20%
-        if (roll < 65) return IT_SLOW;   // 20%
-        if (roll < 90) return IT_GEM;    // 25%
-        return IT_COIN;                  // 10%
+        if (roll < 25) return IT_BOMB;
+        if (roll < 45) return IT_LINE;
+        if (roll < 65) return IT_SLOW;
+        if (roll < 90) return IT_GEM;
+        return IT_COIN;
     }
 
     // ========================= GAMBAR =========================
@@ -193,16 +168,13 @@ public partial class Tetris3D
         DrawItemIcon(ir, type);
     }
 
-    // ---- Ikon gambar dari asset pack Tiny Fantasy Icons (folder Resources) ----
-    // File PNG dipetakan per jenis item. Kalau tak ketemu (mis. pack dihapus),
-    // otomatis fallback ke ikon manual (RoundRect) di bawah.
     static readonly string[] KB_ICON_PATH = new string[]
     {
-        "Tiny Fantasy Icons/Explosives/Boom_A",        // IT_BOMB
-        "Tiny Fantasy Icons/PowerUps/Bolt_A",          // IT_LINE (Bersihkan Baris)
-        "Tiny Fantasy Icons/Time/Clock_A",             // IT_SLOW (Perlambat)
-        "Tiny Fantasy Icons/Gems/Gems_Large_Diamond",  // IT_GEM  (Bonus Permata)
-        "Tiny Fantasy Icons/Coins/Coins_Large_Gold",   // IT_COIN (Koin drop)
+        "Tiny Fantasy Icons/Explosives/Boom_A",
+        "Tiny Fantasy Icons/PowerUps/Bolt_A",
+        "Tiny Fantasy Icons/Time/Clock_A",
+        "Tiny Fantasy Icons/Gems/Gems_Large_Diamond",
+        "Tiny Fantasy Icons/Coins/Coins_Large_Gold",
     };
     static Dictionary<int, Texture2D> kbIconCache;
     static HashSet<int> kbIconMissing;
@@ -214,7 +186,7 @@ public partial class Tetris3D
         if (kbIconMissing == null) kbIconMissing = new HashSet<int>();
         Texture2D tex;
         if (kbIconCache.TryGetValue(type, out tex)) return tex;
-        if (kbIconMissing.Contains(type)) return null;   // sudah pernah gagal, jangan load ulang
+        if (kbIconMissing.Contains(type)) return null;
         tex = Resources.Load<Texture2D>(KB_ICON_PATH[type]);
         if (tex != null) kbIconCache[type] = tex;
         else kbIconMissing.Add(type);
@@ -223,19 +195,17 @@ public partial class Tetris3D
 
     void DrawItemIcon(Rect r, int type)
     {
-        // 1) Utamakan PNG asli dari asset pack kalau tersedia.
         Texture2D tex = KbItemTex(type);
         if (tex != null)
         {
             Color prev = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.30f);   // bayangan tipis biar kontras di gelembung terang
+            GUI.color = new Color(0f, 0f, 0f, 0.30f);
             GUI.DrawTexture(new Rect(r.x + 2f, r.y + 3f, r.width, r.height), tex, ScaleMode.ScaleToFit, true);
             GUI.color = prev;
             GUI.DrawTexture(r, tex, ScaleMode.ScaleToFit, true);
             return;
         }
 
-        // 2) Fallback: ikon gambar manual (kalau file PNG tak ditemukan).
         switch (type)
         {
             case IT_GEM:  DrawGemIcon(r, new Color(0.62f, 0.35f, 1f)); break;
@@ -246,7 +216,6 @@ public partial class Tetris3D
         }
     }
 
-    // Rect melengkung yang diputar sekian derajat mengelilingi pivot (buat sumbu/jarum diagonal).
     void DrawRectRot(Rect r, Color col, float radius, float deg, Vector2 pivot)
     {
         Matrix4x4 m = GUI.matrix;
@@ -255,7 +224,6 @@ public partial class Tetris3D
         GUI.matrix = m;
     }
 
-    // Ikon BOM: bola hitam mengkilap + sumbu menyala.
     void DrawBombIcon(Rect r)
     {
         float d = r.width * 0.70f;
@@ -263,23 +231,19 @@ public partial class Tetris3D
         RoundRect(new Rect(body.x - 3f, body.y - 3f, body.width + 6f, body.height + 6f), new Color(0f, 0f, 0f, 0.35f), body.width);
         RoundRect(body, new Color(0.13f, 0.13f, 0.19f, 1f), d / 2f);
         RoundRect(new Rect(body.x + d * 0.18f, body.y + d * 0.14f, d * 0.34f, d * 0.24f), new Color(1f, 1f, 1f, 0.40f), d * 0.20f);
-        // tutup sumbu
         float capW = d * 0.26f;
         Rect cap = new Rect(body.center.x - capW / 2f, body.y - capW * 0.45f, capW, capW * 0.6f);
         RoundRect(cap, new Color(0.85f, 0.70f, 0.30f, 1f), capW * 0.20f);
-        // sumbu (miring)
         float fw = r.width * 0.10f;
         float fTop = r.y + r.height * 0.10f;
         Rect fuse = new Rect(cap.center.x - fw / 2f, fTop, fw, cap.y - fTop + 2f);
         DrawRectRot(fuse, new Color(0.62f, 0.46f, 0.26f, 1f), fw * 0.5f, 16f, new Vector2(cap.center.x, cap.y));
-        // percikan api
         float sp = r.width * 0.22f;
         Rect spark = new Rect(cap.center.x + r.width * 0.02f, fTop - sp * 0.35f, sp, sp);
         RoundRect(spark, new Color(1f, 0.55f, 0.15f, 1f), sp / 2f);
         RoundRect(new Rect(spark.x + sp * 0.28f, spark.y + sp * 0.28f, sp * 0.44f, sp * 0.44f), new Color(1f, 0.95f, 0.6f, 1f), sp * 0.22f);
     }
 
-    // Ikon BERSIHKAN BARIS: tumpukan blok dgn baris tengah menyala + sinar.
     void DrawClearRowIcon(Rect r)
     {
         int cols = 4;
@@ -299,36 +263,31 @@ public partial class Tetris3D
                 RoundRect(new Rect(rx, ry, cellW, cellH), cc, cellW * 0.24f);
             }
         }
-        // sinar horizontal menembus baris tengah
         float beamY = startY + (cellH + gap) - cellH * 0.20f;
         RoundRect(new Rect(r.x - r.width * 0.04f, beamY, r.width * 1.08f, cellH * 1.4f), new Color(1f, 1f, 1f, 0.30f), cellH);
     }
 
-    // Ikon PERLAMBAT: jam.
     void DrawSlowIcon(Rect r)
     {
         float d = r.width * 0.84f;
         Vector2 ctr = r.center;
         Rect face = new Rect(ctr.x - d / 2f, ctr.y - d / 2f, d, d);
-        RoundRect(face, new Color(0.20f, 0.48f, 1f, 1f), d / 2f);           // cincin
+        RoundRect(face, new Color(0.20f, 0.48f, 1f, 1f), d / 2f);
         float inD = d * 0.76f;
-        RoundRect(new Rect(ctr.x - inD / 2f, ctr.y - inD / 2f, inD, inD), new Color(0.93f, 0.96f, 1f, 1f), inD / 2f); // muka
-        // tombol atas jam
+        RoundRect(new Rect(ctr.x - inD / 2f, ctr.y - inD / 2f, inD, inD), new Color(0.93f, 0.96f, 1f, 1f), inD / 2f);
         float knob = d * 0.14f;
         RoundRect(new Rect(ctr.x - knob / 2f, face.y - knob * 0.55f, knob, knob * 0.6f), new Color(0.20f, 0.48f, 1f, 1f), knob * 0.25f);
-        // jarum
         float hw = d * 0.075f;
         Color hand = new Color(0.14f, 0.19f, 0.30f, 1f);
-        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.30f, hw, inD * 0.30f), hand, hw * 0.5f, 0f, ctr);    // jarum pendek (atas)
-        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.38f, hw, inD * 0.38f), hand, hw * 0.5f, 115f, ctr); // jarum panjang
-        RoundRect(new Rect(ctr.x - hw, ctr.y - hw, hw * 2f, hw * 2f), hand, hw); // poros tengah
+        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.30f, hw, inD * 0.30f), hand, hw * 0.5f, 0f, ctr);
+        DrawRectRot(new Rect(ctr.x - hw / 2f, ctr.y - inD * 0.38f, hw, inD * 0.38f), hand, hw * 0.5f, 115f, ctr);
+        RoundRect(new Rect(ctr.x - hw, ctr.y - hw, hw * 2f, hw * 2f), hand, hw);
     }
 
     public void DrawBubbleClaim()
     {
         if (!kbClaimOpen) return;
         float sw = VW, sh = VH;
-        // Latar gelap (VISUAL saja - jangan tombol, biar tak menelan klik).
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
 
         float pw = Mathf.Min(sw * 0.86f, 620f);
@@ -358,13 +317,11 @@ public partial class Tetris3D
             GuiText(new Rect(cx, yy, cw, 28f), st, 20, new Color(1f, 0.85f, 0.5f), TextAnchor.UpperCenter);
         yy += 34f;
 
-        // --- Tombol aksi digambar DULU supaya menangkap klik lebih awal ---
         float bw = (cw - 16f) * 0.5f;
         string watch = kbAdBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : (SalID ? "Tonton Iklan" : "Watch Ad");
         bool doWatch = Btn3D(new Rect(cx, yy, bw, 84f), watch, new Color(1f, 0.62f, 0.12f), false);
         bool doLater = Btn3D(new Rect(cx + bw + 16f, yy, bw, 84f), SalID ? "Nanti" : "Later", new Color(0.4f, 0.35f, 0.45f), false);
 
-        // --- Penelan klik LUAR panel digambar TERAKHIR (tak menutupi tombol) ---
         GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none);
 
         if (doWatch && !kbAdBusy) ClaimWatchAd();
@@ -379,7 +336,7 @@ public partial class Tetris3D
         kbClaimOpen = true;
         kbClaimStatus = "";
         kbDropStatus = "";
-        Time.timeScale = 0f;   // bekukan papan selama panel klaim terbuka
+        Time.timeScale = 0f;
     }
 
     void CloseBubbleClaim()
@@ -400,7 +357,7 @@ public partial class Tetris3D
             if (!cur_linked || string.IsNullOrEmpty(sal_token))
             {
                 kbClaimStatus = SalID ? "Hubungkan akun SALDOKU dulu." : "Link your SALDOKU account first.";
-                return; // panel tetap terbuka
+                return;
             }
             kbClaimStatus = ""; kbDropStatus = "";
             kbClaimOpen = false; Time.timeScale = 1f;
@@ -414,7 +371,6 @@ public partial class Tetris3D
         }
     }
 
-    // ---- dipanggil manajer iklan ----
     public void SetBubbleAdBusy(bool b) { kbAdBusy = b; }
     public string BubbleAdsOffMsg() { return SalID ? "Fitur iklan belum aktif di build ini." : "Ads are not enabled in this build."; }
     public void OnBubbleAdUnavailable(string msg) { kbAdBusy = false; KbToast(msg); }
@@ -425,7 +381,6 @@ public partial class Tetris3D
     }
     IEnumerator CoAfterBubbleDrop()
     {
-        // Beri jeda supaya callback SSV server sempat masuk, lalu tarik saldo terbaru.
         yield return new WaitForSeconds(2.5f);
         yield return StartCoroutine(CoRefreshKoin(false));
         KbToast(SalID ? "Koin diperbarui!" : "Coins updated!");
@@ -447,7 +402,6 @@ public partial class Tetris3D
         }
     }
 
-    // Bom: hancurkan area beberapa kolom di sekitar kolom depan, lalu gravitasi jatuh.
     void ApplyBomb()
     {
         if (grid == null || cells == null) return;
@@ -473,7 +427,6 @@ public partial class Tetris3D
         }
     }
 
-    // Bersihkan 1 baris: hapus baris TERISI paling bawah, lalu gravitasi jatuh.
     void ApplyClearLine()
     {
         if (grid == null || cells == null) return;
@@ -497,17 +450,15 @@ public partial class Tetris3D
         KbToast(SalID ? "Baris dibersihkan!" : "Row cleared!");
     }
 
-    // Perlambat: naikkan interval jatuh sementara.
     void ApplySlow()
     {
-        if (kbSlowTimer <= 0f) kbSlowOrig = fallInterval; // simpan nilai asli hanya saat belum aktif
+        if (kbSlowTimer <= 0f) kbSlowOrig = fallInterval;
         fallInterval = kbSlowOrig * SLOW_MULT;
         kbSlowTimer = SLOW_SECONDS;
         Sfx(sfxRotate);
         KbToast(SalID ? "Perlambat aktif!" : "Slow active!");
     }
 
-    // ---- teks item ----
     string BubbleItemName(int t)
     {
         switch (t)
@@ -534,10 +485,6 @@ public partial class Tetris3D
     }
 }
 
-// =====================================================================
-//  Komponen HUD terpisah: gambar gelembung saat main + panel klaim.
-//  (Pola sama dgn KubikaCurrencyHUD / KubikaSaldokuUI.)
-// =====================================================================
 [DefaultExecutionOrder(-25000)]
 public class KubikaBubbleHUD : MonoBehaviour
 {
@@ -567,29 +514,18 @@ public class KubikaBubbleHUD : MonoBehaviour
         FindGame();
         if (game == null) return;
         game.ApplyUiScale();
-        GUI.depth = -800; // di depan HUD utama, di belakang overlay Saldoku (-1000)
+        GUI.depth = -800;
         if (game.BubblesVisible) game.DrawBubbles();
         if (game.BubbleClaimOpen) game.DrawBubbleClaim();
     }
 }
 
-// =====================================================================
-//  Manajer iklan rewarded generik (buff + koin-drop).
-//   - MODE_BUFF: reward LOKAL (tanpa SSV). Pakai ulang unit rewarded
-//     Peti; custom_data kosong -> server mengabaikan.
-//   - MODE_DROP: reward via SERVER (SSV). custom_data = game_token,
-//     pakai AD UNIT KHUSUS drop supaya server bisa membedakan dari Peti
-//     dan memakai kuota harian tersendiri.
-// =====================================================================
 public class KubikaExtraAds : MonoBehaviour
 {
     public const int MODE_BUFF = 0;
     public const int MODE_DROP = 1;
 
-    // Unit rewarded utk BUFF: pakai ulang unit Peti (buff tak pakai SSV).
     const string AD_UNIT_BUFF = "ca-app-pub-3186700509396792/1410736235";
-    // Unit rewarded KHUSUS koin-drop. GANTI dgn unit asli dari AdMob yang
-    // SSV-nya diarahkan ke ssv_kubika_callback.php (kuota drop terpisah).
     const string AD_UNIT_DROP = "ca-app-pub-3186700509396792/2222222222";
     const string AD_UNIT_TEST = "ca-app-pub-3940256099942544/5224354917";
     const bool   USE_TEST_ADS = false;
@@ -651,7 +587,7 @@ public class KubikaExtraAds : MonoBehaviour
         ad.OnAdFullScreenContentClosed += () =>
         {
             if (_game != null) _game.SetBubbleAdBusy(false);
-            Load(); // preload berikutnya
+            Load();
         };
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
@@ -685,7 +621,7 @@ public class KubikaExtraAds : MonoBehaviour
     public void Show(Tetris3D game, int mode, string customData, System.Action onReward)
     {
 #if UNITY_EDITOR
-        if (onReward != null) onReward();                 // Editor: beri hadiah langsung buat tes (tanpa AdMob)
+        if (onReward != null) onReward();
 #else
         game.OnBubbleAdUnavailable(game.BubbleAdsOffMsg());
 #endif
