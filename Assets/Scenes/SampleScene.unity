@@ -461,20 +461,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d13b802cf7d2b594d8674ee4304f4bba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  startColumns: 12
-  maxColumns: 24
+  startColumns: 15
+  maxColumns: 30
   columnsPerStage: 3
   height: 18
   radius: 4
   vSpace: 1.3
   fallInterval: 0.8
   cellPoints: 10
-  baseLevelScore: 300
-  levelStep: 200
+  baseLevelScore: 600
+  levelStep: 250
   comboSeconds: 10
-  levelsPerStage: 3
+  levelsPerStage: 4
   ceilingDropPerLevel: 1
-  minPlayHeight: 8
+  minPlayHeight: 11
   garbageGapCount: 2
   stoneStartLevel: 18
   stoneChance: 0.25

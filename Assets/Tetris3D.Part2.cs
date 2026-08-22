@@ -19,7 +19,7 @@ public partial class Tetris3D
         for (int i = 0; i < n; i++)
             curBox[i] = new Vector2Int(s[i * 2], s[i * 2 + 1]);
 
-        curStone = stoneEnabled && Random.value < stoneChance;
+        curStone = stoneEnabled && Random.value < EffectiveStoneChance();
 
         if (!curStone)
         {
@@ -58,6 +58,19 @@ public partial class Tetris3D
 
         RedrawActive();
         UpdateTargetSpin();
+    }
+
+    // Peluang balok BATU efektif: naik bertahap saat sudah di diameter maksimum (endgame),
+    // biar makin menantang & skor tidak gampang mentok. Dibatasi 0.45.
+    float EffectiveStoneChance()
+    {
+        float ch = stoneChance;
+        if (columns >= maxColumns && maxDiameterLevel > 0)
+        {
+            int past = Mathf.Max(0, level - maxDiameterLevel);
+            ch = Mathf.Min(0.45f, stoneChance + past * 0.02f);
+        }
+        return ch;
     }
 
     // ---------- PEMILIHAN BENTUK CERDAS (progresif + "tempat rahasia") ----------
@@ -486,7 +499,16 @@ public partial class Tetris3D
         else
         {
             killLine = Mathf.Max(minPlayHeight, killLine - ceilingDropPerLevel);
-            if (columns >= maxColumns) AddGarbageRow();
+            if (columns >= maxColumns)
+            {
+                AddGarbageRow();
+                // Eskalasi endgame: baris sampah GANDA tiap 4 level setelah diameter mentok.
+                if (maxDiameterLevel > 0)
+                {
+                    int past = level - maxDiameterLevel;
+                    if (past > 0 && past % 4 == 0) AddGarbageRow();
+                }
+            }
         }
         stoneEnabled = level >= stoneStartLevel;
     }
@@ -496,6 +518,7 @@ public partial class Tetris3D
     {
         DestroyBoardObjects();
         columns = Mathf.Min(maxColumns, columns + columnsPerStage);
+        if (columns >= maxColumns && maxDiameterLevel < 0) maxDiameterLevel = level;
         AllocGrid();
         killLine = height;
         stage++;
@@ -570,6 +593,7 @@ public partial class Tetris3D
         radius = baseRadius;
         AllocGrid();
         stage = 0;
+        maxDiameterLevel = -1;
         killLine = height;
         stoneEnabled = false;
         score = 0; lines = 0; level = 1;

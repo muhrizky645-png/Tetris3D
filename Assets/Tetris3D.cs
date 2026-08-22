@@ -17,10 +17,10 @@ using Object = UnityEngine.Object;
 public partial class Tetris3D : MonoBehaviour
 {
     [Header("Bentuk tabung")]
-    public int startColumns = 12;   // kolom awal (kecil = gampang bikin cincin)
-    public int maxColumns = 24;     // batas kolom saat diameter membesar
+    public int startColumns = 15;   // kolom awal (kecil = gampang bikin cincin)
+    public int maxColumns = 30;     // batas kolom saat diameter membesar
     public int columnsPerStage = 3; // tambahan kolom tiap babak baru
-    public int height = 22;
+    public int height = 18;
     public float radius = 3.4f;     // radius awal (ikut membesar tiap babak)
     public float vSpace = 1.35f;
 
@@ -29,14 +29,14 @@ public partial class Tetris3D : MonoBehaviour
 
     [Header("Skor & level")]
     public int cellPoints = 10;      // poin per kotak (skor cincin = jumlah kolom x ini x combo)
-    public int baseLevelScore = 300; // skor buat naik ke level 2
-    public int levelStep = 200;      // tiap level, syarat naik nambah segini (berjenjang)
+    public int baseLevelScore = 600; // skor buat naik ke level 2
+    public int levelStep = 250;      // tiap level, syarat naik nambah segini (berjenjang)
     public float comboSeconds = 10f; // jendela combo: clear lagi dalam sekian detik -> pengali naik
 
     [Header("Tantangan (tangga kesulitan)")]
-    public int levelsPerStage = 3;      // tiap sekian level -> babak baru (diameter membesar)
+    public int levelsPerStage = 4;      // tiap sekian level -> babak baru (diameter membesar)
     public int ceilingDropPerLevel = 1; // plafon turun sekian baris tiap naik level
-    public int minPlayHeight = 8;       // plafon paling rendah
+    public int minPlayHeight = 11;      // plafon paling rendah
     public int garbageGapCount = 2;     // lubang di baris sampah (fase diameter maks)
     public int stoneStartLevel = 18;    // mulai level ini muncul balok batu (gak bisa diputar)
     [Range(0f, 1f)] public float stoneChance = 0.25f;
@@ -105,6 +105,7 @@ public partial class Tetris3D : MonoBehaviour
     GameObject[,] cells;
     int killLine;
     int stage;
+    int maxDiameterLevel = -1;  // level saat diameter mentok maks (buat eskalasi endgame)
     int nextLevelScore;
     bool stoneEnabled;
 

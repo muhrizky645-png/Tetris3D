@@ -23,10 +23,12 @@ public partial class Tetris3D
     const string SALDOKU_BASE = "https://saldoku.site";
     const string PP_TOKEN = "kubika_game_token";
     const string PP_NAMA  = "kubika_saldoku_nama";
+    const string PP_JULUKAN = "kubika_saldoku_julukan";
 
     // ---- state akun ----
     string sal_token;
     string sal_nama;
+    string sal_julukan;   // julukan lokal (nama tampilan) -> ganti nama asli SALDOKU demi privasi
     bool   sal_ready;
 
     // ---- state UI overlay ----
@@ -66,7 +68,25 @@ public partial class Tetris3D
         if (sal_ready) return;
         sal_token = PlayerPrefs.GetString(PP_TOKEN, "");
         sal_nama  = PlayerPrefs.GetString(PP_NAMA, "");
+        sal_julukan = PlayerPrefs.GetString(PP_JULUKAN, "");
         sal_ready = true;
+    }
+
+    // Nama yang DITAMPILKAN untuk akun SALDOKU: julukan kalau ada, kalau tidak nama asli,
+    // kalau dua-duanya kosong pakai "SALDOKU". Nama asli tidak pernah tampil kalau julukan diisi.
+    string SalDisplayName()
+    {
+        if (!string.IsNullOrEmpty(sal_julukan)) return sal_julukan;
+        if (!string.IsNullOrEmpty(sal_nama)) return sal_nama;
+        return "SALDOKU";
+    }
+
+    void SaveJulukan()
+    {
+        sal_julukan = (sal_julukan ?? "").Trim();
+        PlayerPrefs.SetString(PP_JULUKAN, sal_julukan);
+        PlayerPrefs.Save();
+        linkStatus = SalNickSaved();
     }
 
     // ---- entry points (dipanggil komponen UI) ----
@@ -230,7 +250,7 @@ public partial class Tetris3D
         if (GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none)) { /* klik luar: biarkan */ }
 
         float pw = Mathf.Min(sw * 0.88f, 760f);
-        float ph = Mathf.Min(sh * 0.82f, 640f);
+        float ph = Mathf.Min(sh * 0.90f, 720f);
         float px = (sw - pw) * 0.5f;
         float py = (sh - ph) * 0.5f;
 
@@ -278,9 +298,26 @@ public partial class Tetris3D
         else
         {
             GuiText(new Rect(cx, yy, cw, 34f),
-                SalLinkedAs() + " " + (string.IsNullOrEmpty(sal_nama) ? "SALDOKU" : sal_nama),
+                SalLinkedAs() + " " + SalDisplayName(),
                 26, new Color(0.6f, 1f, 0.7f), TextAnchor.UpperLeft);
-            yy += 50f;
+            yy += 44f;
+
+            // --- Julukan (nama tampilan) lokal: ganti nama asli SALDOKU demi privasi ---
+            GuiText(new Rect(cx, yy, cw, 26f), SalNickLabel(), 20,
+                new Color(0.62f, 0.70f, 1f), TextAnchor.UpperLeft);
+            yy += 30f;
+            {
+                GUIStyle jf = new GUIStyle(GUI.skin.textField);
+                jf.fontSize    = 26;
+                jf.alignment   = TextAnchor.MiddleLeft;
+                jf.fixedHeight = 60f;
+                float jbw = 150f;
+                float jtw = cw - jbw - 12f;
+                sal_julukan = GUI.TextField(new Rect(cx, yy, jtw, 60f), sal_julukan ?? "", 16, jf);
+                if (SalButton(new Rect(cx + jtw + 12f, yy, jbw, 60f), SalSave(), new Color(0.20f, 0.60f, 1f)))
+                    SaveJulukan();
+            }
+            yy += 72f;
 
             GuiText(new Rect(cx, yy, cw, 44f),
                 "Koin: " + CurShort(cur_koin) + (cur_online ? "" : " (offline)"),
@@ -342,6 +379,9 @@ public partial class Tetris3D
     string SalRefresh()   { return SalID ? "Segarkan" : "Refresh"; }
     string SalUnlink()    { return SalID ? "Putuskan" : "Unlink"; }
     string SalLinkedAs()  { return SalID ? "Terhubung:" : "Linked:"; }
+    string SalNickLabel() { return SalID ? "Julukan (nama tampilan):" : "Nickname (display name):"; }
+    string SalSave()      { return SalID ? "Simpan" : "Save"; }
+    string SalNickSaved() { return SalID ? "Julukan disimpan." : "Nickname saved."; }
     string SalPeti()      { return SalID ? "Peti:" : "Chest:"; }
     string SalToday()     { return SalID ? "Iklan hari ini:" : "Ads today:"; }
     string SalConnecting(){ return SalID ? "Menghubungkan..." : "Connecting..."; }

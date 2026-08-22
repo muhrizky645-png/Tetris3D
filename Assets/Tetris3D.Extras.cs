@@ -81,35 +81,49 @@ public partial class Tetris3D
     }
 
     // ---------- GETAR (HAPTIC) ----------
+    // Catatan penting: getar butuh izin android.permission.VIBRATE di manifest.
+    // Dengan MEMANGGIL Handheld.Vibrate() (di fallback), Unity OTOMATIS menambahkan
+    // izin VIBRATE ke manifest saat build -> jalur Vibrator (amplitudo) di bawah pun
+    // ikut bekerja. Sebelumnya getar diam-diam gagal karena izin ini belum ada.
     void Haptic(long ms)
     {
         if (!hapticOn) return;
 #if UNITY_ANDROID && !UNITY_EDITOR
+        bool done = false;
         try
         {
             using (var up = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
             using (var act = up.GetStatic<AndroidJavaObject>("currentActivity"))
             using (var vib = act.Call<AndroidJavaObject>("getSystemService", "vibrator"))
             {
-                if (vib == null) return;
-                int sdk = 0;
-                using (var ver = new AndroidJavaClass("android.os.Build$VERSION")) sdk = ver.GetStatic<int>("SDK_INT");
-                if (sdk >= 26)
+                if (vib != null && vib.Call<bool>("hasVibrator"))
                 {
-                    using (var eff = new AndroidJavaClass("android.os.VibrationEffect"))
+                    int sdk = 0;
+                    using (var ver = new AndroidJavaClass("android.os.Build$VERSION")) sdk = ver.GetStatic<int>("SDK_INT");
+                    if (sdk >= 26)
                     {
-                        int amp = eff.GetStatic<int>("DEFAULT_AMPLITUDE");
-                        using (var ve = eff.CallStatic<AndroidJavaObject>("createOneShot", ms, amp))
-                            vib.Call("vibrate", ve);
+                        using (var eff = new AndroidJavaClass("android.os.VibrationEffect"))
+                        {
+                            int amp = eff.GetStatic<int>("DEFAULT_AMPLITUDE");
+                            using (var ve = eff.CallStatic<AndroidJavaObject>("createOneShot", ms, amp))
+                                vib.Call("vibrate", ve);
+                        }
                     }
-                }
-                else
-                {
-                    vib.Call("vibrate", ms);
+                    else
+                    {
+                        vib.Call("vibrate", ms);
+                    }
+                    done = true;
                 }
             }
         }
-        catch { }
+        catch { done = false; }
+
+        // Fallback + pemicu izin VIBRATE otomatis dari Unity.
+        if (!done)
+        {
+            try { Handheld.Vibrate(); } catch { }
+        }
 #endif
     }
 
