@@ -25,12 +25,15 @@ public partial class Tetris3D
     const int   GEM_BONUS      = 50;    // permata dari item Bonus Permata
     const float SLOW_SECONDS   = 8f;
     const float SLOW_MULT      = 2.5f;
+    const float COIN_GAP       = 90f;   // koin muncul ~tiap 1,5 menit (jadwal khusus, buat marketing)
+    const float BUFF_AD_COOLDOWN = 180f;// jeda 3 menit antar iklan BUFF (anti-spam AdMob), tanpa batas harian
 
     // ---- state gelembung ----
     class KBubble { public float x, y, vy, drift, phase; public int type; }
     List<KBubble> kbubbles;
     bool  kbInit;
     float kbSpawnTimer;
+    float kbCoinTimer;   // timer khusus koin (marketing)
 
     // ---- state klaim / iklan ----
     bool   kbClaimOpen;
@@ -38,6 +41,7 @@ public partial class Tetris3D
     string kbClaimStatus = "";
     bool   kbAdBusy;
     string kbDropStatus = "";
+    float  kbLastBuffAdTime = -9999f;   // waktu (unscaled) terakhir tonton iklan BUFF, utk cooldown
 
     // ---- efek tertunda ----
     int    kbPendingBuff = -1;
@@ -68,6 +72,7 @@ public partial class Tetris3D
         {
             kbubbles = new List<KBubble>();
             kbSpawnTimer = Random.Range(BUBBLE_MIN_GAP, BUBBLE_MAX_GAP);
+            kbCoinTimer  = COIN_GAP * 0.5f;
             kbInit = true;
         }
         float dt = Time.deltaTime;
@@ -93,7 +98,7 @@ public partial class Tetris3D
             ApplyBuff(b);
         }
 
-        if (!started || gameOver) { if (kbubbles.Count > 0) kbubbles.Clear(); return; }
+        if (!started || gameOver) { if (kbubbles.Count > 0) kbubbles.Clear(); kbCoinTimer = COIN_GAP * 0.5f; return; }
 
         if (!BubblesActive) return;
 
@@ -111,6 +116,15 @@ public partial class Tetris3D
         {
             SpawnBubble();
             kbSpawnTimer = Random.Range(BUBBLE_MIN_GAP, BUBBLE_MAX_GAP);
+        }
+
+        // Koin punya JADWAL SENDIRI biar lebih sering muncul (~tiap 1,5 menit)
+        // untuk mendorong pemain klaim -> nonton iklan -> poin SALDOKU (marketing).
+        kbCoinTimer -= dt;
+        if (kbCoinTimer <= 0f)
+        {
+            if (kbubbles.Count < BUBBLE_MAX + 1) SpawnCoinBubble();
+            kbCoinTimer = COIN_GAP;
         }
     }
 
@@ -131,14 +145,37 @@ public partial class Tetris3D
         kbubbles.Add(b);
     }
 
+    // Gelembung KOIN (dipanggil oleh jadwal koin khusus).
+    void SpawnCoinBubble()
+    {
+        var b = new KBubble();
+        bool left = Random.value < 0.5f;
+        float band = Mathf.Max(BUBBLE_R + 8f, VW * 0.22f);
+        if (left) b.x = Random.Range(BUBBLE_R + 6f, band);
+        else      b.x = Random.Range(VW - band, VW - BUBBLE_R - 6f);
+        b.y = -BUBBLE_R;
+        b.vy = Random.Range(70f, 105f);
+        b.drift = Random.Range(8f, 20f);
+        b.phase = Random.Range(0f, 6.28f);
+        b.type = IT_COIN;
+        kbubbles.Add(b);
+    }
+
     int PickBubbleType()
     {
+        // Koin TIDAK lagi di sini - koin punya jadwal sendiri (SpawnCoinBubble).
         int roll = Random.Range(0, 100);
-        if (roll < 25) return IT_BOMB;
-        if (roll < 45) return IT_LINE;
-        if (roll < 65) return IT_SLOW;
-        if (roll < 90) return IT_GEM;
-        return IT_COIN;
+        if (roll < 28) return IT_BOMB;
+        if (roll < 52) return IT_LINE;
+        if (roll < 76) return IT_SLOW;
+        return IT_GEM;
+    }
+
+    // Sisa cooldown iklan buff (detik). 0 kalau sudah boleh nonton.
+    float BuffAdCooldownLeft()
+    {
+        float left = BUFF_AD_COOLDOWN - (Time.unscaledTime - kbLastBuffAdTime);
+        return left > 0f ? left : 0f;
     }
 
     // ========================= GAMBAR =========================
@@ -318,13 +355,26 @@ public partial class Tetris3D
         yy += 34f;
 
         float bw = (cw - 16f) * 0.5f;
-        string watch = kbAdBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : (SalID ? "Tonton Iklan" : "Watch Ad");
-        bool doWatch = Btn3D(new Rect(cx, yy, bw, 84f), watch, new Color(1f, 0.62f, 0.12f), false);
+        // Cooldown 3 menit HANYA berlaku utk buff (bukan koin).
+        float cdLeft = (kbClaimType != IT_COIN) ? BuffAdCooldownLeft() : 0f;
+        string watch;
+        Color watchCol;
+        if (cdLeft > 0f)
+        {
+            watch = (SalID ? "Tunggu " : "Wait ") + Mathf.CeilToInt(cdLeft) + "s";
+            watchCol = new Color(0.4f, 0.4f, 0.45f);
+        }
+        else
+        {
+            watch = kbAdBusy ? (SalID ? "Memuat iklan..." : "Loading ad...") : (SalID ? "Tonton Iklan" : "Watch Ad");
+            watchCol = new Color(1f, 0.62f, 0.12f);
+        }
+        bool doWatch = Btn3D(new Rect(cx, yy, bw, 84f), watch, watchCol, false);
         bool doLater = Btn3D(new Rect(cx + bw + 16f, yy, bw, 84f), SalID ? "Nanti" : "Later", new Color(0.4f, 0.35f, 0.45f), false);
 
         GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none);
 
-        if (doWatch && !kbAdBusy) ClaimWatchAd();
+        if (doWatch && !kbAdBusy && cdLeft <= 0f) ClaimWatchAd();
         if (doLater) CloseBubbleClaim();
     }
 
@@ -365,9 +415,16 @@ public partial class Tetris3D
         }
         else
         {
+            // Cooldown 3 menit antar iklan buff (anti-spam AdMob), tanpa batas harian.
+            float cd = BuffAdCooldownLeft();
+            if (cd > 0f)
+            {
+                kbClaimStatus = (SalID ? "Tunggu " : "Wait ") + Mathf.CeilToInt(cd) + (SalID ? " detik lagi." : "s more.");
+                return;
+            }
             int bt = t;
             kbClaimOpen = false; Time.timeScale = 1f;
-            KubikaExtraAds.Instance.Show(this, KubikaExtraAds.MODE_BUFF, null, () => { kbPendingBuff = bt; });
+            KubikaExtraAds.Instance.Show(this, KubikaExtraAds.MODE_BUFF, null, () => { kbLastBuffAdTime = Time.unscaledTime; kbPendingBuff = bt; });
         }
     }
 
