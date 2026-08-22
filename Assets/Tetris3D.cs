@@ -515,6 +515,8 @@ public partial class Tetris3D : MonoBehaviour
         Destroy(g.GetComponent<Collider>());
         g.transform.SetParent(spin);
         g.transform.localScale = blockScale;
+        var mf = g.GetComponent<MeshFilter>();
+        if (mf != null) mf.sharedMesh = RoundedBlockMesh();   // sudut & tepi membulat ala BlockBlast
         g.GetComponent<Renderer>().material = MakeMat(stone ? StoneColor() : BlockColor(type));
         return g;
     }
