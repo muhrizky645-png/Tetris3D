@@ -1092,9 +1092,11 @@ UnityEngine.PlayerConnectionInternal::RegisterInternal_Injected
 UnityEngine.PlayerConnectionInternal::SendMessage_Injected
 UnityEngine.PlayerConnectionInternal::UnregisterInternal_Injected
 UnityEngine.PlayerPrefs::HasKey_Injected
+UnityEngine.PlayerPrefs::TrySetFloat_Injected
 UnityEngine.PlayerPrefs::TrySetInt_Injected
 UnityEngine.PlayerPrefs::TrySetSetString_Injected
 UnityEngine.PlayerPrefs::GetInt_Injected
+UnityEngine.PlayerPrefs::GetFloat_Injected
 UnityEngine.PlayerPrefs::DeleteKey_Injected
 UnityEngine.PlayerPrefs::GetString_Injected
 UnityEngine.PlayerPrefs::Save
@@ -1498,6 +1500,7 @@ UnityEngine.Screen::get_dpi
 UnityEngine.Screen::RequestOrientation
 UnityEngine.Screen::SetMSAASamples
 UnityEngine.Screen::get_currentResolution_Injected
+UnityEngine.Screen::get_safeArea_Injected
 UnityEngine.Screen::GetScreenOrientation
 UnityEngine.ScriptableObject::CreateScriptableObjectInstanceFromType_Injected
 UnityEngine.ScriptableObject::CreateScriptableObject
