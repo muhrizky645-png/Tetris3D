@@ -193,8 +193,49 @@ public partial class Tetris3D
         DrawItemIcon(ir, type);
     }
 
+    // ---- Ikon gambar dari asset pack Tiny Fantasy Icons (folder Resources) ----
+    // File PNG dipetakan per jenis item. Kalau tak ketemu (mis. pack dihapus),
+    // otomatis fallback ke ikon manual (RoundRect) di bawah.
+    static readonly string[] KB_ICON_PATH = new string[]
+    {
+        "Tiny Fantasy Icons/Explosives/Boom_A",        // IT_BOMB
+        "Tiny Fantasy Icons/PowerUps/Bolt_A",          // IT_LINE (Bersihkan Baris)
+        "Tiny Fantasy Icons/Time/Clock_A",             // IT_SLOW (Perlambat)
+        "Tiny Fantasy Icons/Gems/Gems_Large_Diamond",  // IT_GEM  (Bonus Permata)
+        "Tiny Fantasy Icons/Coins/Coins_Large_Gold",   // IT_COIN (Koin drop)
+    };
+    static Dictionary<int, Texture2D> kbIconCache;
+    static HashSet<int> kbIconMissing;
+
+    Texture2D KbItemTex(int type)
+    {
+        if (type < 0 || type >= KB_ICON_PATH.Length) return null;
+        if (kbIconCache == null) kbIconCache = new Dictionary<int, Texture2D>();
+        if (kbIconMissing == null) kbIconMissing = new HashSet<int>();
+        Texture2D tex;
+        if (kbIconCache.TryGetValue(type, out tex)) return tex;
+        if (kbIconMissing.Contains(type)) return null;   // sudah pernah gagal, jangan load ulang
+        tex = Resources.Load<Texture2D>(KB_ICON_PATH[type]);
+        if (tex != null) kbIconCache[type] = tex;
+        else kbIconMissing.Add(type);
+        return tex;
+    }
+
     void DrawItemIcon(Rect r, int type)
     {
+        // 1) Utamakan PNG asli dari asset pack kalau tersedia.
+        Texture2D tex = KbItemTex(type);
+        if (tex != null)
+        {
+            Color prev = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.30f);   // bayangan tipis biar kontras di gelembung terang
+            GUI.DrawTexture(new Rect(r.x + 2f, r.y + 3f, r.width, r.height), tex, ScaleMode.ScaleToFit, true);
+            GUI.color = prev;
+            GUI.DrawTexture(r, tex, ScaleMode.ScaleToFit, true);
+            return;
+        }
+
+        // 2) Fallback: ikon gambar manual (kalau file PNG tak ditemukan).
         switch (type)
         {
             case IT_GEM:  DrawGemIcon(r, new Color(0.62f, 0.35f, 1f)); break;
