@@ -159,9 +159,9 @@ public partial class Tetris3D
         if (extrasToastTime > 0f) extrasToastTime -= Time.deltaTime;
 
         // Getar (haptic) berbasis perubahan: line clear (baris nambah) & game over
-        if (lines > prevLines) Haptic(16);
+        if (lines > prevLines) Haptic(30);
         prevLines = lines;
-        if (gameOver && !prevGameOver) Haptic(65);
+        if (gameOver && !prevGameOver) Haptic(120);
         prevGameOver = gameOver;
 
         if (levelUpTime > 0f) levelUpTime -= Time.deltaTime;
@@ -240,7 +240,7 @@ public partial class Tetris3D
             {
                 reviveTimer -= Time.deltaTime;
                 reviveTickAcc += Time.deltaTime;
-                if (reviveTickAcc >= 1f) { reviveTickAcc -= 1f; Sfx(sfxTick); Haptic(14); }
+                if (reviveTickAcc >= 1f) { reviveTickAcc -= 1f; Sfx(sfxTick); Haptic(25); }
                 if (reviveTimer <= 0f) { reviveOffer = false; reviveDeclined = true; }
                 return;
             }
@@ -334,11 +334,25 @@ public partial class Tetris3D
         profileDone = true;
     }
 
-    // Kirim/ubah nama pemain di UGS (dipakai pas edit profil dari menu), lalu refresh papan
+    // Kirim/ubah nama pemain di UGS (dipakai pas edit profil dari menu).
+    // PENTING: leaderboard menyimpan nama SAAT skor dikirim (snapshot). Jadi kalau cuma ganti
+    // nama tanpa main lagi, baris skor lama tetap pakai nama lama. Solusi: langsung KIRIM ULANG
+    // skor terbaik supaya baris di papan ikut ke-update dengan nama baru seketika, lalu refresh.
     async void PushName()
     {
         if (!ugsReady || string.IsNullOrEmpty(playerName)) return;
-        try { await AuthenticationService.Instance.UpdatePlayerNameAsync(playerName); } catch { }
+        try
+        {
+            lbStatus = T("sending");
+            await AuthenticationService.Instance.UpdatePlayerNameAsync(playerName);
+            if (highScore > 0)
+            {
+                var opt = new AddPlayerScoreOptions { Metadata = new Dictionary<string, object> { { "country", playerCountry } } };
+                await LeaderboardsService.Instance.AddPlayerScoreAsync(LB_ID, highScore, opt);
+            }
+            lbStatus = "";
+        }
+        catch (Exception e) { lbStatus = "Err: " + e.Message; }
         LoadRanks();
     }
 
