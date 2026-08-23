@@ -5,19 +5,20 @@ using UnityEngine;
 // ---------------------------------------------------------------------
 //  File TERPISAH (partial) - ADDITIVE, tidak mengubah file gameplay inti.
 //
-//  Tujuan: mengganti font UI game ke font "Fatality FPS Gaming Font"
-//  TANPA perlu mengedit Tetris3D.cs. Font dicari OTOMATIS di folder
-//  Resources lewat nama file yang mengandung salah satu kata kunci di
-//  bawah (huruf besar/kecil bebas). Kalau tidak ketemu, otomatis jatuh
-//  ke font lama (ThaleahFat) supaya game tetap normal.
+//  Tujuan: mengganti font UI game ke font "Square-Black" (Fatality FPS
+//  Gaming Font) TANPA perlu mengedit Tetris3D.cs.
 //
-//  Catatan: file font asli dari pack ini bernama "Square-Black.ttf"
-//  (letaknya di Assets/Resources/FPSFont/FPS Gaming Font/), jadi kata
-//  kunci "square" ikut dimasukkan agar terdeteksi.
+//  Strategi (urut dari paling andal):
+//    0. Muat LANGSUNG lewat path pasti di dalam Resources:
+//         Assets/Resources/FPSFont/FPS Gaming Font/Square-Black.ttf
+//       -> path Resources = "FPSFont/FPS Gaming Font/Square-Black"
+//    1. Kalau gagal, scan semua font di Resources & cari nama yang
+//       mengandung kata kunci (square/fatal/fps/gaming).
+//    2. Kalau tetap gagal, pakai font lama (ThaleahFat).
+//    3. Cadangan terakhir: font apa pun yang ada.
 //
-//  == CARA MENGAKTIFKAN ==
-//    File .ttf sudah berada di dalam folder Resources dan sudah di-push.
-//    Begitu game dijalankan, font otomatis kepakai di semua teks & tombol.
+//  Komponen KubikaFontApplier di bawah akan menimpa uiFont tiap frame
+//  selama beberapa detik pertama, jadi font default dari Start() ketimpa.
 // =====================================================================
 
 public partial class Tetris3D
@@ -25,23 +26,35 @@ public partial class Tetris3D
     Font _fontOverrideCache;
     bool _fontOverridePicked;
 
-    // Dipanggil komponen bootstrap di bawah, setelah scene siap.
-    // Aman dipanggil berkali-kali: pencarian font hanya dilakukan sekali.
     public void ApplyUiFontOverride()
     {
         if (!_fontOverridePicked)
         {
             _fontOverrideCache = PickUiFont();
             _fontOverridePicked = true;
+            Debug.Log("[KubikaFont] Font terpilih: " +
+                (_fontOverrideCache != null ? _fontOverrideCache.name : "NULL (tidak ketemu)"));
         }
         if (_fontOverrideCache != null) uiFont = _fontOverrideCache;
     }
 
     Font PickUiFont()
     {
-        // 1) Utamakan font gaming baru kalau ada di Resources.
-        //    File aslinya bernama "Square-Black", jadi cari nama yang
-        //    mengandung salah satu kata kunci berikut.
+        // 0) Muat LANGSUNG lewat path pasti (paling andal, tanpa ekstensi).
+        string[] paths =
+        {
+            "FPSFont/FPS Gaming Font/Square-Black",
+            "FPS Gaming Font/Square-Black",
+            "FPSFont/Square-Black",
+            "Square-Black",
+        };
+        foreach (string p in paths)
+        {
+            Font direct = Resources.Load<Font>(p);
+            if (direct != null) return direct;
+        }
+
+        // 1) Scan semua font di Resources, cocokkan nama dgn kata kunci.
         string[] keys = { "square", "fatal", "fps", "gaming" };
         Font[] all = Resources.LoadAll<Font>("");
         if (all != null)
@@ -54,9 +67,11 @@ public partial class Tetris3D
                     if (n.Contains(k)) return f;
             }
         }
+
         // 2) Cadangan: font lama (Thaleah) - biar game tetap normal.
         Font fb = Resources.Load<Font>("ThaleahFat_TTF");
         if (fb != null) return fb;
+
         // 3) Cadangan terakhir: font apa pun yang tersedia.
         if (all != null && all.Length > 0) return all[0];
         return null;
@@ -64,9 +79,8 @@ public partial class Tetris3D
 }
 
 // ---------------------------------------------------------------------
-//  Bootstrap: cari Tetris3D setelah scene load, lalu terapkan font.
-//  Tidak perlu mengubah scene / prefab apa pun. Berhenti otomatis
-//  setelah 3 detik (cukup untuk menimpa font default dari Start()).
+//  Bootstrap: cari Tetris3D setelah scene load, lalu terapkan font tiap
+//  frame selama 5 detik pertama (cukup untuk menimpa font dari Start()).
 // ---------------------------------------------------------------------
 [DefaultExecutionOrder(-25000)]
 public class KubikaFontApplier : MonoBehaviour
@@ -85,7 +99,7 @@ public class KubikaFontApplier : MonoBehaviour
     void Update()
     {
         t += Time.unscaledDeltaTime;
-        if (t > 3f) { enabled = false; return; }   // cukup 3 detik lalu berhenti
+        if (t > 5f) { enabled = false; return; }
         if (game == null) game = Object.FindFirstObjectByType<Tetris3D>();
         if (game == null) return;
         game.ApplyUiFontOverride();
