@@ -222,7 +222,7 @@ public partial class Tetris3D : MonoBehaviour
         if (PlayerPrefs.HasKey("tetris3d_lang")) lang = (Lang)PlayerPrefs.GetInt("tetris3d_lang");
         else lang = DetectLang();
         highScore = PlayerPrefs.GetInt("tetris3d_hi", 0);
-        uiFont = Resources.Load<Font>("ThaleahFat_TTF");
+        uiFont = Resources.Load<Font>("FPSFont/FPS Gaming Font/Square-Black");
         baseRadius = radius;
         columns = Mathf.Max(3, startColumns);
         AllocGrid();
