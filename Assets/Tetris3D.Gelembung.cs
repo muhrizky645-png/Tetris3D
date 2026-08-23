@@ -475,15 +475,12 @@ public partial class Tetris3D
         StartCoroutine(BombBlast(targets));
     }
 
-    // Efek ledakan bom: kotak yang kena membesar & berkedip terang sekilas
-    // (mirip animasi cincin hancur), lalu meletus jadi partikel api/percikan
-    // sebelum benar-benar hilang. Sebelumnya blok langsung Destroy() tanpa
-    // animasi apa pun, jadi terasa seperti tidak ada ledakan sama sekali.
+    // Efek ledakan bom (versi "puas"): tiap kotak target menyala kilatan
+    // PUTIH satu per satu berurutan sampai SEMUA kotak menyala penuh, ada
+    // jeda sekejap biar keliatan "penuh dulu", baru semuanya meletus jadi
+    // partikel api/percikan bersamaan sebelum benar-benar hilang.
     IEnumerator BombBlast(List<Vector2Int> targets)
     {
-        Sfx(sfxClear);
-        Shake(0.35f, 0.45f);
-        Haptic(60);
         KbToast("BOOM!");
 
         var objs = new List<Transform>();
@@ -500,29 +497,44 @@ public partial class Tetris3D
             var rend = go.GetComponent<Renderer>();
             mats.Add(rend != null ? rend.material : null);
         }
+        int n = objs.Count;
+        if (n == 0) yield break;
 
-        float dur = 0.32f;
+        // Fase 1: menyala satu per satu (kilatan putih berjalan mengisi semua kotak target).
+        float totalLightDur = Mathf.Clamp(n * 0.05f, 0.20f, 0.60f);
+        float perStep = totalLightDur / n;
+        for (int i = 0; i < n; i++)
+        {
+            if (i == 0) Sfx(sfxClear);
+            if (objs[i] != null) objs[i].localScale = baseScales[i] * 1.20f;
+            if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
+                mats[i].SetColor("_EmissionColor", new Color(1f, 0.97f, 0.75f) * 3.4f);
+            yield return new WaitForSeconds(perStep);
+        }
+
+        // Jeda sekejap saat semua sudah menyala penuh, sebelum meletus bareng.
+        Shake(0.10f, 0.14f);
+        yield return new WaitForSeconds(0.14f);
+
+        // Fase 2: mengecil cepat bersamaan sambil meletus jadi partikel.
+        float dur = 0.20f;
         float t2 = 0f;
         while (t2 < dur)
         {
             t2 += Time.deltaTime;
             float p = Mathf.Clamp01(t2 / dur);
-            float scaleMul = p < 0.5f ? Mathf.Lerp(1f, 1.5f, p / 0.5f) : Mathf.Lerp(1.5f, 0.01f, (p - 0.5f) / 0.5f);
-            float flash = p < 0.5f ? Mathf.Lerp(0f, 1f, p / 0.5f) : Mathf.Lerp(1f, 0f, (p - 0.5f) / 0.5f);
-            for (int i = 0; i < objs.Count; i++)
+            float scaleMul = Mathf.Lerp(1.20f, 0.01f, p);
+            for (int i = 0; i < n; i++)
             {
                 if (objs[i] == null) continue;
                 objs[i].localScale = baseScales[i] * scaleMul;
-                if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
-                {
-                    Color glow = Color.Lerp(new Color(1f, 0.5f, 0.1f), Color.white, flash * 0.5f);
-                    mats[i].SetColor("_EmissionColor", glow * (0.8f + flash * 3f));
-                }
             }
             yield return null;
         }
 
-        // Partikel ledakan (api & percikan) di tiap kotak yang hancur.
+        Shake(0.35f, 0.45f);
+        Haptic(60);
+
         foreach (var pos in centers)
         {
             Burst(pos, new Color(1f, 0.55f, 0.15f));
@@ -562,15 +574,12 @@ public partial class Tetris3D
         StartCoroutine(LineBlast(targets));
     }
 
-    // Efek animasi baris hancur (item Bersihkan Baris): kotak yang kena
-    // membesar & berkedip terang sekilas lalu meletus jadi partikel,
-    // meniru pola animasi ledakan bom, supaya item ini juga terasa ada
-    // efeknya (bukan cuma langsung hilang seperti sebelumnya).
+    // Efek "laser" bersihkan baris (versi "puas"): karena baris melingkari
+    // menara silinder, kotak menyala urut MENGELILINGI LINGKARAN (searah
+    // kolom 0..N-1), sama gayanya dengan bomb (menyala dulu satu-satu
+    // sampai penuh), lalu jeda sekejap, baru semuanya meletus bersamaan.
     IEnumerator LineBlast(List<Vector2Int> targets)
     {
-        Sfx(sfxClear);
-        Shake(0.3f, 0.3f);
-        Haptic(50);
         KbToast(SalID ? "Baris dibersihkan!" : "Row cleared!");
 
         var objs = new List<Transform>();
@@ -587,27 +596,42 @@ public partial class Tetris3D
             var rend = go.GetComponent<Renderer>();
             mats.Add(rend != null ? rend.material : null);
         }
+        int n = objs.Count;
+        if (n == 0) yield break;
 
-        float dur = 0.28f;
+        // Fase 1: menyala biru urut mengelilingi lingkaran, kotak per kotak.
+        float totalLightDur = Mathf.Clamp(n * 0.045f, 0.20f, 0.55f);
+        float perStep = totalLightDur / n;
+        for (int i = 0; i < n; i++)
+        {
+            if (i == 0) Sfx(sfxClear);
+            if (objs[i] != null) objs[i].localScale = baseScales[i] * 1.18f;
+            if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
+                mats[i].SetColor("_EmissionColor", new Color(0.40f, 0.85f, 1f) * 3.2f);
+            yield return new WaitForSeconds(perStep);
+        }
+
+        // Jeda sekejap saat baris sudah menyala penuh (efek "laser mengunci"), baru pecah.
+        Shake(0.08f, 0.12f);
+        yield return new WaitForSeconds(0.14f);
+
+        float dur = 0.18f;
         float t2 = 0f;
         while (t2 < dur)
         {
             t2 += Time.deltaTime;
             float p = Mathf.Clamp01(t2 / dur);
-            float scaleMul = p < 0.5f ? Mathf.Lerp(1f, 1.35f, p / 0.5f) : Mathf.Lerp(1.35f, 0.01f, (p - 0.5f) / 0.5f);
-            float flash = p < 0.5f ? Mathf.Lerp(0f, 1f, p / 0.5f) : Mathf.Lerp(1f, 0f, (p - 0.5f) / 0.5f);
-            for (int i = 0; i < objs.Count; i++)
+            float scaleMul = Mathf.Lerp(1.18f, 0.01f, p);
+            for (int i = 0; i < n; i++)
             {
                 if (objs[i] == null) continue;
                 objs[i].localScale = baseScales[i] * scaleMul;
-                if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
-                {
-                    Color glow = Color.Lerp(new Color(0.35f, 0.8f, 1f), Color.white, flash * 0.5f);
-                    mats[i].SetColor("_EmissionColor", glow * (0.8f + flash * 3f));
-                }
             }
             yield return null;
         }
+
+        Shake(0.3f, 0.3f);
+        Haptic(50);
 
         foreach (var pos in centers)
         {
@@ -643,9 +667,26 @@ public partial class Tetris3D
     public bool SlowActive { get { return kbSlowTimer > 0f; } }
     public float SlowSecondsLeft { get { return kbSlowTimer; } }
 
+    // Vignette biru redup berdenyut di tepi layar selagi Perlambat aktif -
+    // pembeda visual yang jelas (bukan cuma angka detik) bahwa game sedang
+    // dalam mode lambat.
+    public void DrawSlowVignette()
+    {
+        if (kbSlowTimer <= 0f) return;
+        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3.0f);
+        float a = Mathf.Lerp(0.05f, 0.16f, pulse);
+        Color c = new Color(0.22f, 0.52f, 1f, a);
+        float edge = Mathf.Max(18f, VW * 0.035f);
+        FillRect(new Rect(0f, 0f, VW, edge), c);          // atas
+        FillRect(new Rect(0f, VH - edge, VW, edge), c);   // bawah
+        FillRect(new Rect(0f, 0f, edge, VH), c);          // kiri
+        FillRect(new Rect(VW - edge, 0f, edge, VH), c);   // kanan
+    }
+
     // Badge kecil yang menunjukkan sisa detik efek Perlambat masih aktif.
     // Diposisikan tepat di bawah kotak preview "balok berikutnya" (pojok
     // kanan) supaya tidak menabrak baris HUD atas (skor/permata/koin/jeda).
+    // Berdenyut halus (glow ring) biar makin jelas beda dari badge biasa.
     public void DrawSlowTimer()
     {
         if (kbSlowTimer <= 0f) return;
@@ -664,7 +705,9 @@ public partial class Tetris3D
         float x = pvX - 11f;
         float y = boxBottom + 10f;
         Rect r = new Rect(x, y, w, h);
-        RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), new Color(0.2f, 0.48f, 1f, 0.35f), h * 0.5f);
+
+        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f);
+        RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), new Color(0.2f, 0.48f, 1f, 0.22f + 0.28f * pulse), h * 0.5f);
         RoundRect(r, new Color(0.06f, 0.08f, 0.14f, 0.92f), h * 0.5f);
         float ic = h * 0.72f;
         Rect ir = new Rect(r.x + (h - ic) * 0.5f + 4f, r.y + (h - ic) * 0.5f, ic, ic);
@@ -730,6 +773,7 @@ public class KubikaBubbleHUD : MonoBehaviour
         if (game == null) return;
         game.ApplyUiScale();
         GUI.depth = -800;
+        if (game.SlowActive) game.DrawSlowVignette();
         if (game.BubblesVisible) game.DrawBubbles();
         if (game.BubbleClaimOpen) game.DrawBubbleClaim();
         if (game.SlowActive && !game.BubbleClaimOpen) game.DrawSlowTimer();
