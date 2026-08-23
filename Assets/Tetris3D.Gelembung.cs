@@ -103,6 +103,8 @@ public partial class Tetris3D
 
         if (kbToastTime > 0f) kbToastTime -= Time.unscaledDeltaTime;
 
+        TickRewardAnims();
+
         if (kbClaimOpen && (!started || gameOver || showProfile || showRanks || SaldokuOverlayOpen))
         {
             kbClaimOpen = false;
@@ -130,7 +132,7 @@ public partial class Tetris3D
         if (kbPendingBuff >= 0 && started && !gameOver && !clearing && !paused)
         {
             int b = kbPendingBuff; kbPendingBuff = -1;
-            ApplyBuff(b);
+            AddBuffReward(b);
         }
 
         if (!started || gameOver) { if (kbubbles.Count > 0) kbubbles.Clear(); kbCoinTimer = COIN_GAP * 0.5f; return; }
@@ -493,6 +495,153 @@ public partial class Tetris3D
         }
     }
 
+    // ================== HADIAH ITEM -> INVENTORY + ANIMASI ==================
+    // Item hasil klaim (tonton iklan) TIDAK langsung dipakai, tapi MASUK ke
+    // inventaris (tokoInv). Muncul animasi: ikon membesar di tengah layar lalu
+    // terbang mengecil ke slot inventaris kiri, diikuti teks "+1" yang melompat.
+    // Pemain memakainya nanti dengan menge-tap slot (UseBuffFromInv).
+
+    struct KbReward { public int type; public int slot; public float t; public float dur; }
+    struct KbPlus  { public int slot; public float t; }
+    List<KbReward> kbRewards;
+    List<KbPlus>   kbPlusOnes;
+
+    // Rect slot inventaris buff ke-i. Rumus harus sama dgn DrawBuffInv (Toko).
+    Rect KbBuffSlotRect(int i)
+    {
+        float slot = Mathf.Min(VW * 0.15f, 96f);
+        float gap = 14f;
+        float totalH = 3f * slot + 2f * gap;
+        float sx = 12f;
+        float sy = VH * 0.5f - totalH * 0.5f;
+        return new Rect(sx, sy + i * (slot + gap), slot, slot);
+    }
+
+    // Dipanggil setelah iklan buff selesai (ganti pemakaian langsung).
+    void AddBuffReward(int type)
+    {
+        // Hanya buff (Bom/Palu/Perlambat = 0/1/2) yang masuk inventaris.
+        if (type < 0 || type > 2) { ApplyBuff(type); return; }
+        EnsureToko();
+        tokoInv[type]++;
+        SaveToko();
+        Sfx(sfxClear);
+        if (kbRewards == null) kbRewards = new List<KbReward>();
+        kbRewards.Add(new KbReward { type = type, slot = type, t = 0f, dur = 1.0f });
+    }
+
+    // Maju-kan timer animasi tiap frame (dipanggil dari BubbleTick).
+    void TickRewardAnims()
+    {
+        float dt = Time.unscaledDeltaTime;
+        if (kbRewards != null)
+        {
+            for (int i = kbRewards.Count - 1; i >= 0; i--)
+            {
+                var a = kbRewards[i];
+                a.t += dt;
+                kbRewards[i] = a;
+                if (a.t >= a.dur)
+                {
+                    if (kbPlusOnes == null) kbPlusOnes = new List<KbPlus>();
+                    kbPlusOnes.Add(new KbPlus { slot = a.slot, t = 0f });
+                    Sfx(sfxLevelUp);
+                    Haptic(30);
+                    kbRewards.RemoveAt(i);
+                }
+            }
+        }
+        if (kbPlusOnes != null)
+        {
+            for (int i = kbPlusOnes.Count - 1; i >= 0; i--)
+            {
+                var p = kbPlusOnes[i];
+                p.t += dt;
+                kbPlusOnes[i] = p;
+                if (p.t >= 1.0f) kbPlusOnes.RemoveAt(i);
+            }
+        }
+    }
+
+    // Gambar animasi hadiah (ikon terbang + teks "+1"). Dipanggil dari HUD.
+    public void DrawRewardAnims()
+    {
+        if (kbRewards != null && kbRewards.Count > 0)
+        {
+            Vector2 scrCtr = new Vector2(VW * 0.5f, VH * 0.42f);
+            float bigSize = Mathf.Min(VW, VH) * 0.34f;
+            for (int i = 0; i < kbRewards.Count; i++)
+            {
+                var a = kbRewards[i];
+                float p = a.dur > 0f ? Mathf.Clamp01(a.t / a.dur) : 1f;
+                Rect slot = KbBuffSlotRect(a.slot);
+                float smallSize = slot.width * 0.72f;
+                Vector2 pos; float size;
+                if (p < 0.32f)
+                {
+                    float q = p / 0.32f;
+                    float pop = 1f - Mathf.Pow(1f - q, 3f);
+                    size = bigSize * Mathf.LerpUnclamped(0.2f, 1.08f, pop);
+                    pos = scrCtr;
+                }
+                else
+                {
+                    float q = (p - 0.32f) / 0.68f;
+                    float e = q * q * (3f - 2f * q);
+                    pos = Vector2.LerpUnclamped(scrCtr, slot.center, e);
+                    size = Mathf.Lerp(bigSize * 1.08f, smallSize, e);
+                }
+                Rect ir = new Rect(pos.x - size * 0.5f, pos.y - size * 0.5f, size, size);
+                RoundRect(new Rect(ir.x - 6f, ir.y - 6f, ir.width + 12f, ir.height + 12f), new Color(0.6f, 0.9f, 1f, 0.22f), ir.width * 0.5f);
+                DrawItemIcon(ir, a.type);
+            }
+        }
+        if (kbPlusOnes != null && kbPlusOnes.Count > 0)
+        {
+            for (int i = 0; i < kbPlusOnes.Count; i++)
+            {
+                var pl = kbPlusOnes[i];
+                float p = Mathf.Clamp01(pl.t / 1.0f);
+                Rect slot = KbBuffSlotRect(pl.slot);
+                float rise = 52f * p;
+                float alpha = 1f - p;
+                float bump = 1f - Mathf.Abs(0.5f - Mathf.Min(p, 0.5f)) * 2f;
+                int size = Mathf.RoundToInt(30f + 14f * bump);
+                Rect tr = new Rect(slot.center.x - 60f, slot.y - 10f - rise, 120f, 44f);
+                GuiText(tr, "+1", size, new Color(1f, 0.95f, 0.55f, alpha), TextAnchor.MiddleCenter);
+            }
+        }
+    }
+
+    // Setelah item meng-cascade papan: cek & hancurkan baris yg JADI penuh SAAT
+    // ITU JUGA (tanpa menunggu balok aktif mendarat), termasuk reaksi berantai.
+    IEnumerator ResolveClearsNoSpawn()
+    {
+        clearing = true;
+        while (true)
+        {
+            var full = FindFullRows();
+            if (full.Count == 0) break;
+            yield return StartCoroutine(FlashClear(full));
+
+            if (comboExpire > 0f) comboCount++; else comboCount = 1;
+            comboExpire = comboSeconds;
+            if (comboCount >= 2) { comboShow = comboCount; comboTime = 1.3f; }
+
+            float rowMult = full.Count <= 1 ? 1f : full.Count == 2 ? 2.5f : full.Count == 3 ? 4.5f : 7f + (full.Count - 4) * 2f;
+            int pts = Mathf.RoundToInt(columns * cellPoints * rowMult * Mathf.Max(1, comboCount));
+            score += pts;
+            lines += full.Count;
+
+            yield return StartCoroutine(CascadeGravity());
+        }
+        RecalcLevel();
+        // Kalau item memicu naik babak (StageUp), papan di-reset & balok aktif
+        // hilang -> spawn balok baru supaya game tetap jalan.
+        if (!gameOver && active == null) SpawnPiece();
+        clearing = false;
+    }
+
     // ---- util: kumpulkan transform/skala/material/pusat dari daftar sel ----
     void GatherCells(List<Vector2Int> targets, out List<Transform> objs, out List<Vector3> baseScales, out List<Material> mats, out List<Vector3> centers)
     {
@@ -606,7 +755,8 @@ public partial class Tetris3D
             }
         }
 
-        StartCoroutine(CascadeGravity());
+        yield return StartCoroutine(CascadeGravity());
+        yield return StartCoroutine(ResolveClearsNoSpawn());
     }
 
     // ========================= PALU (2 baris terbawah) =========================
@@ -710,7 +860,8 @@ public partial class Tetris3D
             cells[c, 0] = null; grid[c, 0] = -1;
         }
 
-        StartCoroutine(CascadeGravity());
+        yield return StartCoroutine(CascadeGravity());
+        yield return StartCoroutine(ResolveClearsNoSpawn());
     }
 
     void ApplySlow()
@@ -837,6 +988,7 @@ public class KubikaBubbleHUD : MonoBehaviour
         if (game.BubblesVisible) game.DrawBubbles();
         if (game.BubbleClaimOpen) game.DrawBubbleClaim();
         if (game.SlowActive && !game.BubbleClaimOpen) game.DrawSlowTimer();
+        game.DrawRewardAnims();
     }
 }
 
