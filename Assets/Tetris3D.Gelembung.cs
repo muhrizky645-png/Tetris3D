@@ -643,24 +643,35 @@ public partial class Tetris3D
     public bool SlowActive { get { return kbSlowTimer > 0f; } }
     public float SlowSecondsLeft { get { return kbSlowTimer; } }
 
-    // Badge kecil di bagian atas layar yang menunjukkan sisa detik efek
-    // Perlambat masih aktif, supaya pemain tahu kapan efeknya akan habis.
+    // Badge kecil yang menunjukkan sisa detik efek Perlambat masih aktif.
+    // Diposisikan tepat di bawah kotak preview "balok berikutnya" (pojok
+    // kanan) supaya tidak menabrak baris HUD atas (skor/permata/koin/jeda).
     public void DrawSlowTimer()
     {
         if (kbSlowTimer <= 0f) return;
-        float h = 56f;
-        float w = 190f;
-        float x = (VW - w) * 0.5f;
-        float y = VH * 0.05f;
+
+        Rect hsRect, gemRect, coinRect, pauseRect;
+        GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
+
+        float pvSize = Mathf.Min(VW * 0.22f, 132f);
+        float pvX = VW - pvSize - 14f;
+        float pvY = pauseRect.yMax + 14f;
+        float boxH = pvSize + 40f;
+        float boxBottom = (pvY - 6f) + boxH;
+
+        float w = pvSize + 22f;
+        float h = 50f;
+        float x = pvX - 11f;
+        float y = boxBottom + 10f;
         Rect r = new Rect(x, y, w, h);
         RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), new Color(0.2f, 0.48f, 1f, 0.35f), h * 0.5f);
         RoundRect(r, new Color(0.06f, 0.08f, 0.14f, 0.92f), h * 0.5f);
         float ic = h * 0.72f;
-        Rect ir = new Rect(r.x + (h - ic) * 0.5f + 6f, r.y + (h - ic) * 0.5f, ic, ic);
+        Rect ir = new Rect(r.x + (h - ic) * 0.5f + 4f, r.y + (h - ic) * 0.5f, ic, ic);
         DrawSlowIcon(ir);
         string txt = Mathf.CeilToInt(kbSlowTimer) + "s";
-        Rect tr = new Rect(ir.xMax + 6f, r.y, r.xMax - (ir.xMax + 6f) - 10f, r.height);
-        GuiText(tr, txt, 28, new Color(0.85f, 0.93f, 1f), TextAnchor.MiddleLeft);
+        Rect tr = new Rect(ir.xMax + 4f, r.y, r.xMax - (ir.xMax + 4f) - 8f, r.height);
+        GuiText(tr, txt, 24, new Color(0.85f, 0.93f, 1f), TextAnchor.MiddleCenter);
     }
 
     string BubbleItemName(int t)
