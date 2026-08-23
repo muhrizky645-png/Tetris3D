@@ -7,20 +7,15 @@ using UnityEngine;
 //
 //  Tujuan: mengganti font UI game ke "Fatality FPS Gaming Font" TANPA
 //  perlu mengedit Tetris3D.cs. Font dicari OTOMATIS di folder Resources
-//  lewat nama yang mengandung "fatal" (huruf besar/kecil bebas). Kalau
-//  font itu belum ada di Resources, otomatis jatuh ke font lama
-//  (ThaleahFat) supaya game tetap jalan normal (tidak error).
+//  lewat nama yang mengandung salah satu kata kunci: "fatal", "fps",
+//  atau "gaming" (huruf besar/kecil bebas). Kalau font itu belum ada,
+//  otomatis jatuh ke font lama (ThaleahFat) supaya game tetap normal.
 //
 //  == CARA MENGAKTIFKAN (WAJIB) ==
-//    1. Pindahkan / copy file font-nya (mis. "Fatality FPS Gaming Font.ttf")
-//       ke dalam folder:  Assets/Resources/
-//       (HARUS di dalam folder bernama "Resources", karena di-load saat
-//        runtime lewat Resources.LoadAll).
-//    2. Commit & push file .ttf + .meta-nya.
-//    3. Selesai - font langsung otomatis kepakai di semua teks & tombol.
-//
-//  Catatan: pencarian pakai kata "fatal", jadi nama file bebas selama
-//  mengandung kata itu (contoh: "Fatality", "FatalityFPS", dll).
+//    1. Taruh file font-nya di dalam folder "Resources" (boleh di subfolder,
+//       mis. Assets/Resources/FPSFont/...). Ini SUDAH benar.
+//    2. Commit & push file .ttf + semua .meta-nya ke GitHub.
+//    3. Selesai - font otomatis kepakai di semua teks & tombol.
 // =====================================================================
 
 public partial class Tetris3D
@@ -42,7 +37,8 @@ public partial class Tetris3D
 
     Font PickUiFont()
     {
-        // 1) Utamakan Fatality FPS Gaming Font kalau sudah ada di Resources.
+        // 1) Utamakan font gaming baru kalau sudah ada di Resources.
+        //    Cari nama file font yang mengandung "fatal"/"fps"/"gaming".
         Font[] all = Resources.LoadAll<Font>("");
         if (all != null)
         {
@@ -50,7 +46,8 @@ public partial class Tetris3D
             {
                 if (f == null) continue;
                 string n = f.name.ToLowerInvariant();
-                if (n.Contains("fatal")) return f;
+                if (n.Contains("fatal") || n.Contains("fps") || n.Contains("gaming"))
+                    return f;
             }
         }
         // 2) Cadangan: font lama (Thaleah) - biar game tetap normal.
