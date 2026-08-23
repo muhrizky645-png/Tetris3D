@@ -555,16 +555,79 @@ public partial class Tetris3D
             if (has) { target = r; break; }
         }
         if (target < 0) return;
+        var targets = new List<Vector2Int>();
         for (int c = 0; c < columns; c++)
-        {
-            if (cells[c, target] != null) { Destroy(cells[c, target]); cells[c, target] = null; }
-            grid[c, target] = -1;
-        }
+            if (cells[c, target] != null) targets.Add(new Vector2Int(c, target));
+        if (targets.Count == 0) return;
+        StartCoroutine(LineBlast(targets));
+    }
+
+    // Efek animasi baris hancur (item Bersihkan Baris): kotak yang kena
+    // membesar & berkedip terang sekilas lalu meletus jadi partikel,
+    // meniru pola animasi ledakan bom, supaya item ini juga terasa ada
+    // efeknya (bukan cuma langsung hilang seperti sebelumnya).
+    IEnumerator LineBlast(List<Vector2Int> targets)
+    {
         Sfx(sfxClear);
         Shake(0.3f, 0.3f);
         Haptic(50);
-        StartCoroutine(CascadeGravity());
         KbToast(SalID ? "Baris dibersihkan!" : "Row cleared!");
+
+        var objs = new List<Transform>();
+        var baseScales = new List<Vector3>();
+        var mats = new List<Material>();
+        var centers = new List<Vector3>();
+        foreach (var t in targets)
+        {
+            GameObject go = cells[t.x, t.y];
+            if (go == null) continue;
+            objs.Add(go.transform);
+            baseScales.Add(go.transform.localScale);
+            centers.Add(go.transform.position);
+            var rend = go.GetComponent<Renderer>();
+            mats.Add(rend != null ? rend.material : null);
+        }
+
+        float dur = 0.28f;
+        float t2 = 0f;
+        while (t2 < dur)
+        {
+            t2 += Time.deltaTime;
+            float p = Mathf.Clamp01(t2 / dur);
+            float scaleMul = p < 0.5f ? Mathf.Lerp(1f, 1.35f, p / 0.5f) : Mathf.Lerp(1.35f, 0.01f, (p - 0.5f) / 0.5f);
+            float flash = p < 0.5f ? Mathf.Lerp(0f, 1f, p / 0.5f) : Mathf.Lerp(1f, 0f, (p - 0.5f) / 0.5f);
+            for (int i = 0; i < objs.Count; i++)
+            {
+                if (objs[i] == null) continue;
+                objs[i].localScale = baseScales[i] * scaleMul;
+                if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
+                {
+                    Color glow = Color.Lerp(new Color(0.35f, 0.8f, 1f), Color.white, flash * 0.5f);
+                    mats[i].SetColor("_EmissionColor", glow * (0.8f + flash * 3f));
+                }
+            }
+            yield return null;
+        }
+
+        foreach (var pos in centers)
+        {
+            Burst(pos, new Color(0.35f, 0.8f, 1f));
+            Burst(pos, new Color(0.85f, 0.95f, 1f));
+        }
+
+        foreach (var tr in objs)
+            if (tr != null) Destroy(tr.gameObject);
+
+        foreach (var t in targets)
+        {
+            if (t.x >= 0 && t.x < columns && t.y >= 0 && t.y < height)
+            {
+                cells[t.x, t.y] = null;
+                grid[t.x, t.y] = -1;
+            }
+        }
+
+        StartCoroutine(CascadeGravity());
     }
 
     void ApplySlow()
