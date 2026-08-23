@@ -167,7 +167,7 @@ public partial class Tetris3D : MonoBehaviour
     Lang lang = Lang.EN;
     bool langOpen;
     static readonly string[] langCodes = { "EN", "ID", "ES", "PT", "FR" };
-    static readonly string[] langNames = { "English", "Indonesia", "Español", "Português", "Français" };
+    static readonly string[] langNames = { "English", "Indonesia", "Espa\u00f1ol", "Portugu\u00eas", "Fran\u00e7ais" };
     Dictionary<string, string[]> loc;
 
     // ---------- Leaderboard (Unity Gaming Services) ----------
@@ -330,7 +330,8 @@ public partial class Tetris3D : MonoBehaviour
         kr.SetActive(false);
 
         triTex = MakeTriTex(32);
-        crownTex = MakeCrownTex(64);
+        crownTex = Resources.Load<Texture2D>("KubikaIcons/Crown_A");
+        if (crownTex == null) crownTex = MakeCrownTex(64);
 
         SetupAudio();
 
