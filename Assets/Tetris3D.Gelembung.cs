@@ -21,7 +21,7 @@ public partial class Tetris3D
     const float BUBBLE_MIN_GAP = 24f;   // jeda spawn minimum (detik) - dibuat lebih jarang
     const float BUBBLE_MAX_GAP = 40f;   // jeda spawn maksimum (detik) - dibuat lebih jarang
     const float BUBBLE_R       = 54f;   // radius gelembung (ruang logis) - diperkecil biar mungil
-    const int   BOMB_COLS      = 3;     // lebar area bom (kolom)
+    const int   BOMB_COLS      = 3;     // (tidak dipakai lagi - bom kini acak 1/2 kotak)
     const int   GEM_BONUS      = 50;    // permata dari item Bonus Permata
     const float SLOW_SECONDS   = 8f;
     const float SLOW_MULT      = 2.5f;
@@ -47,6 +47,30 @@ public partial class Tetris3D
     int    kbPendingBuff = -1;
     float  kbSlowTimer;
     float  kbSlowOrig;
+    float  kbSlowTickAcc;   // akumulator bunyi detikan saat Perlambat aktif
+
+    // ---- efek suara khusus item (dibuat sekali, lazy) ----
+    AudioClip kbSfxBombLit;    // tiap kotak bom menyala (nada naik)
+    AudioClip kbSfxBombBoom;   // dentuman saat bom meletus
+    AudioClip kbSfxHammerHit;  // hantaman palu tiap tahap cincin
+    AudioClip kbSfxSlowTick;   // detikan timer Perlambat
+
+    void KbEnsureItemSfx()
+    {
+        if (kbSfxBombLit  == null) kbSfxBombLit  = MakeTone("kb_bmbl", 320f, 0.045f, 0.40f, 1, 600f);
+        if (kbSfxBombBoom == null) kbSfxBombBoom = MakeTone("kb_boom", 90f,  0.35f,  0.75f, 2, 38f);
+        if (kbSfxHammerHit== null) kbSfxHammerHit= MakeTone("kb_ham",  180f, 0.12f,  0.60f, 0, 70f);
+        if (kbSfxSlowTick == null) kbSfxSlowTick = MakeTone("kb_tick", 760f, 0.05f,  0.40f, 0, 600f);
+    }
+
+    // Mainkan SFX pakai AudioSource bersama dgn pitch tertentu (utk variasi nada).
+    // Ingat reset sfx.pitch=1f setelah rangkaian selesai.
+    void KbSfxAt(AudioClip c, float pitch)
+    {
+        if (!(soundOn && sfxOn) || sfx == null || c == null) return;
+        sfx.pitch = pitch;
+        sfx.PlayOneShot(c, sfxVolume);
+    }
 
     // ---- toast kecil sendiri ----
     string kbToast = "";
@@ -87,10 +111,21 @@ public partial class Tetris3D
 
         if (kbSlowTimer > 0f)
         {
-            if (started && !gameOver && !paused) kbSlowTimer -= dt;
-            if (kbSlowTimer <= 0f) { kbSlowTimer = 0f; fallInterval = kbSlowOrig; }
+            if (started && !gameOver && !paused)
+            {
+                kbSlowTimer -= dt;
+                // Bunyi detikan tiap 1 detik selagi Perlambat aktif.
+                kbSlowTickAcc += dt;
+                if (kbSlowTickAcc >= 1f && kbSlowTimer > 0f)
+                {
+                    kbSlowTickAcc -= 1f;
+                    KbEnsureItemSfx();
+                    Sfx(kbSfxSlowTick);
+                }
+            }
+            if (kbSlowTimer <= 0f) { kbSlowTimer = 0f; fallInterval = kbSlowOrig; kbSlowTickAcc = 0f; }
         }
-        if ((!started || gameOver) && kbSlowTimer > 0f) { kbSlowTimer = 0f; fallInterval = kbSlowOrig; }
+        if ((!started || gameOver) && kbSlowTimer > 0f) { kbSlowTimer = 0f; fallInterval = kbSlowOrig; kbSlowTickAcc = 0f; }
 
         if (kbPendingBuff >= 0 && started && !gameOver && !clearing && !paused)
         {
@@ -164,7 +199,7 @@ public partial class Tetris3D
     int PickBubbleType()
     {
         // Koin TIDAK di sini - koin punya jadwal sendiri (SpawnCoinBubble).
-        // Gem/Permata DIHILANGKAN dari gelembung. Sisa: Bom, Bersihkan Baris, Perlambat.
+        // Gem/Permata DIHILANGKAN dari gelembung. Sisa: Bom, Palu, Perlambat.
         int roll = Random.Range(0, 100);
         if (roll < 34) return IT_BOMB;
         if (roll < 67) return IT_LINE;
@@ -208,7 +243,7 @@ public partial class Tetris3D
     static readonly string[] KB_ICON_PATH = new string[]
     {
         "Tiny Fantasy Icons/Explosives/Boom_A",
-        "Tiny Fantasy Icons/PowerUps/Bolt_A",
+        "Tiny Fantasy Icons/Tools/Hammer_A",
         "Tiny Fantasy Icons/Time/Clock_A",
         "Tiny Fantasy Icons/Gems/Gems_Large_Diamond",
         "Tiny Fantasy Icons/Coins/Coins_Large_Gold",
@@ -248,7 +283,7 @@ public partial class Tetris3D
             case IT_GEM:  DrawGemIcon(r, new Color(0.62f, 0.35f, 1f)); break;
             case IT_COIN: DrawCoinIcon(r, new Color(1f, 0.78f, 0.18f)); break;
             case IT_BOMB: DrawBombIcon(r); break;
-            case IT_LINE: DrawClearRowIcon(r); break;
+            case IT_LINE: DrawHammerIcon(r); break;
             case IT_SLOW: DrawSlowIcon(r); break;
         }
     }
@@ -281,27 +316,26 @@ public partial class Tetris3D
         RoundRect(new Rect(spark.x + sp * 0.28f, spark.y + sp * 0.28f, sp * 0.44f, sp * 0.44f), new Color(1f, 0.95f, 0.6f, 1f), sp * 0.22f);
     }
 
-    void DrawClearRowIcon(Rect r)
+    // Ikon PALU (pengganti ikon laser). Kepala besi + gagang kayu, dimiringkan.
+    void DrawHammerIcon(Rect r)
     {
-        int cols = 4;
-        float pad = r.width * 0.06f;
-        float cellW = (r.width - pad * (cols + 1)) / cols;
-        float cellH = r.height * 0.20f;
-        float gap = r.height * 0.07f;
-        float startY = r.center.y - (cellH * 3f + gap * 2f) / 2f;
-        for (int row = 0; row < 3; row++)
-        {
-            float ry = startY + row * (cellH + gap);
-            bool lit = (row == 1);
-            for (int c = 0; c < cols; c++)
-            {
-                float rx = r.x + pad + c * (cellW + pad);
-                Color cc = lit ? new Color(1f, 1f, 1f, 0.98f) : new Color(0.28f, 0.55f, 0.75f, 1f);
-                RoundRect(new Rect(rx, ry, cellW, cellH), cc, cellW * 0.24f);
-            }
-        }
-        float beamY = startY + (cellH + gap) - cellH * 0.20f;
-        RoundRect(new Rect(r.x - r.width * 0.04f, beamY, r.width * 1.08f, cellH * 1.4f), new Color(1f, 1f, 1f, 0.30f), cellH);
+        Vector2 ctr = r.center;
+        float deg = -32f;
+
+        // Gagang kayu.
+        float hw = r.width * 0.13f;
+        float hh = r.height * 0.64f;
+        Rect handle = new Rect(ctr.x - hw / 2f, ctr.y - hh * 0.12f, hw, hh);
+        DrawRectRot(new Rect(handle.x - 2f, handle.y - 2f, handle.width + 4f, handle.height + 4f), new Color(0f, 0f, 0f, 0.32f), hw * 0.5f, deg, ctr);
+        DrawRectRot(handle, new Color(0.62f, 0.42f, 0.24f, 1f), hw * 0.45f, deg, ctr);
+
+        // Kepala palu (besi).
+        float headW = r.width * 0.60f;
+        float headH = r.height * 0.30f;
+        Rect head = new Rect(ctr.x - headW / 2f, r.y + r.height * 0.14f, headW, headH);
+        DrawRectRot(new Rect(head.x - 3f, head.y - 3f, head.width + 6f, head.height + 6f), new Color(0f, 0f, 0f, 0.35f), headH * 0.30f, deg, ctr);
+        DrawRectRot(head, new Color(0.70f, 0.74f, 0.82f, 1f), headH * 0.26f, deg, ctr);
+        DrawRectRot(new Rect(head.x + headW * 0.10f, head.y + headH * 0.16f, headW * 0.32f, headH * 0.24f), new Color(1f, 1f, 1f, 0.5f), headH * 0.20f, deg, ctr);
     }
 
     void DrawSlowIcon(Rect r)
@@ -449,7 +483,7 @@ public partial class Tetris3D
         switch (type)
         {
             case IT_BOMB: ApplyBomb(); break;
-            case IT_LINE: ApplyClearLine(); break;
+            case IT_LINE: ApplyHammer(); break;
             case IT_SLOW: ApplySlow(); break;
             case IT_GEM:
                 AddPermata(GEM_BONUS);
@@ -459,34 +493,13 @@ public partial class Tetris3D
         }
     }
 
-    void ApplyBomb()
+    // ---- util: kumpulkan transform/skala/material/pusat dari daftar sel ----
+    void GatherCells(List<Vector2Int> targets, out List<Transform> objs, out List<Vector3> baseScales, out List<Material> mats, out List<Vector3> centers)
     {
-        if (grid == null || cells == null) return;
-        int front = Wrap(Mathf.RoundToInt((180f - targetSpin) * columns / 360f));
-        int half = BOMB_COLS / 2;
-        var targets = new List<Vector2Int>();
-        for (int dc = -half; dc <= half; dc++)
-        {
-            int c = Wrap(front + dc);
-            for (int r = 0; r < height; r++)
-                if (cells[c, r] != null) targets.Add(new Vector2Int(c, r));
-        }
-        if (targets.Count == 0) return;
-        StartCoroutine(BombBlast(targets));
-    }
-
-    // Efek ledakan bom (versi "puas"): tiap kotak target menyala kilatan
-    // PUTIH satu per satu berurutan sampai SEMUA kotak menyala penuh, ada
-    // jeda sekejap biar keliatan "penuh dulu", baru semuanya meletus jadi
-    // partikel api/percikan bersamaan sebelum benar-benar hilang.
-    IEnumerator BombBlast(List<Vector2Int> targets)
-    {
-        KbToast("BOOM!");
-
-        var objs = new List<Transform>();
-        var baseScales = new List<Vector3>();
-        var mats = new List<Material>();
-        var centers = new List<Vector3>();
+        objs = new List<Transform>();
+        baseScales = new List<Vector3>();
+        mats = new List<Material>();
+        centers = new List<Vector3>();
         foreach (var t in targets)
         {
             GameObject go = cells[t.x, t.y];
@@ -497,26 +510,66 @@ public partial class Tetris3D
             var rend = go.GetComponent<Renderer>();
             mats.Add(rend != null ? rend.material : null);
         }
+    }
+
+    // ========================= BOM (acak 1/2 kotak) =========================
+    // Bom kini memilih ACAK setengah dari semua kotak yang SUDAH menumpuk
+    // (balok yg sedang jatuh ada di array 'active', jadi otomatis tak ikut).
+    void ApplyBomb()
+    {
+        if (grid == null || cells == null) return;
+
+        var all = new List<Vector2Int>();
+        for (int c = 0; c < columns; c++)
+            for (int r = 0; r < height; r++)
+                if (cells[c, r] != null) all.Add(new Vector2Int(c, r));
+        if (all.Count == 0) return;
+
+        // Acak urutan (Fisher-Yates) -> ambil separuh.
+        for (int i = all.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            var tmp = all[i]; all[i] = all[j]; all[j] = tmp;
+        }
+        int take = Mathf.Max(1, all.Count / 2);
+        var targets = all.GetRange(0, take);
+
+        StartCoroutine(BombBlast(targets));
+    }
+
+    // Efek bom: tiap kotak target menyala kilatan PUTIH satu per satu (urut acak
+    // karena target sudah diacak) sambil berbunyi (nada naik), sampai semua
+    // menyala; jeda sekejap; lalu meletus bersamaan jadi partikel & hilang.
+    IEnumerator BombBlast(List<Vector2Int> targets)
+    {
+        KbToast("BOOM!");
+        KbEnsureItemSfx();
+
+        List<Transform> objs; List<Vector3> baseScales; List<Material> mats; List<Vector3> centers;
+        GatherCells(targets, out objs, out baseScales, out mats, out centers);
         int n = objs.Count;
         if (n == 0) yield break;
 
-        // Fase 1: menyala satu per satu (kilatan putih berjalan mengisi semua kotak target).
-        float totalLightDur = Mathf.Clamp(n * 0.05f, 0.20f, 0.60f);
+        // Fase 1: menyala satu per satu (tiap nyala ada bunyi, nada makin naik).
+        float totalLightDur = Mathf.Clamp(n * 0.045f, 0.25f, 0.90f);
         float perStep = totalLightDur / n;
         for (int i = 0; i < n; i++)
         {
-            if (i == 0) Sfx(sfxClear);
+            KbSfxAt(kbSfxBombLit, 1f + i * 0.03f);
             if (objs[i] != null) objs[i].localScale = baseScales[i] * 1.20f;
             if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
                 mats[i].SetColor("_EmissionColor", new Color(1f, 0.97f, 0.75f) * 3.4f);
             yield return new WaitForSeconds(perStep);
         }
+        if (sfx != null) sfx.pitch = 1f;
 
         // Jeda sekejap saat semua sudah menyala penuh, sebelum meletus bareng.
         Shake(0.10f, 0.14f);
         yield return new WaitForSeconds(0.14f);
 
-        // Fase 2: mengecil cepat bersamaan sambil meletus jadi partikel.
+        // Fase 2: mengecil cepat bersamaan sambil meletus (dentuman).
+        KbSfxAt(kbSfxBombBoom, 1f);
+        if (sfx != null) sfx.pitch = 1f;
         float dur = 0.20f;
         float t2 = 0f;
         while (t2 < dur)
@@ -556,99 +609,105 @@ public partial class Tetris3D
         StartCoroutine(CascadeGravity());
     }
 
-    void ApplyClearLine()
+    // ========================= PALU (2 baris terbawah) =========================
+    // Mengganti item "laser". Palu menghancurkan 2 baris PALING BAWAH (r=0 & r=1).
+    // Visual: cincin menyala ATAS dulu lalu BAWAH, bergantian beberapa siklus
+    // (tiap tahap ada bunyi hantaman), baru keduanya hancur bersamaan.
+    void ApplyHammer()
     {
         if (grid == null || cells == null) return;
-        int target = -1;
-        for (int r = 0; r < height; r++)
-        {
-            bool has = false;
-            for (int c = 0; c < columns; c++) if (grid[c, r] != -1) { has = true; break; }
-            if (has) { target = r; break; }
-        }
-        if (target < 0) return;
-        var targets = new List<Vector2Int>();
+
+        var topRow = new List<Vector2Int>();   // baris atas dari dua baris bawah (r=1)
+        var botRow = new List<Vector2Int>();   // baris paling bawah (r=0)
         for (int c = 0; c < columns; c++)
-            if (cells[c, target] != null) targets.Add(new Vector2Int(c, target));
-        if (targets.Count == 0) return;
-        StartCoroutine(LineBlast(targets));
+        {
+            if (height > 1 && cells[c, 1] != null) topRow.Add(new Vector2Int(c, 1));
+            if (cells[c, 0] != null) botRow.Add(new Vector2Int(c, 0));
+        }
+        if (topRow.Count == 0 && botRow.Count == 0) return;
+        StartCoroutine(HammerBlast(topRow, botRow));
     }
 
-    // Efek "laser" bersihkan baris (versi "puas"): karena baris melingkari
-    // menara silinder, kotak menyala urut MENGELILINGI LINGKARAN (searah
-    // kolom 0..N-1), sama gayanya dengan bomb (menyala dulu satu-satu
-    // sampai penuh), lalu jeda sekejap, baru semuanya meletus bersamaan.
-    IEnumerator LineBlast(List<Vector2Int> targets)
+    void SetRingGlow(List<Transform> objs, List<Vector3> baseScales, List<Material> mats, Color col, bool on)
     {
-        KbToast(SalID ? "Baris dibersihkan!" : "Row cleared!");
-
-        var objs = new List<Transform>();
-        var baseScales = new List<Vector3>();
-        var mats = new List<Material>();
-        var centers = new List<Vector3>();
-        foreach (var t in targets)
+        for (int i = 0; i < objs.Count; i++)
         {
-            GameObject go = cells[t.x, t.y];
-            if (go == null) continue;
-            objs.Add(go.transform);
-            baseScales.Add(go.transform.localScale);
-            centers.Add(go.transform.position);
-            var rend = go.GetComponent<Renderer>();
-            mats.Add(rend != null ? rend.material : null);
-        }
-        int n = objs.Count;
-        if (n == 0) yield break;
-
-        // Fase 1: menyala biru urut mengelilingi lingkaran, kotak per kotak.
-        float totalLightDur = Mathf.Clamp(n * 0.045f, 0.20f, 0.55f);
-        float perStep = totalLightDur / n;
-        for (int i = 0; i < n; i++)
-        {
-            if (i == 0) Sfx(sfxClear);
-            if (objs[i] != null) objs[i].localScale = baseScales[i] * 1.18f;
+            if (objs[i] != null) objs[i].localScale = baseScales[i] * (on ? 1.18f : 1f);
             if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
-                mats[i].SetColor("_EmissionColor", new Color(0.40f, 0.85f, 1f) * 3.2f);
-            yield return new WaitForSeconds(perStep);
+                mats[i].SetColor("_EmissionColor", on ? col * 3.2f : col * 0.4f);
         }
+    }
 
-        // Jeda sekejap saat baris sudah menyala penuh (efek "laser mengunci"), baru pecah.
-        Shake(0.08f, 0.12f);
-        yield return new WaitForSeconds(0.14f);
+    void ScaleRing(List<Transform> objs, List<Vector3> baseScales, float mul)
+    {
+        for (int i = 0; i < objs.Count; i++)
+            if (objs[i] != null) objs[i].localScale = baseScales[i] * mul;
+    }
 
+    IEnumerator HammerBlast(List<Vector2Int> topRow, List<Vector2Int> botRow)
+    {
+        KbToast(SalID ? "Palu menghantam!" : "Hammer smash!");
+        KbEnsureItemSfx();
+
+        List<Transform> topT, botT;
+        List<Vector3> topS, botS, topC, botC;
+        List<Material> topM, botM;
+        GatherCells(topRow, out topT, out topS, out topM, out topC);
+        GatherCells(botRow, out botT, out botS, out botM, out botC);
+
+        Color ringCol = new Color(1f, 0.85f, 0.35f);
+
+        // Cincin nyala ATAS dulu baru BAWAH, bergantian.
+        int cycles = 2;
+        for (int cyc = 0; cyc < cycles; cyc++)
+        {
+            KbSfxAt(kbSfxHammerHit, 1.15f);
+            SetRingGlow(topT, topS, topM, ringCol, true);
+            SetRingGlow(botT, botS, botM, ringCol, false);
+            Shake(0.06f, 0.10f);
+            yield return new WaitForSeconds(0.16f);
+
+            KbSfxAt(kbSfxHammerHit, 0.85f);
+            SetRingGlow(topT, topS, topM, ringCol, false);
+            SetRingGlow(botT, botS, botM, ringCol, true);
+            Shake(0.06f, 0.10f);
+            yield return new WaitForSeconds(0.16f);
+        }
+        if (sfx != null) sfx.pitch = 1f;
+
+        // Nyalakan dua-duanya sebelum hancur.
+        SetRingGlow(topT, topS, topM, ringCol, true);
+        SetRingGlow(botT, botS, botM, ringCol, true);
+        yield return new WaitForSeconds(0.10f);
+
+        // Hantam: mengecil cepat + partikel.
+        KbSfxAt(kbSfxHammerHit, 0.65f);
+        if (sfx != null) sfx.pitch = 1f;
+        Shake(0.40f, 0.50f);
+        Haptic(70);
         float dur = 0.18f;
         float t2 = 0f;
         while (t2 < dur)
         {
             t2 += Time.deltaTime;
             float p = Mathf.Clamp01(t2 / dur);
-            float scaleMul = Mathf.Lerp(1.18f, 0.01f, p);
-            for (int i = 0; i < n; i++)
-            {
-                if (objs[i] == null) continue;
-                objs[i].localScale = baseScales[i] * scaleMul;
-            }
+            float mul = Mathf.Lerp(1.18f, 0.01f, p);
+            ScaleRing(topT, topS, mul);
+            ScaleRing(botT, botS, mul);
             yield return null;
         }
 
-        Shake(0.3f, 0.3f);
-        Haptic(50);
+        foreach (var pos in topC) Burst(pos, ringCol);
+        foreach (var pos in botC) Burst(pos, new Color(1f, 0.6f, 0.2f));
 
-        foreach (var pos in centers)
+        foreach (var tr in topT) if (tr != null) Destroy(tr.gameObject);
+        foreach (var tr in botT) if (tr != null) Destroy(tr.gameObject);
+
+        // Kosongkan grid baris 0 & 1.
+        for (int c = 0; c < columns; c++)
         {
-            Burst(pos, new Color(0.35f, 0.8f, 1f));
-            Burst(pos, new Color(0.85f, 0.95f, 1f));
-        }
-
-        foreach (var tr in objs)
-            if (tr != null) Destroy(tr.gameObject);
-
-        foreach (var t in targets)
-        {
-            if (t.x >= 0 && t.x < columns && t.y >= 0 && t.y < height)
-            {
-                cells[t.x, t.y] = null;
-                grid[t.x, t.y] = -1;
-            }
+            if (height > 1) { cells[c, 1] = null; grid[c, 1] = -1; }
+            cells[c, 0] = null; grid[c, 0] = -1;
         }
 
         StartCoroutine(CascadeGravity());
@@ -659,6 +718,7 @@ public partial class Tetris3D
         if (kbSlowTimer <= 0f) kbSlowOrig = fallInterval;
         fallInterval = kbSlowOrig * SLOW_MULT;
         kbSlowTimer = SLOW_SECONDS;
+        kbSlowTickAcc = 0f;
         Sfx(sfxRotate);
         KbToast(SalID ? "Perlambat aktif!" : "Slow active!");
     }
@@ -722,7 +782,7 @@ public partial class Tetris3D
         switch (t)
         {
             case IT_BOMB: return SalID ? "Bom" : "Bomb";
-            case IT_LINE: return SalID ? "Bersihkan Baris" : "Clear Row";
+            case IT_LINE: return SalID ? "Palu" : "Hammer";
             case IT_SLOW: return SalID ? "Perlambat" : "Slow";
             case IT_GEM:  return SalID ? "Bonus Permata" : "Gem Bonus";
             case IT_COIN: return SalID ? "Koin" : "Coin";
@@ -733,8 +793,8 @@ public partial class Tetris3D
     {
         switch (t)
         {
-            case IT_BOMB: return SalID ? "Hancurkan area blok." : "Destroy a block area.";
-            case IT_LINE: return SalID ? "Hapus 1 baris penuh." : "Remove one full row.";
+            case IT_BOMB: return SalID ? "Hancurkan separuh kotak secara acak." : "Destroy half of the blocks at random.";
+            case IT_LINE: return SalID ? "Hancurkan 2 baris terbawah." : "Smash the bottom 2 rows.";
             case IT_SLOW: return SalID ? "Balok jatuh lebih lambat." : "Blocks fall slower.";
             case IT_GEM:  return "+" + GEM_BONUS + (SalID ? " Permata." : " Gems.");
             case IT_COIN: return SalID ? "Koin masuk ke poin SALDOKU." : "Coins go to your SALDOKU points.";
