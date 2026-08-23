@@ -5,17 +5,19 @@ using UnityEngine;
 // ---------------------------------------------------------------------
 //  File TERPISAH (partial) - ADDITIVE, tidak mengubah file gameplay inti.
 //
-//  Tujuan: mengganti font UI game ke "Fatality FPS Gaming Font" TANPA
-//  perlu mengedit Tetris3D.cs. Font dicari OTOMATIS di folder Resources
-//  lewat nama yang mengandung salah satu kata kunci: "fatal", "fps",
-//  atau "gaming" (huruf besar/kecil bebas). Kalau font itu belum ada,
-//  otomatis jatuh ke font lama (ThaleahFat) supaya game tetap normal.
+//  Tujuan: mengganti font UI game ke font "Fatality FPS Gaming Font"
+//  TANPA perlu mengedit Tetris3D.cs. Font dicari OTOMATIS di folder
+//  Resources lewat nama file yang mengandung salah satu kata kunci di
+//  bawah (huruf besar/kecil bebas). Kalau tidak ketemu, otomatis jatuh
+//  ke font lama (ThaleahFat) supaya game tetap normal.
 //
-//  == CARA MENGAKTIFKAN (WAJIB) ==
-//    1. Taruh file font-nya di dalam folder "Resources" (boleh di subfolder,
-//       mis. Assets/Resources/FPSFont/...). Ini SUDAH benar.
-//    2. Commit & push file .ttf + semua .meta-nya ke GitHub.
-//    3. Selesai - font otomatis kepakai di semua teks & tombol.
+//  Catatan: file font asli dari pack ini bernama "Square-Black.ttf"
+//  (letaknya di Assets/Resources/FPSFont/FPS Gaming Font/), jadi kata
+//  kunci "square" ikut dimasukkan agar terdeteksi.
+//
+//  == CARA MENGAKTIFKAN ==
+//    File .ttf sudah berada di dalam folder Resources dan sudah di-push.
+//    Begitu game dijalankan, font otomatis kepakai di semua teks & tombol.
 // =====================================================================
 
 public partial class Tetris3D
@@ -37,8 +39,10 @@ public partial class Tetris3D
 
     Font PickUiFont()
     {
-        // 1) Utamakan font gaming baru kalau sudah ada di Resources.
-        //    Cari nama file font yang mengandung "fatal"/"fps"/"gaming".
+        // 1) Utamakan font gaming baru kalau ada di Resources.
+        //    File aslinya bernama "Square-Black", jadi cari nama yang
+        //    mengandung salah satu kata kunci berikut.
+        string[] keys = { "square", "fatal", "fps", "gaming" };
         Font[] all = Resources.LoadAll<Font>("");
         if (all != null)
         {
@@ -46,8 +50,8 @@ public partial class Tetris3D
             {
                 if (f == null) continue;
                 string n = f.name.ToLowerInvariant();
-                if (n.Contains("fatal") || n.Contains("fps") || n.Contains("gaming"))
-                    return f;
+                foreach (string k in keys)
+                    if (n.Contains(k)) return f;
             }
         }
         // 2) Cadangan: font lama (Thaleah) - biar game tetap normal.
