@@ -8,7 +8,7 @@ using GoogleMobileAds.Api;
 // =====================================================================
 //  KUBIKA TOWER x SALDOKU - GELEMBUNG ITEM DROP
 // ---------------------------------------------------------------------
-//  File TERPISAH (partial) - ADDITIVE.
+//  File TERPISAH (partial) - ADDITIF.
 // =====================================================================
 
 public partial class Tetris3D
@@ -464,24 +464,84 @@ public partial class Tetris3D
         if (grid == null || cells == null) return;
         int front = Wrap(Mathf.RoundToInt((180f - targetSpin) * columns / 360f));
         int half = BOMB_COLS / 2;
-        bool any = false;
+        var targets = new List<Vector2Int>();
         for (int dc = -half; dc <= half; dc++)
         {
             int c = Wrap(front + dc);
             for (int r = 0; r < height; r++)
+                if (cells[c, r] != null) targets.Add(new Vector2Int(c, r));
+        }
+        if (targets.Count == 0) return;
+        StartCoroutine(BombBlast(targets));
+    }
+
+    // Efek ledakan bom: kotak yang kena membesar & berkedip terang sekilas
+    // (mirip animasi cincin hancur), lalu meletus jadi partikel api/percikan
+    // sebelum benar-benar hilang. Sebelumnya blok langsung Destroy() tanpa
+    // animasi apa pun, jadi terasa seperti tidak ada ledakan sama sekali.
+    IEnumerator BombBlast(List<Vector2Int> targets)
+    {
+        Sfx(sfxClear);
+        Shake(0.35f, 0.45f);
+        Haptic(60);
+        KbToast("BOOM!");
+
+        var objs = new List<Transform>();
+        var baseScales = new List<Vector3>();
+        var mats = new List<Material>();
+        var centers = new List<Vector3>();
+        foreach (var t in targets)
+        {
+            GameObject go = cells[t.x, t.y];
+            if (go == null) continue;
+            objs.Add(go.transform);
+            baseScales.Add(go.transform.localScale);
+            centers.Add(go.transform.position);
+            var rend = go.GetComponent<Renderer>();
+            mats.Add(rend != null ? rend.material : null);
+        }
+
+        float dur = 0.32f;
+        float t2 = 0f;
+        while (t2 < dur)
+        {
+            t2 += Time.deltaTime;
+            float p = Mathf.Clamp01(t2 / dur);
+            float scaleMul = p < 0.5f ? Mathf.Lerp(1f, 1.5f, p / 0.5f) : Mathf.Lerp(1.5f, 0.01f, (p - 0.5f) / 0.5f);
+            float flash = p < 0.5f ? Mathf.Lerp(0f, 1f, p / 0.5f) : Mathf.Lerp(1f, 0f, (p - 0.5f) / 0.5f);
+            for (int i = 0; i < objs.Count; i++)
             {
-                if (cells[c, r] != null) { Destroy(cells[c, r]); cells[c, r] = null; any = true; }
-                grid[c, r] = -1;
+                if (objs[i] == null) continue;
+                objs[i].localScale = baseScales[i] * scaleMul;
+                if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
+                {
+                    Color glow = Color.Lerp(new Color(1f, 0.5f, 0.1f), Color.white, flash * 0.5f);
+                    mats[i].SetColor("_EmissionColor", glow * (0.8f + flash * 3f));
+                }
+            }
+            yield return null;
+        }
+
+        // Partikel ledakan (api & percikan) di tiap kotak yang hancur.
+        foreach (var pos in centers)
+        {
+            Burst(pos, new Color(1f, 0.55f, 0.15f));
+            Burst(pos, new Color(1f, 0.85f, 0.35f));
+        }
+
+        foreach (var tr in objs)
+            if (tr != null) Destroy(tr.gameObject);
+
+        foreach (var t in targets)
+        {
+            if (t.x >= 0 && t.x < columns && t.y >= 0 && t.y < height)
+            {
+                cells[t.x, t.y] = null;
+                grid[t.x, t.y] = -1;
             }
         }
-        if (any)
-        {
-            Sfx(sfxClear);
-            Shake(0.35f, 0.4f);
-            Haptic(60);
-            StartCoroutine(CascadeGravity());
-            KbToast("BOOM!");
-        }
+
+        StartCoroutine(CascadeGravity());
     }
 
     void ApplyClearLine()
