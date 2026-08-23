@@ -601,12 +601,12 @@ public partial class Tetris3D
             if (handTex != null)
             {
                 float swing = Mathf.Sin(Time.time * 2.4f);   // -1..1 : geser kiri-kanan
-                float travel = Mathf.Min(VW * 0.20f, 150f);  // jarak geser kanan-kiri
+                float travel = Mathf.Min(VW * 0.34f, 250f);  // jarak geser kanan-kiri (lebih lebar)
                 float hsz = tubeH * 2.0f;
                 float hx = cxc + swing * travel;             // hanya X yang berubah -> murni kanan-kiri
                 float hy = cyc - hsz * 0.6f;                 // ketinggian tetap (tidak serong)
                 Rect handR = new Rect(hx - hsz / 2f, hy, hsz, hsz);
-                float tilt = -14f;                           // miring tetap, tidak ikut goyang
+                float tilt = 0f;                             // tegak lurus -> gerak murni kanan-kiri (tidak serong)
                 Matrix4x4 mtx = GUI.matrix;
                 GUIUtility.RotateAroundPivot(tilt, handR.center);
                 GUI.DrawTexture(handR, handTex, ScaleMode.ScaleToFit, true);
