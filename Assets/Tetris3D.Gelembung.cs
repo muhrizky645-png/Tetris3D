@@ -242,9 +242,9 @@ public partial class Tetris3D
 
     static readonly string[] KB_ICON_PATH = new string[]
     {
-        "Tiny Fantasy Icons/Explosives/Boom_A",
-        "Tiny Fantasy Icons/Tools/Hammer_A",
-        "Tiny Fantasy Icons/Time/Clock_A",
+        "KubikaIcons/Boom_A",
+        "KubikaIcons/Hammer_A",
+        "KubikaIcons/Clock_A",
         "Tiny Fantasy Icons/Gems/Gems_Large_Diamond",
         "Tiny Fantasy Icons/Coins/Coins_Large_Gold",
     };
