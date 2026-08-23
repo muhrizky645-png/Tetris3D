@@ -593,23 +593,20 @@ public partial class Tetris3D
             float tubeW = Mathf.Min(VW * 0.34f, 360f);
             float tubeH = tubeW * 0.32f;
             Rect tube = new Rect(cxc - tubeW / 2f, cyc - tubeH / 2f, tubeW, tubeH);
-            FillRect(tube, new Color(0.9f, 0.95f, 1f, 0.95f));
-            FillRect(new Rect(tube.x, tube.y, tubeW * 0.06f, tube.height), new Color(0.4f, 0.65f, 0.85f, 0.95f));
-            FillRect(new Rect(tube.xMax - tubeW * 0.06f, tube.y, tubeW * 0.06f, tube.height), new Color(0.4f, 0.65f, 0.85f, 0.95f));
 
-            // Tangan penunjuk: geser kiri-kanan di atas tabung, sedikit miring,
-            // sampai pemain menyentuh layar (hintDone). Kalau tekstur tangan belum
-            // di-import, pakai panah lama sebagai cadangan biar tetap ada petunjuk.
+            // Tangan penunjuk: geser kiri-kanan, sedikit miring, sampai pemain
+            // menyentuh layar (hintDone). Kalau tekstur tangan belum di-import,
+            // pakai panah lama sebagai cadangan biar tetap ada petunjuk.
             if (handTex == null && !handTexTried) { handTex = Resources.Load<Texture2D>("KubikaIcons/Hand_A"); handTexTried = true; }
             if (handTex != null)
             {
                 float swing = Mathf.Sin(Time.time * 2.4f);   // -1..1 : geser kiri-kanan
-                float travel = tubeW * 0.34f;
-                float hsz = tubeH * 2.2f;
-                float hx = cxc + swing * travel;
-                float hy = cyc - hsz * 0.16f;                // sedikit di bawah tengah tabung
+                float travel = Mathf.Min(VW * 0.20f, 150f);  // jarak geser kanan-kiri
+                float hsz = tubeH * 2.0f;
+                float hx = cxc + swing * travel;             // hanya X yang berubah -> murni kanan-kiri
+                float hy = cyc - hsz * 0.6f;                 // ketinggian tetap (tidak serong)
                 Rect handR = new Rect(hx - hsz / 2f, hy, hsz, hsz);
-                float tilt = -16f + swing * 8f;              // rada miring + goyang ikut arah geser
+                float tilt = -14f;                           // miring tetap, tidak ikut goyang
                 Matrix4x4 mtx = GUI.matrix;
                 GUIUtility.RotateAroundPivot(tilt, handR.center);
                 GUI.DrawTexture(handR, handTex, ScaleMode.ScaleToFit, true);
