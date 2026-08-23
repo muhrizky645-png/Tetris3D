@@ -26,8 +26,9 @@ public partial class Tetris3D
     string tokoStatus = "";
 
     // Harga tiap buff (dalam Permata). Urutan: Bom, Bersihkan Baris, Perlambat.
-    // Sengaja MAHAL (499) supaya pemain lebih terdorong nonton iklan.
-    static readonly int[] TOKO_PRICE = new int[] { 499, 499, 499 };
+    // SEMENTARA di-nol-kan semua (gratis) atas permintaan - kembalikan ke
+    // harga normal nanti kalau sudah siap dirilis.
+    static readonly int[] TOKO_PRICE = new int[] { 0, 0, 0 };
 
     void EnsureToko()
     {
