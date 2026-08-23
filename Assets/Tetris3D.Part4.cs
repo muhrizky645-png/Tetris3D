@@ -2,6 +2,10 @@ using UnityEngine;
 
 public partial class Tetris3D
 {
+    // Ikon tangan penunjuk utk hint swipe (di-load dari Resources, opsional).
+    Texture2D handTex;
+    bool handTexTried;
+
     // ---------- UI (skor + tombol Android) ----------
     void FillRect(Rect r, Color col)
     {
@@ -593,7 +597,25 @@ public partial class Tetris3D
             FillRect(new Rect(tube.x, tube.y, tubeW * 0.06f, tube.height), new Color(0.4f, 0.65f, 0.85f, 0.95f));
             FillRect(new Rect(tube.xMax - tubeW * 0.06f, tube.y, tubeW * 0.06f, tube.height), new Color(0.4f, 0.65f, 0.85f, 0.95f));
 
-            if (triTex != null)
+            // Tangan penunjuk: geser kiri-kanan di atas tabung, sedikit miring,
+            // sampai pemain menyentuh layar (hintDone). Kalau tekstur tangan belum
+            // di-import, pakai panah lama sebagai cadangan biar tetap ada petunjuk.
+            if (handTex == null && !handTexTried) { handTex = Resources.Load<Texture2D>("KubikaIcons/Hand_A"); handTexTried = true; }
+            if (handTex != null)
+            {
+                float swing = Mathf.Sin(Time.time * 2.4f);   // -1..1 : geser kiri-kanan
+                float travel = tubeW * 0.34f;
+                float hsz = tubeH * 2.2f;
+                float hx = cxc + swing * travel;
+                float hy = cyc - hsz * 0.16f;                // sedikit di bawah tengah tabung
+                Rect handR = new Rect(hx - hsz / 2f, hy, hsz, hsz);
+                float tilt = -16f + swing * 8f;              // rada miring + goyang ikut arah geser
+                Matrix4x4 mtx = GUI.matrix;
+                GUIUtility.RotateAroundPivot(tilt, handR.center);
+                GUI.DrawTexture(handR, handTex, ScaleMode.ScaleToFit, true);
+                GUI.matrix = mtx;
+            }
+            else if (triTex != null)
             {
                 float ah = tubeH * 1.1f;
                 Color oldc = GUI.color;
