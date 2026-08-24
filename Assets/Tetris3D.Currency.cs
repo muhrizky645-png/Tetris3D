@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 // =====================================================================
@@ -102,9 +104,11 @@ public partial class Tetris3D
             int gain = (lines - cur_linesSeen) * PERMATA_PER_LINE;
             if (comboCount >= 2) gain += comboCount * PERMATA_COMBO_BONUS;
             AddPermata(gain);
+            if (gain > 0) SpawnGemBurst(gain);
         }
         // game baru: 'lines' balik 0 -> samakan tanpa memberi Permata
         cur_linesSeen = lines;
+        CurTickGems();
     }
 
     string CurConnect()
@@ -135,6 +139,14 @@ public partial class Tetris3D
         EnsureCurrency();
         Rect hsRect, gemRect, coinRect, pauseRect;
         GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
+
+        // Denyut ungu di sekeliling chip Permata sesaat setelah permata masuk.
+        if (curGemPulse > 0f)
+        {
+            float pp = Mathf.Clamp01(curGemPulse / 0.32f);
+            RoundRect(new Rect(gemRect.x - 7f, gemRect.y - 7f, gemRect.width + 14f, gemRect.height + 14f),
+                new Color(0.62f, 0.35f, 1f, 0.55f * pp), 24f);
+        }
 
         // Permata (selalu tampil)
         DrawCurrencyChipCompact(gemRect, new Color(0.62f, 0.35f, 1f), true,
@@ -241,6 +253,131 @@ public partial class Tetris3D
         GuiText(new Rect(r.x, r.y - 1f, r.width, r.height), "K",
             Mathf.RoundToInt(r.height * 0.7f), new Color(0.5f, 0.35f, 0.05f), TextAnchor.MiddleCenter);
     }
+
+    // ================== ANIMASI PERMATA BERHAMBURAN -> CHIP ==================
+    // Saat baris hancur & Permata bertambah, butiran permata "meletus" dari
+    // area baris lalu DITARIK ke chip Permata di HUD atas -> user paham dari
+    // mana permata didapat. Chip berdenyut ungu + bunyi "cha-ching".
+    struct CurGem { public float x, y, vx, vy, hx, hy, t, dur, rot, rotv, size; public bool hooked; }
+    List<CurGem> curGems;
+    float curGemPulse;
+    bool  curChaQueued;
+    AudioClip curSfxCoin;
+
+    // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
+    void SpawnGemBurst(int gain)
+    {
+        if (curGems == null) curGems = new List<CurGem>();
+        int n = Mathf.Clamp(3 + gain / 4, 4, 12);
+        float srcX = VW * 0.5f;
+        float srcY = VH * 0.46f;
+        for (int i = 0; i < n; i++)
+        {
+            float ang = Random.Range(0f, 6.2832f);
+            float spd = Random.Range(260f, 520f);
+            CurGem g = new CurGem();
+            g.x = srcX + Random.Range(-30f, 30f);
+            g.y = srcY + Random.Range(-30f, 30f);
+            g.vx = Mathf.Cos(ang) * spd;
+            g.vy = Mathf.Sin(ang) * spd - Random.Range(60f, 180f);
+            g.t = 0f;
+            g.dur = Random.Range(0.75f, 1.05f);
+            g.rot = Random.Range(0f, 360f);
+            g.rotv = Random.Range(-260f, 260f);
+            g.size = Random.Range(20f, 32f);
+            g.hooked = false;
+            curGems.Add(g);
+        }
+    }
+
+    // Maju-kan animasi butiran tiap frame + kurangi denyut chip. Dari CurrencyTick.
+    void CurTickGems()
+    {
+        float dt = Time.unscaledDeltaTime;
+        if (curGemPulse > 0f) curGemPulse -= dt;
+
+        if (curGems == null || curGems.Count == 0) return;
+
+        Rect hsRect, gemRect, coinRect, pauseRect;
+        GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
+        Vector2 target = gemRect.center;
+
+        for (int i = curGems.Count - 1; i >= 0; i--)
+        {
+            CurGem g = curGems[i];
+            g.t += dt;
+            float p = g.dur > 0f ? Mathf.Clamp01(g.t / g.dur) : 1f;
+            g.rot += g.rotv * dt;
+
+            if (p < 0.28f)
+            {
+                // fase meletus bebas (gravitasi ringan)
+                g.vy += 620f * dt;
+                g.x += g.vx * dt;
+                g.y += g.vy * dt;
+            }
+            else
+            {
+                // fase ditarik ke chip (ease-in kuat)
+                if (!g.hooked) { g.hooked = true; g.hx = g.x; g.hy = g.y; }
+                float q = (p - 0.28f) / 0.72f;
+                float e = q * q * q;
+                g.x = Mathf.LerpUnclamped(g.hx, target.x, e);
+                g.y = Mathf.LerpUnclamped(g.hy, target.y, e);
+                g.size = Mathf.Lerp(g.size, 10f, e);
+            }
+
+            curGems[i] = g;
+
+            if (p >= 1f)
+            {
+                curGems.RemoveAt(i);
+                curGemPulse = 0.32f;
+                if (!curChaQueued) { curChaQueued = true; CurPlayChaChing(); }
+            }
+        }
+        if (curGems.Count == 0) curChaQueued = false;
+    }
+
+    // Gambar butiran permata. Dipanggil KubikaCurrencyHUD.OnGUI (di atas HUD).
+    public void DrawGemBurst()
+    {
+        if (curGems == null || curGems.Count == 0) return;
+        Color gc = new Color(0.62f, 0.35f, 1f);
+        for (int i = 0; i < curGems.Count; i++)
+        {
+            CurGem g = curGems[i];
+            Rect ir = new Rect(g.x - g.size * 0.5f, g.y - g.size * 0.5f, g.size, g.size);
+            Matrix4x4 m = GUI.matrix;
+            GUIUtility.RotateAroundPivot(g.rot, new Vector2(g.x, g.y));
+            DrawGemIcon(ir, gc);
+            GUI.matrix = m;
+        }
+    }
+
+    // Denyut chip permata + bunyi saat permata mendarat. Juga dipanggil saat
+    // klaim gelembung Permata (ApplyBuff IT_GEM).
+    public void CurGemChipPulse()
+    {
+        curGemPulse = 0.32f;
+        CurPlayChaChing();
+    }
+
+    void CurPlayChaChing()
+    {
+        if (!(soundOn && sfxOn) || sfx == null) return;
+        if (curSfxCoin == null) curSfxCoin = MakeTone("cur_coin", 900f, 0.10f, 0.5f, 0, 70f);
+        StartCoroutine(CoChaChing());
+    }
+
+    IEnumerator CoChaChing()
+    {
+        KbSfxAt(curSfxCoin, 1.0f);
+        yield return new WaitForSeconds(0.07f);
+        KbSfxAt(curSfxCoin, 1.5f);
+        yield return null;
+        if (sfx != null) sfx.pitch = 1f;
+    }
 }
 
 // =====================================================================
@@ -278,5 +415,6 @@ public class KubikaCurrencyHUD : MonoBehaviour
         game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
         // Chip permata & koin di baris HUD atas (posisi diambil dari GetHudRow).
         game.DrawCurrencyHUD();
+        game.DrawGemBurst();
     }
 }
