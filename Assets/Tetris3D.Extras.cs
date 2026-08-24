@@ -11,6 +11,7 @@ using UnityEngine;
 //   - Slider sensitivitas geser (dragStep) di menu Jeda
 //   - REVIVE saat game over: 5 detik hitung mundur + SFX detikan,
 //     lanjut dengan menonton iklan berhadiah (AdMob). Maks 1x.
+//   - Skor akhir: animasi angka naik cepat + SFX tick + fanfare rekor baru.
 // =====================================================================
 public partial class Tetris3D
 {
@@ -34,6 +35,17 @@ public partial class Tetris3D
     // SFX detikan revive
     AudioClip sfxTick;
 
+    // Skor akhir (game over): animasi angka naik + suara + deteksi rekor baru
+    int runBaselineHi;      // rekor sebelum run ini (buat deteksi rekor baru)
+    bool goAnimInit;        // animasi skor game over sudah diinit
+    float goAnimStart;      // waktu mulai animasi (Time.time)
+    float goAnimShown;      // angka skor yang sedang ditampilkan
+    int goTickIndex;        // jumlah tick SFX yang sudah dibunyikan
+    bool goWasNewHigh;      // run ini memecahkan rekor
+    bool goHighPlayed;      // suara penghargaan sudah dimainkan
+    AudioClip sfxCount;     // tick cepat saat angka naik
+    AudioClip sfxNewHigh;   // fanfare penghargaan rekor baru
+
     // Toast kecil (mis. info iklan belum siap)
     string extrasToast = "";
     float extrasToastTime;
@@ -41,6 +53,10 @@ public partial class Tetris3D
     // ---------- LOAD / SIMPAN PENGATURAN ----------
     void LoadExtrasPrefs()
     {
+        // Rekor sebelum run ini (buat deteksi rekor baru di layar game over).
+        // Ditangkap saat skor masih 0 di awal tiap run, sebelum rekor ter-update.
+        if (started && !gameOver && score == 0) runBaselineHi = highScore;
+
         if (extrasLoaded) return;
         extrasLoaded = true;
         dragStep = PlayerPrefs.GetFloat("kubika_dragstep", dragStep);
@@ -150,6 +166,7 @@ public partial class Tetris3D
         ResetRevive();
         prevGameOver = false;
         prevLines = 0;
+        goAnimInit = false;
         RetryGame();
     }
 
@@ -158,6 +175,7 @@ public partial class Tetris3D
         ResetRevive();
         prevGameOver = false;
         prevLines = 0;
+        goAnimInit = false;
         GoHome();
     }
 
@@ -260,6 +278,81 @@ public partial class Tetris3D
 
         if (!string.IsNullOrEmpty(extrasToast) && extrasToastTime > 0f)
             GuiText(new Rect(0f, skip.yMax + 12f, VW, 30f), extrasToast, 20, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
+    }
+
+    // ---------- UI: skor akhir + animasi angka naik + suara ----------
+    // Dipanggil dari layar Game Over biasa (Part4). Angka naik cepat dari 0 ke skor
+    // dengan SFX tick; kalau memecahkan rekor, tambah fanfare + getar.
+    void EnsureScoreSfx()
+    {
+        if (sfxCount == null) sfxCount = MakeTone("count", 1200f, 0.03f, 0.32f, 0, 1500f);
+        if (sfxNewHigh == null) sfxNewHigh = MakeArp("newhi", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f, 1567.98f, 2093.00f }, 0.12f, 0.6f);
+    }
+
+    string TNewHigh()
+    {
+        switch (lang)
+        {
+            case Lang.ID: return "REKOR BARU!";
+            case Lang.ES: return "\u00a1NUEVO R\u00c9CORD!";
+            case Lang.PT: return "NOVO RECORDE!";
+            case Lang.FR: return "NOUVEAU RECORD!";
+            default: return "NEW BEST!";
+        }
+    }
+
+    void DrawGameOverScore()
+    {
+        EnsureScoreSfx();
+
+        if (!goAnimInit)
+        {
+            goAnimInit = true;
+            goAnimStart = Time.time;
+            goTickIndex = 0;
+            goHighPlayed = false;
+            goWasNewHigh = score > runBaselineHi && score > 0;
+            goAnimShown = 0f;
+        }
+
+        // Durasi animasi: cepat (~0.35-1.1 dtk) biar greget tapi tetap kebaca.
+        float dur = Mathf.Clamp(score / 18000f, 0.35f, 1.1f);
+        float elapsed = Time.time - goAnimStart;
+        float p = dur <= 0f ? 1f : Mathf.Clamp01(elapsed / dur);
+        float pe = 1f - (1f - p) * (1f - p); // sedikit melambat di akhir
+        goAnimShown = pe * score;
+        int shown = Mathf.RoundToInt(goAnimShown);
+
+        // SFX tick cepat selama menghitung (maju sekali per interval; aman dari OnGUI ganda
+        // karena Time.time sama di beberapa pass dalam satu frame).
+        if (p < 1f)
+        {
+            int ticks = Mathf.FloorToInt(elapsed / 0.045f);
+            if (ticks > goTickIndex) { goTickIndex = ticks; Sfx(sfxCount); }
+        }
+        else if (!goHighPlayed)
+        {
+            goHighPlayed = true;
+            if (goWasNewHigh) { Sfx(sfxNewHigh); Haptic(60); }
+            else Sfx(sfxCount);
+        }
+
+        // Label kecil "SKOR"
+        GuiText(new Rect(0f, VH * 0.375f, VW, 26f), T("score"), 22, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter);
+        // Angka skor besar (emas kalau rekor baru, putih kalau biasa)
+        Color numCol = goWasNewHigh ? new Color(1f, 0.86f, 0.32f) : Color.white;
+        GuiText(new Rect(0f, VH * 0.40f, VW, 92f), "" + shown, 80, numCol, TextAnchor.MiddleCenter);
+
+        // Baris rekor / banner REKOR BARU (muncul berkedip setelah animasi selesai)
+        if (goWasNewHigh && p >= 1f)
+        {
+            float a = 0.65f + 0.35f * Mathf.Sin(Time.time * 6f);
+            GlowText(new Rect(0f, VH * 0.475f, VW, 40f), TNewHigh(), 30, new Color(1f, 0.86f, 0.32f), a);
+        }
+        else
+        {
+            GuiText(new Rect(0f, VH * 0.478f, VW, 30f), T("record") + " " + highScore, 22, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleCenter);
+        }
     }
 
     // ---------- UI: slider bertema (menu Jeda) ----------
