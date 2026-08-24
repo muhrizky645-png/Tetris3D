@@ -254,13 +254,14 @@ public partial class Tetris3D
             Mathf.RoundToInt(r.height * 0.7f), new Color(0.5f, 0.35f, 0.05f), TextAnchor.MiddleCenter);
     }
 
-    // ============ ANIMASI PERMATA 3D: OBJEK ASLI DARI BLOCK -> BAR ATAS ======
-    // Tiap block yang hancur memunculkan 1 objek permata 3D ASLI (mesh kristal /
-    // octahedron, ungu mengkilap emissive) tepat di posisi block itu di DUNIA 3D
-    // -- jadi permata benar-benar NYATU dengan scene (kena perspektif, cahaya,
-    // bloom), bukan lagi overlay 2D. Alur ala PECAHAN KACA:
-    //  1) Kristal muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR
-    //     MELEBAR di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan.
+    // ============ ANIMASI PERMATA DARI BLOCK -> BAR ATAS ====================
+    // Tiap block yang hancur memunculkan 1 objek permata tepat di posisi block
+    // itu di DUNIA 3D. Objeknya pakai GAMBAR/ASSET permata yang SAMA dengan ikon
+    // Permata di HUD (KubikaIcons/Gem_A) sebagai SPRITE billboard (selalu
+    // menghadap kamera) -> jadi bentuknya MIRIP ikon. Kalau asset tidak ada,
+    // otomatis fallback ke mesh kristal 3D prosedural. Alur ala PECAHAN KACA:
+    //  1) Muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR MELEBAR
+    //     di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan.
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -272,14 +273,14 @@ public partial class Tetris3D
 
     struct CurGem3D
     {
-        public Transform tf;       // objek permata 3D di DUNIA
+        public Transform tf;       // objek permata di DUNIA
         public Vector3 vel;        // kecepatan dunia (fase jatuh)
         public Vector3 rest;       // titik mendarat/menggerombol di dasar
         public Vector3 riseFrom;   // posisi saat mulai naik
         public Vector3 baseScale;  // skala awal (buat mengecil saat naik)
         public float t;            // progres naik (0..1 * dur)
         public float dur;          // durasi naik permata ini (kecil = cepat)
-        public float spinV;        // kecepatan putar visual (kilau)
+        public float spinV;        // kecepatan putar visual (kilau, mode mesh)
         public bool arrived;       // sudah sampai chip
     }
 
@@ -293,6 +294,8 @@ public partial class Tetris3D
 
     static Mesh kbGemMesh;
     Material curGemMat;
+    Sprite   curGemSprite;      // gambar permata (asset ikon) utk mode billboard
+    bool     curGemSpriteTried; // sudah coba load asset gambar permata?
 
     // Mesh kristal (octahedron memanjang, faset datar biar berkilau saat kena
     // cahaya & bloom). Dibuat SEKALI lalu dipakai bersama semua permata.
@@ -344,33 +347,81 @@ public partial class Tetris3D
         tris.Add(bi); tris.Add(bi + 1); tris.Add(bi + 2);
     }
 
-    // Buat satu objek permata 3D di posisi dunia tertentu.
+    // Buat satu objek permata di posisi dunia tertentu.
+    // Kalau ADA asset gambar permata (KubikaIcons/Gem_A -- sama dg ikon HUD),
+    // pakai SpriteRenderer billboard supaya bentuknya SAMA PERSIS dengan ikon.
+    // Kalau asset TIDAK ada -> fallback ke mesh kristal 3D prosedural.
     Transform CurMakeGem(Vector3 worldPos, float size)
     {
-        if (curGemMat == null)
+        if (!curGemSpriteTried)
         {
-            curGemMat = MakeMat(new Color(0.62f, 0.35f, 1f)); // ungu (URP Lit + emissive)
-            if (curGemMat.HasProperty("_Metallic"))   curGemMat.SetFloat("_Metallic", 0.2f);
-            if (curGemMat.HasProperty("_Smoothness")) curGemMat.SetFloat("_Smoothness", 0.95f);
-            if (curGemMat.HasProperty("_EmissionColor"))
-                curGemMat.SetColor("_EmissionColor", new Color(0.62f, 0.35f, 1f) * 1.4f);
+            curGemSpriteTried = true;
+            Texture2D t = Resources.Load<Texture2D>("KubikaIcons/Gem_A");
+            if (t != null)
+                curGemSprite = Sprite.Create(t, new Rect(0f, 0f, t.width, t.height),
+                    new Vector2(0.5f, 0.5f), 100f);
         }
+
         GameObject g = new GameObject("Gem");
-        var mf = g.AddComponent<MeshFilter>();
-        mf.sharedMesh = GemMesh();
-        var mr = g.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = curGemMat;
-        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        mr.receiveShadows = false;
+        if (curGemSprite != null)
+        {
+            // ---- MODE SPRITE: pakai gambar permata (mirip ikon) ----
+            var sr = g.AddComponent<SpriteRenderer>();
+            sr.sprite = curGemSprite;
+            sr.color = Color.white;
+            // Skala supaya lebar sprite kira-kira 2x 'size' (sepadan mesh lama).
+            float px = Mathf.Max(curGemSprite.bounds.size.x, curGemSprite.bounds.size.y);
+            float s = (px > 0.0001f) ? (size * 2.0f / px) : size;
+            g.transform.localScale = Vector3.one * s;
+        }
+        else
+        {
+            // ---- MODE MESH 3D: fallback kalau asset gambar tidak ada ----
+            if (curGemMat == null)
+            {
+                curGemMat = MakeMat(new Color(0.62f, 0.35f, 1f)); // ungu (URP Lit + emissive)
+                if (curGemMat.HasProperty("_Metallic"))   curGemMat.SetFloat("_Metallic", 0.2f);
+                if (curGemMat.HasProperty("_Smoothness")) curGemMat.SetFloat("_Smoothness", 0.95f);
+                if (curGemMat.HasProperty("_EmissionColor"))
+                    curGemMat.SetColor("_EmissionColor", new Color(0.62f, 0.35f, 1f) * 1.4f);
+            }
+            var mf = g.AddComponent<MeshFilter>();
+            mf.sharedMesh = GemMesh();
+            var mr = g.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = curGemMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            g.transform.localScale = Vector3.one * size;
+            g.transform.localRotation = Random.rotation;
+        }
         g.transform.position = worldPos;
-        g.transform.localScale = Vector3.one * size;
-        g.transform.localRotation = Random.rotation;
         return g.transform;
+    }
+
+    // Orientasi permata tiap frame: kalau mode SPRITE -> billboard menghadap
+    // kamera (gambar selalu tampak penuh, sama seperti ikon). Kalau mode MESH 3D
+    // -> berputar biasa biar berkilau.
+    void CurSpinOrFace(Transform tf, float spinY, float spinZ, float dt)
+    {
+        if (tf == null) return;
+        if (curGemSprite != null)
+        {
+            if (cam != null)
+            {
+                Vector3 fwd = tf.position - cam.transform.position;
+                if (fwd.sqrMagnitude > 0.0001f)
+                    tf.rotation = Quaternion.LookRotation(fwd.normalized, Vector3.up);
+            }
+        }
+        else
+        {
+            tf.Rotate(0f, spinY * dt, spinZ * dt, Space.Self);
+        }
     }
 
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
     // Tiap sel cincin yang hancur (posisi WORLD direkam CurCaptureRingBurst dari
-    // FlashClear) = 1 permata 3D yang lahir tepat di posisi block itu.
+    // FlashClear) = 1 permata yang lahir tepat di posisi block itu.
     void SpawnGemBurst(int gain)
     {
         if (curGems3D == null) curGems3D = new List<CurGem3D>();
@@ -491,7 +542,7 @@ public partial class Tetris3D
     }
 
     // Titik UI logis (VW/VH, dari GetHudRow) -> titik DUNIA di depan kamera pada
-    // kedalaman 'depth'. Dipakai supaya permata 3D naik tepat ke chip Permata.
+    // kedalaman 'depth'. Dipakai supaya permata naik tepat ke chip Permata.
     Vector3 CurUiToWorld(Vector2 uiPoint, float depth)
     {
         if (cam == null) return Vector3.zero;
@@ -500,7 +551,7 @@ public partial class Tetris3D
         return cam.ScreenToWorldPoint(sp);
     }
 
-    // Maju-kan animasi permata 3D tiap frame + kurangi denyut chip. Dari CurrencyTick.
+    // Maju-kan animasi permata tiap frame + kurangi denyut chip. Dari CurrencyTick.
     void CurTickGems()
     {
         float dt = Time.unscaledDeltaTime;
@@ -546,7 +597,7 @@ public partial class Tetris3D
                 p.x += (g.rest.x - p.x) * ax;
                 p.z += (g.rest.z - p.z) * ax;
                 g.tf.position = p;
-                g.tf.Rotate(0f, g.spinV * dt, g.spinV * 0.5f * dt, Space.Self);
+                CurSpinOrFace(g.tf, g.spinV, g.spinV * 0.5f, dt);
                 bool resting = (p.y <= g.rest.y + 0.02f) && Mathf.Abs(g.vel.y) < 0.6f
                     && new Vector2(g.rest.x - p.x, g.rest.z - p.z).sqrMagnitude < 0.04f;
                 if (!resting) allRest = false;
@@ -560,7 +611,7 @@ public partial class Tetris3D
             for (int i = 0; i < curGems3D.Count; i++)
             {
                 CurGem3D g = curGems3D[i];
-                if (g.tf != null) g.tf.Rotate(0f, g.spinV * dt, 0f, Space.Self);
+                CurSpinOrFace(g.tf, g.spinV, 0f, dt);
                 curGems3D[i] = g;
             }
             if (curGemPhaseT >= HOLD_DUR)
@@ -605,7 +656,7 @@ public partial class Tetris3D
                                            Vector3.Lerp(mid, target, e), e);
                 g.tf.position = pos;
                 g.tf.localScale = Vector3.Lerp(g.baseScale, g.baseScale * 0.12f, e); // mengecil -> masuk chip
-                g.tf.Rotate(0f, g.spinV * 2f * dt, 0f, Space.Self);
+                CurSpinOrFace(g.tf, g.spinV * 2f, 0f, dt);
                 if (q >= 1f)
                 {
                     g.arrived = true;
@@ -629,8 +680,8 @@ public partial class Tetris3D
         }
     }
 
-    // Permata kini objek 3D asli (dirender kamera), jadi TIDAK perlu digambar di
-    // OnGUI lagi. Disisakan sebagai no-op agar pemanggil lama tetap aman.
+    // Permata kini objek dunia asli (dirender kamera), jadi TIDAK perlu digambar
+    // di OnGUI lagi. Disisakan sebagai no-op agar pemanggil lama tetap aman.
     public void DrawGemBurst() { }
 
     // Denyut chip permata + bunyi saat permata masuk. Juga dipanggil saat klaim
@@ -683,7 +734,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
     void Update()
     {
         FindGame();
-        if (game != null) game.CurrencyTick(); // animasi permata 3D jalan tiap frame
+        if (game != null) game.CurrencyTick(); // animasi permata jalan tiap frame
     }
 
     void OnGUI()
