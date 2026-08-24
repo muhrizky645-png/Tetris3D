@@ -241,7 +241,9 @@ public partial class Tetris3D
                 reviveTimer -= Time.deltaTime;
                 reviveTickAcc += Time.deltaTime;
                 if (reviveTickAcc >= 1f) { reviveTickAcc -= 1f; Sfx(sfxTick); Haptic(25); }
-                if (reviveTimer <= 0f) { reviveOffer = false; reviveDeclined = true; }
+                // Waktu habis sendiri = sama persis dengan menekan LEWATI (DeclineRevive):
+                // reset animasi skor biar count-up TETAP jalan, bukan langsung lompat ke angka akhir.
+                if (reviveTimer <= 0f) DeclineRevive();
                 return;
             }
 
@@ -459,54 +461,54 @@ public partial class Tetris3D
         loc = new Dictionary<string, string[]>
         {
             { "subtitle",   new[]{ "3D CYLINDER", "3D SILINDER", "CILINDRO 3D", "CILINDRO 3D", "CYLINDRE 3D" } },
-            { "record",     new[]{ "BEST", "REKOR", "RÉCORD", "RECORDE", "RECORD" } },
+            { "record",     new[]{ "BEST", "REKOR", "R\u00c9CORD", "RECORDE", "RECORD" } },
             { "play",       new[]{ "PLAY", "MAIN", "JUGAR", "JOGAR", "JOUER" } },
-            { "pressPlay",  new[]{ "Press PLAY to start", "Tekan MAIN untuk mulai", "Pulsa JUGAR para empezar", "Toque JOGAR para começar", "Appuyez sur JOUER" } },
+            { "pressPlay",  new[]{ "Press PLAY to start", "Tekan MAIN untuk mulai", "Pulsa JUGAR para empezar", "Toque JOGAR para come\u00e7ar", "Appuyez sur JOUER" } },
             { "swipeHint",  new[]{ "Swipe = rotate tube", "Geser layar = putar tabung", "Desliza = girar el tubo", "Arraste = girar o tubo", "Glissez = tourner le tube" } },
-            { "ctrlHint",   new[]{ "ROTATE  •  DOWN  •  DROP", "ROTASI  •  TURUN  •  JATUH", "GIRAR  •  BAJAR  •  CAER", "GIRAR  •  DESCER  •  SOLTAR", "TOURNER  •  BAS  •  LÂCHER" } },
+            { "ctrlHint",   new[]{ "ROTATE  \u2022  DOWN  \u2022  DROP", "ROTASI  \u2022  TURUN  \u2022  JATUH", "GIRAR  \u2022  BAJAR  \u2022  CAER", "GIRAR  \u2022  DESCER  \u2022  SOLTAR", "TOURNER  \u2022  BAS  \u2022  L\u00c2CHER" } },
             { "pause",      new[]{ "PAUSE", "JEDA", "PAUSA", "PAUSA", "PAUSE" } },
             { "resume",     new[]{ "RESUME", "LANJUT", "CONTINUAR", "CONTINUAR", "REPRENDRE" } },
             { "restart",    new[]{ "RESTART", "ULANG", "REINICIAR", "REINICIAR", "RECOMMENCER" } },
-            { "mainmenu",   new[]{ "MAIN MENU", "KE MENU", "MENÚ", "MENU", "MENU" } },
+            { "mainmenu",   new[]{ "MAIN MENU", "KE MENU", "MEN\u00da", "MENU", "MENU" } },
             { "sfx",        new[]{ "Sound FX", "Efek Suara (SFX)", "Efectos (SFX)", "Efeitos (SFX)", "Effets (SFX)" } },
-            { "music",      new[]{ "Music", "Musik", "Música", "Música", "Musique" } },
+            { "music",      new[]{ "Music", "Musik", "M\u00fasica", "M\u00fasica", "Musique" } },
             { "score",      new[]{ "SCORE", "SKOR", "PUNTOS", "PONTOS", "SCORE" } },
-            { "lines",      new[]{ "Lines", "Baris", "Líneas", "Linhas", "Lignes" } },
+            { "lines",      new[]{ "Lines", "Baris", "L\u00edneas", "Linhas", "Lignes" } },
             { "lvl",        new[]{ "Lv", "Lv", "Nv", "Nv", "Niv" } },
             { "cols",       new[]{ "Cols", "Kolom", "Cols", "Cols", "Cols" } },
-            { "level",      new[]{ "LEVEL", "LEVEL", "NIVEL", "NÍVEL", "NIVEAU" } },
+            { "level",      new[]{ "LEVEL", "LEVEL", "NIVEL", "N\u00cdVEL", "NIVEAU" } },
             { "playAgain",  new[]{ "PLAY AGAIN", "MAIN LAGI", "JUGAR OTRA VEZ", "JOGAR DE NOVO", "REJOUER" } },
             { "rotate",     new[]{ "ROTATE", "ROTASI", "GIRAR", "GIRAR", "TOURNER" } },
-            { "drop",       new[]{ "DROP", "JATUH", "CAER", "SOLTAR", "LÂCHER" } },
+            { "drop",       new[]{ "DROP", "JATUH", "CAER", "SOLTAR", "L\u00c2CHER" } },
             { "down",       new[]{ "DOWN", "TURUN", "BAJAR", "DESCER", "BAS" } },
-            { "next",       new[]{ "NEXT", "BERIKUTNYA", "SIGUIENTE", "PRÓXIMO", "SUIVANT" } },
+            { "next",       new[]{ "NEXT", "BERIKUTNYA", "SIGUIENTE", "PR\u00d3XIMO", "SUIVANT" } },
             { "swipeBig",   new[]{ "SWIPE TO ROTATE THE TUBE", "GESER UNTUK MEMUTAR TABUNG", "DESLIZA PARA GIRAR EL TUBO", "ARRASTE PARA GIRAR O TUBO", "GLISSEZ POUR TOURNER LE TUBE" } },
-            { "touchStart", new[]{ "touch screen to start", "sentuh layar buat mulai", "toca para empezar", "toque para começar", "touchez pour commencer" } },
+            { "touchStart", new[]{ "touch screen to start", "sentuh layar buat mulai", "toca para empezar", "toque para come\u00e7ar", "touchez pour commencer" } },
             { "rankings",   new[]{ "RANKINGS", "PERINGKAT", "RANKING", "RANKING", "CLASSEMENT" } },
             { "viewAll",    new[]{ "Tap for all", "Ketuk lihat semua", "Ver todo", "Ver tudo", "Tout voir" } },
-            { "setProfile", new[]{ "Set profile", "Buat profil", "Crear perfil", "Criar perfil", "Créer profil" } },
+            { "setProfile", new[]{ "Set profile", "Buat profil", "Crear perfil", "Criar perfil", "Cr\u00e9er profil" } },
             { "saveProfile", new[]{ "SAVE", "SIMPAN", "GUARDAR", "SALVAR", "ENREGISTRER" } },
             { "profileTitle", new[]{ "YOUR PROFILE", "PROFIL KAMU", "TU PERFIL", "SEU PERFIL", "TON PROFIL" } },
             { "nameLabel",  new[]{ "Name", "Nama", "Nombre", "Nome", "Nom" } },
-            { "countryLabel", new[]{ "Country", "Negara", "País", "País", "Pays" } },
+            { "countryLabel", new[]{ "Country", "Negara", "Pa\u00eds", "Pa\u00eds", "Pays" } },
             { "submit",     new[]{ "SAVE & SUBMIT", "SIMPAN & KIRIM", "GUARDAR Y ENVIAR", "SALVAR E ENVIAR", "ENREGISTRER" } },
-            { "you",        new[]{ "YOU", "KAMU", "TÚ", "VOCÊ", "TOI" } },
+            { "you",        new[]{ "YOU", "KAMU", "T\u00da", "VOC\u00ca", "TOI" } },
             { "loading",    new[]{ "Loading...", "Memuat...", "Cargando...", "Carregando...", "Chargement..." } },
             { "close",      new[]{ "CLOSE", "TUTUP", "CERRAR", "FECHAR", "FERMER" } },
-            { "yourRank",   new[]{ "Your rank", "Peringkatmu", "Tu rango", "Sua posição", "Ton rang" } },
-            { "unranked",   new[]{ "Not ranked yet", "Belum masuk peringkat", "Sin clasificar", "Sem classificação", "Non classé" } },
+            { "yourRank",   new[]{ "Your rank", "Peringkatmu", "Tu rango", "Sua posi\u00e7\u00e3o", "Ton rang" } },
+            { "unranked",   new[]{ "Not ranked yet", "Belum masuk peringkat", "Sin clasificar", "Sem classifica\u00e7\u00e3o", "Non class\u00e9" } },
             { "enterName",  new[]{ "Enter your name first", "Isi nama dulu", "Escribe tu nombre", "Digite seu nome", "Entre ton nom" } },
             { "connecting", new[]{ "Connecting...", "Menyambung...", "Conectando...", "Conectando...", "Connexion..." } },
-            { "noScores",   new[]{ "No scores yet", "Belum ada skor", "Sin puntajes aún", "Sem pontuações ainda", "Aucun score" } },
+            { "noScores",   new[]{ "No scores yet", "Belum ada skor", "Sin puntajes a\u00fan", "Sem pontua\u00e7\u00f5es ainda", "Aucun score" } },
             { "sending",    new[]{ "Sending...", "Mengirim...", "Enviando...", "Enviando...", "Envoi..." } },
-            { "reviveAsk",  new[]{ "Continue playing?", "Lanjut main?", "¿Seguir jugando?", "Continuar jogando?", "Continuer ?" } },
-            { "watchAd",    new[]{ "WATCH AD & REVIVE", "TONTON IKLAN & LANJUT", "VER ANUNCIO Y SEGUIR", "VER ANÚNCIO E VOLTAR", "PUB & CONTINUER" } },
+            { "reviveAsk",  new[]{ "Continue playing?", "Lanjut main?", "\u00bfSeguir jugando?", "Continuar jogando?", "Continuer ?" } },
+            { "watchAd",    new[]{ "WATCH AD & REVIVE", "TONTON IKLAN & LANJUT", "VER ANUNCIO Y SEGUIR", "VER AN\u00daNCIO E VOLTAR", "PUB & CONTINUER" } },
             { "skipRevive", new[]{ "SKIP", "LEWATI", "OMITIR", "PULAR", "PASSER" } },
-            { "adNotReady", new[]{ "Ad not ready yet", "Iklan belum tersedia", "Anuncio no disponible", "Anúncio indisponível", "Pub indisponible" } },
-            { "sens",       new[]{ "Swipe sensitivity", "Sensitivitas geser", "Sensibilidad", "Sensibilidade", "Sensibilité" } },
+            { "adNotReady", new[]{ "Ad not ready yet", "Iklan belum tersedia", "Anuncio no disponible", "An\u00fancio indispon\u00edvel", "Pub indisponible" } },
+            { "sens",       new[]{ "Swipe sensitivity", "Sensitivitas geser", "Sensibilidad", "Sensibilidade", "Sensibilit\u00e9" } },
             { "sensLow",    new[]{ "Calm", "Santai", "Suave", "Calmo", "Doux" } },
-            { "sensHigh",   new[]{ "Sensitive", "Sensitif", "Sensible", "Sensível", "Sensible" } },
-            { "haptic",     new[]{ "Vibration", "Getaran", "Vibración", "Vibração", "Vibration" } },
+            { "sensHigh",   new[]{ "Sensitive", "Sensitif", "Sensible", "Sens\u00edvel", "Sensible" } },
+            { "haptic",     new[]{ "Vibration", "Getaran", "Vibraci\u00f3n", "Vibra\u00e7\u00e3o", "Vibration" } },
         };
     }
 

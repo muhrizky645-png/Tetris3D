@@ -160,6 +160,19 @@ public partial class Tetris3D
         reviveTickAcc = 0f;
     }
 
+    // Akhiri tawaran revive. Dipanggil dari DUA jalur yang HARUS sama persis:
+    //   1) pemain menekan tombol LEWATI, dan
+    //   2) hitung mundur habis sendiri (Part3.Update).
+    // Selain set flag, reset goAnimInit=false biar animasi angka skor di layar
+    // Game Over SELALU mulai fresh dari 0 (bukan langsung lompat ke angka akhir),
+    // jadi count-up tetap terlihat walau cooldown dibiarkan habis sendiri.
+    void DeclineRevive()
+    {
+        reviveOffer = false;
+        reviveDeclined = true;
+        goAnimInit = false;
+    }
+
     // Retry versi lengkap: reset status revive dulu, lalu jalankan logika asli.
     void RestartGameFull()
     {
@@ -179,7 +192,7 @@ public partial class Tetris3D
         GoHome();
     }
 
-    // Dipanggil dari tombol "Tonton Iklan" di layar game over.
+    // Dipanggil dari tombol \"Tonton Iklan\" di layar game over.
     void RequestReviveByAd()
     {
         if (reviveAdPending) return;
@@ -271,10 +284,10 @@ public partial class Tetris3D
         Rect adBtn = new Rect(cx - bw / 2f, ringRect.yMax + 28f, bw, 96f);
         if (Btn3D(adBtn, T("watchAd"), new Color(0.20f, 0.82f, 0.46f), false)) RequestReviveByAd();
 
-        // Tombol lewati
+        // Tombol lewati -> SAMA PERSIS dengan waktu habis sendiri (DeclineRevive).
         float sw = Mathf.Min(VW * 0.5f, 300f);
         Rect skip = new Rect(cx - sw / 2f, adBtn.yMax + 16f, sw, 64f);
-        if (Btn3D(skip, T("skipRevive"), new Color(0.55f, 0.35f, 0.42f), false)) { reviveOffer = false; reviveDeclined = true; }
+        if (Btn3D(skip, T("skipRevive"), new Color(0.55f, 0.35f, 0.42f), false)) DeclineRevive();
 
         if (!string.IsNullOrEmpty(extrasToast) && extrasToastTime > 0f)
             GuiText(new Rect(0f, skip.yMax + 12f, VW, 30f), extrasToast, 20, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
@@ -340,7 +353,7 @@ public partial class Tetris3D
             else Sfx(sfxCount);
         }
 
-        // Label kecil "SKOR"
+        // Label kecil \"SKOR\"
         GuiText(new Rect(0f, VH * 0.375f, VW, 26f), T("score"), 22, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter);
         // Angka skor besar (emas kalau rekor baru, putih kalau biasa)
         Color numCol = goWasNewHigh ? new Color(1f, 0.86f, 0.32f) : Color.white;
