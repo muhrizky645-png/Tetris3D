@@ -17,7 +17,7 @@ using UnityEngine;
 //                     READ-ONLY di game; HANYA server (via AdMob SSV) yang
 //                     boleh menambah. Game cuma menampilkan nilai dari
 //                     server. Terkunci sampai akun SALDOKU terhubung
-//                     (fitur \"Hubungkan Akun\" menyusul).
+//                     (fitur Hubungkan Akun menyusul).
 // =====================================================================
 
 public partial class Tetris3D
@@ -187,7 +187,7 @@ public partial class Tetris3D
     }
 
     // Chip ringkas (buat baris atas): panel + ikon + nilai (tanpa label nama).
-    // Ukuran teks otomatis mengecil biar muat (mis. \"Hubungkan\").
+    // Ukuran teks otomatis mengecil biar muat (mis. Hubungkan).
     void DrawCurrencyChipCompact(Rect r, Color accent, bool gem, string value, bool active)
     {
         RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f),
@@ -323,13 +323,15 @@ public partial class Tetris3D
             {
                 Vector2 o = origins[i % origins.Count];
                 g.x = o.x;
-                g.y = o.y;
+                // Titik PECAH dipaksa turun ke area DASAR (dekat pangkal silinder)
+                // supaya butiran TIDAK pernah nongol melayang di tengah layar.
+                g.y = Mathf.Max(o.y, VH * 0.66f) + Random.Range(-10f, 10f);
             }
             else
             {
-                // fallback (posisi cincin tak diketahui): dari tengah papan.
+                // fallback (posisi cincin tak diketahui): dari dekat dasar.
                 g.x = VW * 0.5f + Random.Range(-40f, 40f);
-                g.y = VH * 0.30f + Random.Range(-24f, 24f);
+                g.y = VH * 0.68f + Random.Range(-16f, 16f);
             }
             // PECAH seperti kaca lalu JATUH LURUS KE BAWAH karena gravitasi.
             // TIDAK ada dorongan ke atas (biar tidak terkesan melayang). Tiap
@@ -393,13 +395,13 @@ public partial class Tetris3D
         GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
         Vector2 target = gemRect.center;
 
-        const float GRAV          = 4600f; // gravitasi KUAT -> jatuh nyata & makin cepat
-        const float BOUNCE        = 0.26f; // pantulan kecil saat kena dasar
-        const float HOLD_DUR      = 0.50f; // DIAM MENGGEROMBOL di dasar sebelum naik
-        const float RISE_DUR      = 0.42f; // durasi naik TIAP permata ke chip
-        const float RISE_STAGGER  = 0.17f; // jeda naik awal antar permata
-        const float STAGGER_DECAY = 0.74f; // <1 -> jeda mengecil -> makin lama makin cepat
-        const float STAGGER_MIN   = 0.04f; // batas bawah jeda
+        const float GRAV          = 6000f; // gravitasi KUAT -> jatuh nyata & makin cepat
+        const float BOUNCE        = 0.24f; // pantulan kecil saat kena dasar
+        const float HOLD_DUR      = 0.55f; // DIAM MENGGEROMBOL di dasar sebelum naik
+        const float RISE_DUR      = 0.30f; // durasi naik TIAP permata (cepat -> nge-zip, bukan melayang)
+        const float RISE_STAGGER  = 0.16f; // jeda naik awal antar permata (cukup besar -> SATU PER SATU)
+        const float STAGGER_DECAY = 0.84f; // <1 -> jeda mengecil -> makin lama makin cepat
+        const float STAGGER_MIN   = 0.07f; // batas bawah jeda
 
         curGemPhaseT += dt;
 
@@ -473,7 +475,7 @@ public partial class Tetris3D
                 float e = q * q * (3f - 2f * q);
                 float u = 1f - e;
                 float mx = (g.hx + target.x) * 0.5f;
-                float my = (g.hy + target.y) * 0.5f - 50f; // kontrol di atas -> lintasan melengkung naik
+                float my = (g.hy + target.y) * 0.5f - 34f; // kontrol sedikit di atas -> lintasan naik yang tegas
                 g.x = u * u * g.hx + 2f * u * e * mx + e * e * target.x;
                 g.y = u * u * g.hy + 2f * u * e * my + e * e * target.y;
                 g.size = Mathf.Lerp(g.size, 12f, e);
