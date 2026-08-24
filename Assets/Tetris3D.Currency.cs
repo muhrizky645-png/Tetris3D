@@ -396,9 +396,9 @@ public partial class Tetris3D
 
         float size   = Mathf.Max(0.2f, blockScale.x * 0.5f); // lebih kecil dari block
         float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
-        float frontZ = -radius * 0.85f;  // sisi DEPAN (menghadap kamera = -Z)
-        float sideX  = radius * 0.95f;   // jarak gerombolan KIRI/KANAN dari tengah
-        float clstW  = radius * 0.26f;   // lebar tiap gerombolan (rapat)
+        float frontZ = -radius * 0.95f;  // sisi DEPAN (menghadap kamera = -Z), sedikit lebih maju
+        float sideX  = radius * 1.28f;   // jarak gerombolan KIRI/KANAN dari tengah -> di LUAR tabung biar tak nabrak block
+        float clstW  = radius * 0.15f;   // lebar tiap gerombolan (rapat, tak melebar ke tengah)
 
         for (int i = 0; i < n; i++)
         {
