@@ -460,7 +460,7 @@ public partial class Tetris3D
         int n = origins.Count > 0 ? Mathf.Min(origins.Count, CUR_GEM_MAX)
                                   : Mathf.Clamp(2 + gain / 6, 3, 8);
 
-        float size   = Mathf.Max(0.2f, blockScale.x * 0.5f); // lebih kecil dari block
+        float size   = Mathf.Max(0.1f, blockScale.x * 0.25f); // lebih kecil dari block
         float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
         float frontZ = -radius * 0.95f;  // sisi DEPAN (menghadap kamera = -Z)
         // Sebaran MELEBAR kiri & kanan (BUKAN menumpuk di satu titik): tiap sisi
@@ -568,11 +568,11 @@ public partial class Tetris3D
 
         const float GRAV         = 55f;   // gravitasi dunia (jatuh nyata)
         const float BOUNCE       = 0.22f; // pantulan kecil saat kena dasar
-        const float HOLD_DUR     = 0.45f; // diam menggerombol sebelum naik
-        const float RISE_DUR     = 0.50f; // durasi naik permata PERTAMA
-        const float RISE_SPEEDUP = 0.86f; // <1 -> tiap permata berikutnya lebih cepat
-        const float RISE_MIN     = 0.22f; // durasi naik tercepat
-        const float RISE_OVERLAP = 0.85f; // berikutnya mulai saat yang skrg 85% sampai
+        const float HOLD_DUR     = 0.25f; // diam menggerombol sebelum naik
+        const float RISE_DUR     = 0.32f; // durasi naik permata PERTAMA
+        const float RISE_SPEEDUP = 0.82f; // <1 -> tiap permata berikutnya lebih cepat
+        const float RISE_MIN     = 0.14f; // durasi naik tercepat
+        const float RISE_OVERLAP = 0.70f; // berikutnya mulai saat yang skrg 70% sampai
 
         curGemPhaseT += dt;
 
