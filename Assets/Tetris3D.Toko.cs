@@ -189,6 +189,7 @@ public partial class Tetris3D
         if (!started || gameOver || paused || clearing) return;
         tokoInv[i]--;
         SaveToko();
+        KbUsePopup(i);  // munculkan teks "-1" melompat di slot
         ApplyBuff(i);   // i == IT_BOMB/IT_LINE/IT_SLOW (0/1/2)
         Haptic(40);
     }
@@ -197,7 +198,8 @@ public partial class Tetris3D
 // =====================================================================
 //  HUD TOKO sebagai KOMPONEN TERPISAH (auto-bootstrap, tanpa ubah scene).
 //  Execution order paling awal + GUI.depth paling depan supaya tombol
-//  TOKO, panel toko, dan slot buff selalu bisa di-tap.
+//  TOKO, panel toko, dan slot buff selalu bisa di-tap. Animasi hadiah
+//  (+1/-1) juga digambar di sini supaya tampil di ATAS bingkai inventaris.
 // =====================================================================
 [DefaultExecutionOrder(-26000)]
 public class KubikaTokoHUD : MonoBehaviour
@@ -226,5 +228,6 @@ public class KubikaTokoHUD : MonoBehaviour
         if (game.TokoOpen) { game.DrawTokoShop(); return; }
         if (game.TokoButtonVisible) game.DrawTokoButton();
         if (game.BuffInvVisible) game.DrawBuffInv();
+        game.DrawRewardAnims();
     }
 }
