@@ -259,11 +259,11 @@ public partial class Tetris3D
     // CUR_GEM_MAX biar ringan). Alur ala PECAHAN KACA:
     //  1) Permata muncrat sedikit dari block lalu JATUH LURUS KE BAWAH dengan
     //     GRAVITASI NYATA (makin cepat). Sambil jatuh, tiap butiran DIARAHKAN
-    //     ke kolom tumpukannya di SISI KIRI / KANAN pangkal silinder, mendarat
-    //     di DASAR layar, memantul kecil, lalu MENGGEROMBOL (bukan melayang!).
-    //  2) DIAM MENGGEROMBOL sejenak di dasar (di samping silinder).
-    //  3) NAIK SATU PER SATU ke chip Permata di HUD atas, ritme MAKIN CEPAT
-    //     (jeda antar permata mengecil). Yang belum giliran tetap DIAM di dasar.
+    //     ke SATU tumpukan RAPAT di paling DASAR (ketinggian sama, berdekatan),
+    //     memantul kecil, lalu MENGGEROMBOL (bukan melayang!).
+    //  2) DIAM MENGGEROMBOL sejenak di dasar.
+    //  3) NAIK BENAR-BENAR SATU PER SATU ke chip Permata di HUD atas, ritme
+    //     MAKIN CEPAT. Yang belum giliran tetap DIAM di dasar.
     // Chip berdenyut ungu tiap permata mendarat.
     const int CUR_GEM_MAX = 12; // batas partikel permata biar tidak lag
     struct CurGem { public float x, y, vx, vy, hx, hy, tx, ty, t, dur, delay, rot, rotv, size; public bool hooked; }
@@ -278,7 +278,7 @@ public partial class Tetris3D
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
     // Tiap sel cincin yang hancur (posisi direkam CurCaptureRingBurst dari
     // FlashClear) = 1 permata. Permata jatuh ke DASAR seperti pecahan kaca dan
-    // menggerombol di SISI silinder.
+    // menggerombol RAPAT di paling bawah.
     void SpawnGemBurst(int gain)
     {
         if (curGems == null) curGems = new List<CurGem>();
@@ -325,21 +325,22 @@ public partial class Tetris3D
                 g.x = o.x;
                 // Titik PECAH dipaksa turun ke area DASAR (dekat pangkal silinder)
                 // supaya butiran TIDAK pernah nongol melayang di tengah layar.
-                g.y = Mathf.Max(o.y, VH * 0.66f) + Random.Range(-10f, 10f);
+                g.y = Mathf.Max(o.y, VH * 0.72f) + Random.Range(-8f, 8f);
             }
             else
             {
                 // fallback (posisi cincin tak diketahui): dari dekat dasar.
                 g.x = VW * 0.5f + Random.Range(-40f, 40f);
-                g.y = VH * 0.68f + Random.Range(-16f, 16f);
+                g.y = VH * 0.74f + Random.Range(-12f, 12f);
             }
             // PECAH seperti kaca lalu JATUH LURUS KE BAWAH karena gravitasi.
             // TIDAK ada dorongan ke atas (biar tidak terkesan melayang). Tiap
             // butiran punya TUJUAN mendarat (tx,ty) = MENGGEROMBOL di DASAR pada
             // SISI KIRI / KANAN silinder (bergantian), lalu menumpuk di sana.
-            float side = (i % 2 == 0) ? -1f : 1f;                        // selang-seling: kiri, kanan
-            g.tx = VW * 0.5f + side * (VW * Random.Range(0.12f, 0.24f)); // kolom tumpukan di samping silinder
-            g.ty = VH * Random.Range(0.79f, 0.85f);                      // DASAR layar (dekat pangkal silinder)
+            // Semua permata mendarat di SATU tumpukan RAPAT di paling DASAR (dekat
+            // pangkal silinder) dengan KETINGGIAN SAMA & posisi saling BERDEKATAN.
+            g.tx = VW * 0.5f + Random.Range(-0.14f, 0.14f) * VW; // kumpul rapat di tengah-bawah
+            g.ty = VH * 0.88f + Random.Range(-6f, 6f);           // ketinggian SAMA di paling bawah
             g.vx = Random.Range(-20f, 20f);                              // muncratan samping kecil saja
             g.vy = Random.Range(0f, 60f);                                // HANYA ke bawah (tanpa pop ke atas)
             g.t = 0f;
@@ -398,18 +399,18 @@ public partial class Tetris3D
         const float GRAV          = 6000f; // gravitasi KUAT -> jatuh nyata & makin cepat
         const float BOUNCE        = 0.24f; // pantulan kecil saat kena dasar
         const float HOLD_DUR      = 0.55f; // DIAM MENGGEROMBOL di dasar sebelum naik
-        const float RISE_DUR      = 0.30f; // durasi naik TIAP permata (cepat -> nge-zip, bukan melayang)
-        const float RISE_STAGGER  = 0.16f; // jeda naik awal antar permata (cukup besar -> SATU PER SATU)
-        const float STAGGER_DECAY = 0.84f; // <1 -> jeda mengecil -> makin lama makin cepat
-        const float STAGGER_MIN   = 0.07f; // batas bawah jeda
+        const float RISE_DUR      = 0.34f; // durasi naik permata PERTAMA (berikutnya makin cepat)
+        const float RISE_SPEEDUP  = 0.86f; // <1 -> tiap permata berikutnya naik lebih cepat
+        const float RISE_MIN      = 0.14f; // durasi naik tercepat
+        const float RISE_OVERLAP  = 0.85f; // permata berikut baru mulai saat yang skrg 85% sampai
 
         curGemPhaseT += dt;
 
         if (curGemPhase == 0)
         {
             // FASE 1: JATUH LURUS ala PECAHAN KACA. Gravitasi menyeret ke bawah;
-            // sambil jatuh tiap butiran DIGESER mendekati kolom tumpukannya di
-            // SISI silinder (tx). Sampai dasar -> memantul kecil -> DIAM menumpuk.
+            // sambil jatuh tiap butiran DIGESER mendekati tumpukan rapat di dasar
+            // (tx). Sampai dasar -> memantul kecil -> DIAM menumpuk.
             bool allRest = true;
             for (int i = 0; i < curGems.Count; i++)
             {
@@ -442,18 +443,19 @@ public partial class Tetris3D
             if (curGemPhaseT >= HOLD_DUR)
             {
                 // Siapkan NAIK SATU PER SATU dengan jeda MENGECIL (makin cepat).
-                float acc = 0f, gap = RISE_STAGGER;
+                // Tiap permata dapat DURASI naik sendiri yang makin singkat
+                // (makin cepat). Naiknya BENAR-BENAR satu per satu (lihat fase 3).
+                float d = RISE_DUR;
                 for (int i = 0; i < curGems.Count; i++)
                 {
                     CurGem g = curGems[i];
                     g.hx = g.x; g.hy = g.y;   // titik awal naik (dari dasar)
-                    g.delay = acc;            // giliran naik (berurutan)
+                    g.dur = d;                // durasi naik permata ini
                     g.t = 0f;
                     g.hooked = false;
                     curGems[i] = g;
-                    acc += gap;
-                    gap *= STAGGER_DECAY;
-                    if (gap < STAGGER_MIN) gap = STAGGER_MIN;
+                    d *= RISE_SPEEDUP;
+                    if (d < RISE_MIN) d = RISE_MIN;
                 }
                 curGemPhase = 2; curGemPhaseT = 0f;
             }
@@ -468,10 +470,14 @@ public partial class Tetris3D
             {
                 CurGem g = curGems[i];
                 if (g.hooked) { done++; continue; }
-                if (curGemPhaseT < g.delay) { curGems[i] = g; continue; } // diam menunggu giliran
+                // SATU PER SATU: permata ini baru boleh naik kalau yang SEBELUMNYA
+                // sudah mendarat, atau sudah hampir sampai (biar mengalir mulus).
+                bool prevReady = (i == 0) || curGems[i - 1].hooked
+                    || (curGems[i - 1].t / curGems[i - 1].dur >= RISE_OVERLAP);
+                if (!prevReady) { curGems[i] = g; continue; } // tetap DIAM di tumpukan bawah
 
                 g.t += dt;
-                float q = Mathf.Clamp01(g.t / RISE_DUR);
+                float q = Mathf.Clamp01(g.t / g.dur);
                 float e = q * q * (3f - 2f * q);
                 float u = 1f - e;
                 float mx = (g.hx + target.x) * 0.5f;
