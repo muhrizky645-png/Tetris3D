@@ -263,31 +263,95 @@ public partial class Tetris3D
     float curGemPulse;
     bool  curChaQueued;
     AudioClip curSfxCoin;
+    List<Vector3> curBurstWorld;   // posisi WORLD sel cincin terakhir yang hancur
 
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
+    // Butiran muncul MENYEBAR di sekitar sel cincin yang baru hancur (posisi
+    // direkam CurCaptureRingBurst dari FlashClear), lalu ditarik naik ke chip.
     void SpawnGemBurst(int gain)
     {
         if (curGems == null) curGems = new List<CurGem>();
-        int n = Mathf.Clamp(3 + gain / 4, 4, 12);
-        float srcX = VW * 0.5f;
-        float srcY = VH * 0.46f;
+
+        // Kumpulkan titik asal dari sel cincin (world -> koordinat UI logis).
+        List<Vector2> origins = new List<Vector2>();
+        if (curBurstWorld != null)
+        {
+            for (int i = 0; i < curBurstWorld.Count; i++)
+            {
+                float ux, uy;
+                if (CurWorldToUi(curBurstWorld[i], out ux, out uy))
+                    origins.Add(new Vector2(ux, uy));
+            }
+        }
+
+        // Acak urutan biar sebaran merata di sekeliling cincin.
+        for (int i = origins.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            Vector2 tmp = origins[i]; origins[i] = origins[j]; origins[j] = tmp;
+        }
+
+        int n = origins.Count > 0 ? Mathf.Clamp(origins.Count, 6, 16)
+                                  : Mathf.Clamp(3 + gain / 4, 4, 12);
+
         for (int i = 0; i < n; i++)
         {
-            float ang = Random.Range(0f, 6.2832f);
-            float spd = Random.Range(260f, 520f);
             CurGem g = new CurGem();
-            g.x = srcX + Random.Range(-30f, 30f);
-            g.y = srcY + Random.Range(-30f, 30f);
-            g.vx = Mathf.Cos(ang) * spd;
-            g.vy = Mathf.Sin(ang) * spd - Random.Range(60f, 180f);
+            if (origins.Count > 0)
+            {
+                Vector2 o = origins[i % origins.Count];
+                g.x = o.x + Random.Range(-12f, 12f);
+                g.y = o.y + Random.Range(-12f, 12f);
+                // pop kecil di tempat (menyebar), belum langsung terbang jauh
+                float ang = Random.Range(0f, 6.2832f);
+                float spd = Random.Range(40f, 130f);
+                g.vx = Mathf.Cos(ang) * spd;
+                g.vy = Mathf.Sin(ang) * spd - Random.Range(10f, 70f);
+            }
+            else
+            {
+                // fallback (posisi cincin tak diketahui): dari tengah layar
+                float srcX = VW * 0.5f;
+                float srcY = VH * 0.46f;
+                g.x = srcX + Random.Range(-30f, 30f);
+                g.y = srcY + Random.Range(-30f, 30f);
+                float ang = Random.Range(0f, 6.2832f);
+                float spd = Random.Range(260f, 520f);
+                g.vx = Mathf.Cos(ang) * spd;
+                g.vy = Mathf.Sin(ang) * spd - Random.Range(60f, 180f);
+            }
             g.t = 0f;
-            g.dur = Random.Range(0.75f, 1.05f);
+            g.dur = Random.Range(0.9f, 1.25f);
             g.rot = Random.Range(0f, 360f);
             g.rotv = Random.Range(-260f, 260f);
             g.size = Random.Range(20f, 32f);
             g.hooked = false;
             curGems.Add(g);
         }
+    }
+
+    // Rekam posisi WORLD sel-sel cincin yang baru hancur (dipanggil FlashClear
+    // sebelum sel dihancurkan). Dipakai SpawnGemBurst sebagai titik asal butiran.
+    public void CurCaptureRingBurst(List<Transform> ringCells)
+    {
+        if (curBurstWorld == null) curBurstWorld = new List<Vector3>();
+        curBurstWorld.Clear();
+        if (ringCells == null) return;
+        for (int i = 0; i < ringCells.Count; i++)
+            if (ringCells[i] != null) curBurstWorld.Add(ringCells[i].position);
+    }
+
+    // Konversi titik dunia -> koordinat UI logis (VW/VH) sesuai ApplyUiScale.
+    bool CurWorldToUi(Vector3 world, out float ux, out float uy)
+    {
+        ux = 0f; uy = 0f;
+        if (cam == null) return false;
+        Vector3 sp = cam.WorldToScreenPoint(world);
+        if (sp.z <= 0f) return false;                 // di belakang kamera
+        float sc = UiScale; if (sc <= 0.0001f) sc = 1f;
+        ux = sp.x / sc;
+        uy = (Screen.height - sp.y) / sc;             // GUI y dihitung dari atas
+        return true;
     }
 
     // Maju-kan animasi butiran tiap frame + kurangi denyut chip. Dari CurrencyTick.
@@ -309,18 +373,18 @@ public partial class Tetris3D
             float p = g.dur > 0f ? Mathf.Clamp01(g.t / g.dur) : 1f;
             g.rot += g.rotv * dt;
 
-            if (p < 0.28f)
+            if (p < 0.38f)
             {
-                // fase meletus bebas (gravitasi ringan)
-                g.vy += 620f * dt;
+                // fase MENYEBAR di sekitar cincin (gerak pelan, gravitasi ringan)
+                g.vy += 340f * dt;
                 g.x += g.vx * dt;
                 g.y += g.vy * dt;
             }
             else
             {
-                // fase ditarik ke chip (ease-in kuat)
+                // fase ditarik NAIK ke chip Permata (ease-in kuat)
                 if (!g.hooked) { g.hooked = true; g.hx = g.x; g.hy = g.y; }
-                float q = (p - 0.28f) / 0.72f;
+                float q = (p - 0.38f) / 0.62f;
                 float e = q * q * q;
                 g.x = Mathf.LerpUnclamped(g.hx, target.x, e);
                 g.y = Mathf.LerpUnclamped(g.hy, target.y, e);
