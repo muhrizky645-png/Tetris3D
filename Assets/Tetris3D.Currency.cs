@@ -260,7 +260,7 @@ public partial class Tetris3D
     // -- jadi permata benar-benar NYATU dengan scene (kena perspektif, cahaya,
     // bloom), bukan lagi overlay 2D. Alur ala PECAHAN KACA:
     //  1) Kristal muncrat dari block lalu JATUH (gravitasi dunia) & mengumpul
-    //     RAPAT di depan-bawah tabung (menggerombol, ketinggian sama).
+    //     RAPAT di depan-bawah tabung, DIBAGI 2 gerombolan di PINGGIR kiri & kanan.
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -397,13 +397,14 @@ public partial class Tetris3D
         float size   = Mathf.Max(0.2f, blockScale.x * 0.5f); // lebih kecil dari block
         float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
         float frontZ = -radius * 0.85f;  // sisi DEPAN (menghadap kamera = -Z)
-        float clstX  = radius * 0.5f;    // lebar gerombolan (rapat)
+        float sideX  = radius * 0.95f;   // jarak gerombolan KIRI/KANAN dari tengah
+        float clstW  = radius * 0.26f;   // lebar tiap gerombolan (rapat)
 
         for (int i = 0; i < n; i++)
         {
             Vector3 birth = origins.Count > 0
                 ? origins[i % origins.Count]
-                : new Vector3(Random.Range(-clstX, clstX), baseY + 4f * vSpace, frontZ);
+                : new Vector3(Random.Range(-sideX, sideX), baseY + 4f * vSpace, frontZ);
 
             CurGem3D g = new CurGem3D();
             g.tf = CurMakeGem(birth, size);
@@ -418,9 +419,11 @@ public partial class Tetris3D
                   + Vector3.up * Random.Range(1.5f, 4.5f)
                   + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
 
-            // Titik mendarat: gerombolan RAPAT di depan-bawah, KETINGGIAN SAMA.
+            // Titik mendarat: DIBAGI 2 gerombolan RAPAT di PINGGIR kiri & kanan
+            // (selang-seling biar seimbang), KETINGGIAN SAMA. Tidak lagi di tengah.
+            float sideDir = (i % 2 == 0) ? -1f : 1f;
             g.rest = new Vector3(
-                Random.Range(-clstX, clstX),
+                sideDir * sideX + Random.Range(-clstW, clstW),
                 baseY + Random.Range(-0.15f, 0.15f) * vSpace,
                 frontZ + Random.Range(-0.2f, 0.2f) * radius);
             g.spinV = Random.Range(-220f, 220f);
