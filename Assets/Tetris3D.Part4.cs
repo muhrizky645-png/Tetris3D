@@ -458,6 +458,10 @@ public partial class Tetris3D
 
     void OnGUI()
     {
+        // Saat iklan fullscreen (rewarded/interstitial) tampil, sembunyikan SELURUH
+        // HUD supaya iklan benar-benar di depan (tidak ketimpa HUD apa pun).
+        if (AdFullscreenShowing) return;
+
         // Skala UI responsif: semua UI digambar di ruang logis 720px lalu
         // diskalakan ke lebar layar asli. Pakai VW/VH (bukan Screen.width/height).
         ApplyUiScale();

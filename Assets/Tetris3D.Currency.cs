@@ -644,6 +644,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
 
     void OnGUI()
     {
+        if (Tetris3D.AdFullscreenShowing) return; // iklan fullscreen -> HUD off (iklan di depan)
         FindGame();
         if (game == null || !game.CurrencyHudVisible) return;
         game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
