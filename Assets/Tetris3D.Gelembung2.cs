@@ -612,6 +612,7 @@ public class KubikaBubbleHUD : MonoBehaviour
 
     void OnGUI()
     {
+        if (Tetris3D.AdFullscreenShowing) return; // iklan fullscreen -> HUD off (iklan di depan)
         FindGame();
         if (game == null) return;
         game.ApplyUiScale();
@@ -687,13 +688,19 @@ public class KubikaExtraAds : MonoBehaviour
 
     void Hook(RewardedAd ad)
     {
+        ad.OnAdFullScreenContentOpened += () =>
+        {
+            Tetris3D.BeginAdFullscreen(); // iklan fullscreen tampil -> sembunyikan SEMUA HUD (iklan di depan)
+        };
         ad.OnAdFullScreenContentClosed += () =>
         {
+            Tetris3D.EndAdFullscreen(); // iklan tertutup -> HUD tampil lagi
             if (_game != null) _game.SetBubbleAdBusy(false);
             Load();
         };
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
+            Tetris3D.EndAdFullscreen(); // iklan gagal tampil -> pastikan HUD tampil lagi
             if (_game != null) { _game.SetBubbleAdBusy(false); _game.OnBubbleAdUnavailable(_game.BubbleAdsOffMsg()); }
             Load();
         };
