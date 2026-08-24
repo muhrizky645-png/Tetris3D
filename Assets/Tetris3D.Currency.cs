@@ -17,7 +17,7 @@ using UnityEngine;
 //                     READ-ONLY di game; HANYA server (via AdMob SSV) yang
 //                     boleh menambah. Game cuma menampilkan nilai dari
 //                     server. Terkunci sampai akun SALDOKU terhubung
-//                     (fitur "Hubungkan Akun" menyusul).
+//                     (fitur \"Hubungkan Akun\" menyusul).
 // =====================================================================
 
 public partial class Tetris3D
@@ -187,7 +187,7 @@ public partial class Tetris3D
     }
 
     // Chip ringkas (buat baris atas): panel + ikon + nilai (tanpa label nama).
-    // Ukuran teks otomatis mengecil biar muat (mis. "Hubungkan").
+    // Ukuran teks otomatis mengecil biar muat (mis. \"Hubungkan\").
     void DrawCurrencyChipCompact(Rect r, Color accent, bool gem, string value, bool active)
     {
         RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f),
@@ -255,21 +255,22 @@ public partial class Tetris3D
     }
 
     // ================== ANIMASI PERMATA BERHAMBURAN -> CHIP ==================
-    // Saat baris hancur & Permata bertambah, butiran permata "meletus" dari
-    // area baris lalu DITARIK ke chip Permata di HUD atas -> user paham dari
-    // mana permata didapat. Chip berdenyut ungu + bunyi "cha-ching".
+    // Saat baris hancur & Permata bertambah, butiran permata \"meletus\" dari
+    // area baris (boleh menyebar sampai keluar tepi papan) lalu BERKUMPUL,
+    // JEDA sejenak, baru terbang SERENTAK & MELENGKUNG (arc) ke chip Permata
+    // di HUD atas -> user paham dari mana permata didapat. Chip berdenyut ungu.
     struct CurGem { public float x, y, vx, vy, hx, hy, tx, ty, t, dur, rot, rotv, size; public bool hooked; }
     List<CurGem> curGems;
     float curGemPulse;
     bool  curChaQueued;
     AudioClip curSfxCoin;
     List<Vector3> curBurstWorld;   // posisi WORLD sel cincin terakhir yang hancur
-    int   curGemPhase;    // 0=menyebar, 1=berkumpul, 2=JEDA, 3=terbang serentak ke chip
+    int   curGemPhase;    // 0=menyebar, 1=berkumpul, 2=JEDA, 3=terbang melengkung ke chip
     float curGemPhaseT;   // timer fase (dibagi SEMUA butiran -> gerak serentak)
     float curGemGx, curGemGy; // titik kumpul (centroid) sebelum terbang bareng
 
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
-    // Butiran muncul MENYEBAR di sekitar sel cincin yang baru hancur (posisi
+    // Butiran muncul MENYEBAR LEBAR di sekitar sel cincin yang baru hancur (posisi
     // direkam CurCaptureRingBurst dari FlashClear), lalu ditarik naik ke chip.
     void SpawnGemBurst(int gain)
     {
@@ -294,7 +295,7 @@ public partial class Tetris3D
             Vector2 tmp = origins[i]; origins[i] = origins[j]; origins[j] = tmp;
         }
 
-        // Sedikit saja butiran biar terbaca sebagai "mutiara", bukan swarm.
+        // Sedikit saja butiran biar terbaca sebagai \"mutiara\", bukan swarm.
         int n = origins.Count > 0 ? Mathf.Clamp(origins.Count / 2, 4, 7)
                                   : Mathf.Clamp(2 + gain / 6, 3, 6);
 
@@ -306,11 +307,12 @@ public partial class Tetris3D
                 Vector2 o = origins[i % origins.Count];
                 g.x = o.x;
                 g.y = o.y;
-                // pop KECIL keluar dari pecahan kotak (cuma buat 'hidup', tidak jauh)
+                // MUNCRAT lebar keluar dari pecahan kotak (boleh sampai keluar tepi
+                // papan) -> lebih meriah. Dorongan horizontal dilebihkan.
                 float ang = Random.Range(0f, 6.2832f);
-                float spd = Random.Range(30f, 80f);
-                g.vx = Mathf.Cos(ang) * spd;
-                g.vy = Mathf.Sin(ang) * spd - Random.Range(20f, 60f);
+                float spd = Random.Range(200f, 420f);
+                g.vx = Mathf.Cos(ang) * spd * 1.5f;
+                g.vy = Mathf.Sin(ang) * spd - Random.Range(60f, 150f);
             }
             else
             {
@@ -320,9 +322,9 @@ public partial class Tetris3D
                 g.x = srcX + Random.Range(-24f, 24f);
                 g.y = srcY + Random.Range(-24f, 24f);
                 float ang = Random.Range(0f, 6.2832f);
-                float spd = Random.Range(40f, 110f);
-                g.vx = Mathf.Cos(ang) * spd;
-                g.vy = Mathf.Sin(ang) * spd - Random.Range(30f, 80f);
+                float spd = Random.Range(220f, 460f);
+                g.vx = Mathf.Cos(ang) * spd * 1.5f;
+                g.vy = Mathf.Sin(ang) * spd - Random.Range(80f, 160f);
             }
             g.t = 0f;
             g.dur = 0f;
@@ -334,7 +336,7 @@ public partial class Tetris3D
         }
 
         // Reset timeline supaya SEMUA butiran (termasuk dari combo beruntun)
-        // bergerak serentak: menyebar -> JEDA -> terbang bareng ke chip.
+        // bergerak serentak: menyebar -> berkumpul -> JEDA -> terbang bareng ke chip.
         curGemPhase = 0;
         curGemPhaseT = 0f;
     }
@@ -376,18 +378,18 @@ public partial class Tetris3D
         Vector2 target = gemRect.center;
 
         // Durasi tiap fase DIBAGI semua butiran -> gerak serentak (seperti ikon item).
-        const float SPREAD_DUR = 0.30f; // keluar & menyebar dari pecahan kotak
+        const float SPREAD_DUR = 0.50f; // muncrat & menyebar lebar dari pecahan kotak
         const float GATHER_DUR = 0.26f; // berkumpul jadi satu rombongan rapat
         const float HOLD_DUR   = 0.30f; // JEDA sejenak sebelum terbang
-        const float FLY_DUR    = 0.50f; // terbang bareng ke chip Permata
+        const float FLY_DUR    = 0.55f; // terbang melengkung bareng ke chip Permata
 
         curGemPhaseT += dt;
 
         if (curGemPhase == 0)
         {
-            // FASE 1: butiran keluar dari pecahan lalu MENGENDAP (pop kecil + gravitasi,
-            // direm biar cuma menyebar tipis di sekitar cincin, tidak terbang jauh).
-            float damp = Mathf.Clamp01(1f - 6f * dt);
+            // FASE 1: butiran MUNCRAT lebar keluar dari pecahan (pop + gravitasi,
+            // redaman ringan biar bisa menyebar jauh, sampai keluar tepi papan).
+            float damp = Mathf.Clamp01(1f - 3.0f * dt);
             for (int i = 0; i < curGems.Count; i++)
             {
                 CurGem g = curGems[i];
@@ -448,11 +450,22 @@ public partial class Tetris3D
             }
             if (curGemPhaseT >= HOLD_DUR)
             {
-                // kunci titik awal terbang (posisi rombongan saat ini)
+                // kunci titik awal terbang + hitung titik kontrol lengkung (arc).
                 for (int i = 0; i < curGems.Count; i++)
                 {
                     CurGem g = curGems[i];
                     g.hx = g.x; g.hy = g.y;
+                    // Titik kontrol Bezier: dari tengah lintasan, digeser tegak lurus
+                    // ke arah ATAS -> butiran melengkung naik cantik menuju chip.
+                    float mx = (g.hx + target.x) * 0.5f;
+                    float my = (g.hy + target.y) * 0.5f;
+                    float dx = target.x - g.hx, dy = target.y - g.hy;
+                    float len = Mathf.Sqrt(dx * dx + dy * dy) + 0.0001f;
+                    float px = -dy / len, py = dx / len;   // vektor tegak lurus
+                    if (py > 0f) { px = -px; py = -py; }    // pastikan melengkung ke atas
+                    float arcMag = len * 0.30f + (i % 3) * 10f;
+                    g.tx = mx + px * arcMag;
+                    g.ty = my + py * arcMag;
                     curGems[i] = g;
                 }
                 curGemPhase = 3; curGemPhaseT = 0f;
@@ -460,14 +473,16 @@ public partial class Tetris3D
         }
         else
         {
-            // FASE 4: SEMUA butiran terbang SERENTAK ke chip (progres sama -> kompak).
+            // FASE 4: SEMUA butiran terbang SERENTAK & MELENGKUNG ke chip.
+            // Bezier kuadratik: P = (1-e)^2*hx + 2(1-e)e*ctrl + e^2*target.
             float q = Mathf.Clamp01(curGemPhaseT / FLY_DUR);
             float e = q * q * (3f - 2f * q); // smoothstep: berangkat lembut, tiba mantap
+            float u = 1f - e;
             for (int i = 0; i < curGems.Count; i++)
             {
                 CurGem g = curGems[i];
-                g.x = Mathf.LerpUnclamped(g.hx, target.x, e);
-                g.y = Mathf.LerpUnclamped(g.hy, target.y, e);
+                g.x = u * u * g.hx + 2f * u * e * g.tx + e * e * target.x;
+                g.y = u * u * g.hy + 2f * u * e * g.ty + e * e * target.y;
                 g.size = Mathf.Lerp(g.size, 12f, e);
                 g.rot += g.rotv * dt;
                 curGems[i] = g;
