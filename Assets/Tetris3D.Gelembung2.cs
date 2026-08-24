@@ -94,7 +94,7 @@ public partial class Tetris3D
             }
             kbClaimStatus = ""; kbDropStatus = "";
             kbClaimOpen = false; Time.timeScale = 1f;
-            KubikaExtraAds.Instance.Show(this, KubikaExtraAds.MODE_DROP, sal_token, OnBubbleCoinReward);
+            KubikaExtraAds.Instance.Show(this, KubikaExtraAds.MODE_DROP, sal_token + ":drop", OnBubbleCoinReward);
         }
         else
         {
