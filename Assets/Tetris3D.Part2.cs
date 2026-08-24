@@ -643,23 +643,23 @@ public partial class Tetris3D
         var ps = pg.AddComponent<ParticleSystem>();
         ps.Stop();
         var main = ps.main;
-        main.duration = 0.6f;
+        main.duration = 0.5f;
         main.loop = false;
-        main.startLifetime = 0.55f;
-        main.startSpeed = 4.5f;
-        main.startSize = 0.28f;
+        main.startLifetime = 0.42f;
+        main.startSpeed = 2.1f;
+        main.startSize = 0.22f;
         main.startColor = c;
-        main.gravityModifier = 0.6f;
+        main.gravityModifier = 0.8f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.maxParticles = 60;
+        main.maxParticles = 24;
         var em = ps.emission;
         em.rateOverTime = 0f;
         var sh = ps.shape;
         sh.shapeType = ParticleSystemShapeType.Sphere;
-        sh.radius = 0.15f;
+        sh.radius = 0.12f;
         var rend = ps.GetComponent<ParticleSystemRenderer>();
         if (particleMat != null) rend.material = particleMat;
-        ps.Emit(16);
-        Destroy(pg, 1.0f);
+        ps.Emit(6);
+        Destroy(pg, 0.9f);
     }
 }
