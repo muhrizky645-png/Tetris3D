@@ -15,15 +15,15 @@ using UnityEngine;
 //                     READ-ONLY di game; HANYA server (via AdMob SSV) yang
 //                     boleh menambah. Game cuma menampilkan nilai dari
 //                     server. Terkunci sampai akun SALDOKU terhubung
-//                     (fitur \"Hubungkan Akun\" menyusul).
+//                     (fitur "Hubungkan Akun" menyusul).
 // =====================================================================
 
 public partial class Tetris3D
 {
     // ---- kunci PlayerPrefs ----
-    const string PP_PERMATA    = \"kubika_permata\";
-    const string PP_KOIN_CACHE = \"kubika_koin_cache\";
-    const string PP_LINKED     = \"kubika_linked\";
+    const string PP_PERMATA    = "kubika_permata";
+    const string PP_KOIN_CACHE = "kubika_koin_cache";
+    const string PP_LINKED     = "kubika_linked";
 
     // ---- aturan perolehan Permata (bebas, tanpa iklan) ----
     const int PERMATA_PER_LINE    = 5;  // permata per baris/cincin yang hancur
@@ -111,19 +111,19 @@ public partial class Tetris3D
     {
         switch (lang)
         {
-            case Lang.ID: return \"Hubungkan\";
-            case Lang.ES: return \"Conectar\";
-            case Lang.PT: return \"Conectar\";
-            case Lang.FR: return \"Connecter\";
-            default:      return \"Connect\";
+            case Lang.ID: return "Hubungkan";
+            case Lang.ES: return "Conectar";
+            case Lang.PT: return "Conectar";
+            case Lang.FR: return "Connecter";
+            default:      return "Connect";
         }
     }
 
     // Angka ringkas biar chip gak kepanjangan (1.2K, 3.4M)
     string CurShort(long v)
     {
-        if (v >= 1000000) return (v / 1000000f).ToString(\"0.#\") + \"M\";
-        if (v >= 1000)    return (v / 1000f).ToString(\"0.#\") + \"K\";
+        if (v >= 1000000) return (v / 1000000f).ToString("0.#") + "M";
+        if (v >= 1000)    return (v / 1000f).ToString("0.#") + "K";
         return v.ToString();
     }
 
@@ -146,7 +146,7 @@ public partial class Tetris3D
                 CurConnect(), false);
         else
             DrawCurrencyChipCompact(coinRect, new Color(1f, 0.78f, 0.18f), false,
-                CurShort(cur_koin) + (cur_online ? \"\" : \" (off)\"), true);
+                CurShort(cur_koin) + (cur_online ? "" : " (off)"), true);
     }
 
     // ---- Versi MENU AWAL (berposisi): dua chip ditumpuk vertikal mulai dari
@@ -157,8 +157,8 @@ public partial class Tetris3D
     {
         EnsureCurrency();
         float w = 300f, h = 76f, gap = 10f;
-        string gemName  = (lang == Lang.ID) ? \"Permata\" : \"Gems\";
-        string coinName = (lang == Lang.ID) ? \"Koin\" : \"Coins\";
+        string gemName  = (lang == Lang.ID) ? "Permata" : "Gems";
+        string coinName = (lang == Lang.ID) ? "Koin" : "Coins";
 
         // Permata (chip atas)
         DrawCurrencyChip(new Rect(x, y, w, h), new Color(0.62f, 0.35f, 1f), true,
@@ -171,11 +171,11 @@ public partial class Tetris3D
                 coinName, CurConnect(), false);
         else
             DrawCurrencyChip(koin, new Color(1f, 0.78f, 0.18f), false,
-                coinName, CurShort(cur_koin) + (cur_online ? \"\" : \" (off)\"), true);
+                coinName, CurShort(cur_koin) + (cur_online ? "" : " (off)"), true);
     }
 
     // Chip ringkas (buat baris atas): panel + ikon + nilai (tanpa label nama).
-    // Ukuran teks otomatis mengecil biar muat (mis. \"Hubungkan\").
+    // Ukuran teks otomatis mengecil biar muat (mis. "Hubungkan").
     void DrawCurrencyChipCompact(Rect r, Color accent, bool gem, string value, bool active)
     {
         RoundRect(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f),
@@ -223,7 +223,7 @@ public partial class Tetris3D
 
     void DrawGemIcon(Rect r, Color c)
     {
-        if (!gemTexTried) { gemTex = Resources.Load<Texture2D>(\"KubikaIcons/Gem_A\"); gemTexTried = true; }
+        if (!gemTexTried) { gemTex = Resources.Load<Texture2D>("KubikaIcons/Gem_A"); gemTexTried = true; }
         if (gemTex != null) { GUI.DrawTexture(r, gemTex, ScaleMode.ScaleToFit, true); return; }
         RoundRect(new Rect(r.x + r.width * 0.15f, r.y + r.height * 0.10f, r.width * 0.70f, r.height * 0.80f),
             c, r.width * 0.28f);
@@ -233,12 +233,12 @@ public partial class Tetris3D
 
     void DrawCoinIcon(Rect r, Color c)
     {
-        if (!coinTexTried) { coinTex = Resources.Load<Texture2D>(\"KubikaIcons/Coin_A\"); coinTexTried = true; }
+        if (!coinTexTried) { coinTex = Resources.Load<Texture2D>("KubikaIcons/Coin_A"); coinTexTried = true; }
         if (coinTex != null) { GUI.DrawTexture(r, coinTex, ScaleMode.ScaleToFit, true); return; }
         RoundRect(r, new Color(c.r * 0.6f, c.g * 0.5f, c.b * 0.15f, 1f), r.width * 0.5f);
         RoundRect(new Rect(r.x + r.width * 0.12f, r.y + r.height * 0.12f, r.width * 0.76f, r.height * 0.76f),
             c, r.width * 0.5f);
-        GuiText(new Rect(r.x, r.y - 1f, r.width, r.height), \"K\",
+        GuiText(new Rect(r.x, r.y - 1f, r.width, r.height), "K",
             Mathf.RoundToInt(r.height * 0.7f), new Color(0.5f, 0.35f, 0.05f), TextAnchor.MiddleCenter);
     }
 }
@@ -255,7 +255,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject(\"KubikaCurrencyHUD\");
+        var go = new GameObject("KubikaCurrencyHUD");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaCurrencyHUD>();
     }
