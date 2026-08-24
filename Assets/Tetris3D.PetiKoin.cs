@@ -55,7 +55,7 @@ public partial class Tetris3D
         if (!cur_linked || string.IsNullOrEmpty(sal_token)) { petiStatus = SalNotLinked(); return; }
         if (batasHarian > 0 && sisaIklan <= 0)             { petiStatus = PetiDailyDone(); return; }
         petiStatus = "";
-        KubikaAds.Instance.ShowPetiAd(this, sal_token);
+        KubikaAds.Instance.ShowPetiAd(this, sal_token + ":peti");
     }
 
     // ---- callback dari KubikaAds (dijalankan di main thread) ----
