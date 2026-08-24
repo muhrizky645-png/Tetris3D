@@ -254,113 +254,186 @@ public partial class Tetris3D
             Mathf.RoundToInt(r.height * 0.7f), new Color(0.5f, 0.35f, 0.05f), TextAnchor.MiddleCenter);
     }
 
-    // ============ ANIMASI PERMATA: PECAH DARI BLOCK -> NAIK KE CHIP =========
-    // Tiap block yang hancur menghasilkan 1 butir permata (DIBATASI maks
-    // CUR_GEM_MAX biar ringan). Alur ala PECAHAN KACA:
-    //  1) Permata muncrat sedikit dari block lalu JATUH LURUS KE BAWAH dengan
-    //     GRAVITASI NYATA (makin cepat). Sambil jatuh, tiap butiran DIARAHKAN
-    //     ke SATU tumpukan RAPAT di paling DASAR (ketinggian sama, berdekatan),
-    //     memantul kecil, lalu MENGGEROMBOL (bukan melayang!).
-    //  2) DIAM MENGGEROMBOL sejenak di dasar.
-    //  3) NAIK BENAR-BENAR SATU PER SATU ke chip Permata di HUD atas, ritme
-    //     MAKIN CEPAT. Yang belum giliran tetap DIAM di dasar.
-    // Chip berdenyut ungu tiap permata mendarat.
-    const int CUR_GEM_MAX = 12; // batas partikel permata biar tidak lag
-    struct CurGem { public float x, y, vx, vy, hx, hy, tx, ty, t, dur, delay, rot, rotv, size; public bool hooked; }
-    List<CurGem> curGems;
+    // ============ ANIMASI PERMATA 3D: OBJEK ASLI DARI BLOCK -> BAR ATAS ======
+    // Tiap block yang hancur memunculkan 1 objek permata 3D ASLI (mesh kristal /
+    // octahedron, ungu mengkilap emissive) tepat di posisi block itu di DUNIA 3D
+    // -- jadi permata benar-benar NYATU dengan scene (kena perspektif, cahaya,
+    // bloom), bukan lagi overlay 2D. Alur ala PECAHAN KACA:
+    //  1) Kristal muncrat dari block lalu JATUH (gravitasi dunia) & mengumpul
+    //     RAPAT di depan-bawah tabung (menggerombol, ketinggian sama).
+    //  2) DIAM sejenak.
+    //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
+    //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
+    // Dibatasi CUR_GEM_MAX biar ringan.
+    const int CUR_GEM_MAX = 12; // batas objek permata biar tidak lag
+
+    struct CurGem3D
+    {
+        public Transform tf;       // objek permata 3D di DUNIA
+        public Vector3 vel;        // kecepatan dunia (fase jatuh)
+        public Vector3 rest;       // titik mendarat/menggerombol di dasar
+        public Vector3 riseFrom;   // posisi saat mulai naik
+        public Vector3 baseScale;  // skala awal (buat mengecil saat naik)
+        public float t;            // progres naik (0..1 * dur)
+        public float dur;          // durasi naik permata ini (kecil = cepat)
+        public float spinV;        // kecepatan putar visual (kilau)
+        public bool arrived;       // sudah sampai chip
+    }
+
+    List<CurGem3D> curGems3D;
     float curGemPulse;
     bool  curChaQueued;
     AudioClip curSfxCoin;
-    List<Vector3> curBurstWorld;   // posisi WORLD sel cincin terakhir yang hancur
+    List<Vector3> curBurstWorld;   // posisi WORLD block cincin terakhir yang hancur
     int   curGemPhase;    // 0=jatuh ke dasar, 1=diam menggerombol, 2=naik satu per satu
-    float curGemPhaseT;   // timer fase (fase 0-1) & timer global fase 2 (utk delay giliran)
+    float curGemPhaseT;   // timer fase
+
+    static Mesh kbGemMesh;
+    Material curGemMat;
+
+    // Mesh kristal (octahedron memanjang, faset datar biar berkilau saat kena
+    // cahaya & bloom). Dibuat SEKALI lalu dipakai bersama semua permata.
+    static Mesh GemMesh()
+    {
+        if (kbGemMesh == null) kbGemMesh = BuildGem(0.62f, 0.95f);
+        return kbGemMesh;
+    }
+
+    // r = jari-jari khatulistiwa, h = setengah tinggi (mahkota atas & paviliun
+    // bawah). Tiap faset punya vertex sendiri -> normal datar (flat shaded).
+    static Mesh BuildGem(float r, float h)
+    {
+        Vector3 top = new Vector3(0f,  h, 0f);
+        Vector3 bot = new Vector3(0f, -h, 0f);
+        Vector3[] e = {
+            new Vector3( r, 0f, 0f),
+            new Vector3(0f, 0f,  r),
+            new Vector3(-r, 0f, 0f),
+            new Vector3(0f, 0f, -r),
+        };
+        var verts = new List<Vector3>();
+        var norms = new List<Vector3>();
+        var tris  = new List<int>();
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 a = e[i];
+            Vector3 b = e[(i + 1) % 4];
+            AddGemFace(verts, norms, tris, top, a, b); // mahkota atas
+            AddGemFace(verts, norms, tris, bot, b, a); // paviliun bawah
+        }
+        var m = new Mesh();
+        m.name = "KubikaGem";
+        m.SetVertices(verts);
+        m.SetNormals(norms);
+        m.SetTriangles(tris, 0);
+        m.RecalculateBounds();
+        m.RecalculateTangents();
+        return m;
+    }
+
+    static void AddGemFace(List<Vector3> verts, List<Vector3> norms, List<int> tris,
+        Vector3 a, Vector3 b, Vector3 c)
+    {
+        int bi = verts.Count;
+        Vector3 nrm = Vector3.Cross(b - a, c - a).normalized;
+        verts.Add(a); verts.Add(b); verts.Add(c);
+        norms.Add(nrm); norms.Add(nrm); norms.Add(nrm);
+        tris.Add(bi); tris.Add(bi + 1); tris.Add(bi + 2);
+    }
+
+    // Buat satu objek permata 3D di posisi dunia tertentu.
+    Transform CurMakeGem(Vector3 worldPos, float size)
+    {
+        if (curGemMat == null)
+        {
+            curGemMat = MakeMat(new Color(0.62f, 0.35f, 1f)); // ungu (URP Lit + emissive)
+            if (curGemMat.HasProperty("_Metallic"))   curGemMat.SetFloat("_Metallic", 0.2f);
+            if (curGemMat.HasProperty("_Smoothness")) curGemMat.SetFloat("_Smoothness", 0.95f);
+            if (curGemMat.HasProperty("_EmissionColor"))
+                curGemMat.SetColor("_EmissionColor", new Color(0.62f, 0.35f, 1f) * 1.4f);
+        }
+        GameObject g = new GameObject("Gem");
+        var mf = g.AddComponent<MeshFilter>();
+        mf.sharedMesh = GemMesh();
+        var mr = g.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = curGemMat;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        g.transform.position = worldPos;
+        g.transform.localScale = Vector3.one * size;
+        g.transform.localRotation = Random.rotation;
+        return g.transform;
+    }
 
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
-    // Tiap sel cincin yang hancur (posisi direkam CurCaptureRingBurst dari
-    // FlashClear) = 1 permata. Permata jatuh ke DASAR seperti pecahan kaca dan
-    // menggerombol RAPAT di paling bawah.
+    // Tiap sel cincin yang hancur (posisi WORLD direkam CurCaptureRingBurst dari
+    // FlashClear) = 1 permata 3D yang lahir tepat di posisi block itu.
     void SpawnGemBurst(int gain)
     {
-        if (curGems == null) curGems = new List<CurGem>();
+        if (curGems3D == null) curGems3D = new List<CurGem3D>();
 
-        // Kalau masih ada butiran dari clear sebelumnya yang belum sampai chip,
-        // tuntaskan dulu (jangan dicampur) supaya tidak terlihat berantakan.
-        if (curGems.Count > 0)
+        // Tuntaskan sisa animasi sebelumnya (bersihkan objek lama) biar rapi.
+        if (curGems3D.Count > 0)
         {
-            curGems.Clear();
+            for (int i = 0; i < curGems3D.Count; i++)
+                if (curGems3D[i].tf != null) Destroy(curGems3D[i].tf.gameObject);
+            curGems3D.Clear();
             curGemPulse = 0.32f;
         }
 
-        // Kumpulkan titik asal dari sel cincin (world -> koordinat UI logis).
-        // Tiap sel = 1 block yang hancur -> jadi 1 permata. Ini cuma TITIK LAHIR
-        // (tempat pecah); tujuan mendaratnya ditentukan terpisah (tx,ty) di dasar.
-        List<Vector2> origins = new List<Vector2>();
-        if (curBurstWorld != null)
-        {
-            for (int i = 0; i < curBurstWorld.Count; i++)
-            {
-                float ux, uy;
-                if (CurWorldToUi(curBurstWorld[i], out ux, out uy))
-                    origins.Add(new Vector2(ux, uy));
-            }
-        }
-
-        // Acak urutan biar sebaran merata di sekeliling cincin (juga saat dipangkas ke maks).
+        // Titik lahir = posisi WORLD block yang hancur (1 block = 1 permata).
+        List<Vector3> origins = new List<Vector3>();
+        if (curBurstWorld != null) origins.AddRange(curBurstWorld);
+        // Acak biar sebaran merata saat dipangkas ke maks.
         for (int i = origins.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            Vector2 tmp = origins[i]; origins[i] = origins[j]; origins[j] = tmp;
+            Vector3 tmp = origins[i]; origins[i] = origins[j]; origins[j] = tmp;
         }
 
-        // 1 permata per block yang hancur, DIBATASI CUR_GEM_MAX biar tidak lag.
         int n = origins.Count > 0 ? Mathf.Min(origins.Count, CUR_GEM_MAX)
                                   : Mathf.Clamp(2 + gain / 6, 3, 8);
 
+        float size   = Mathf.Max(0.2f, blockScale.x * 0.5f); // lebih kecil dari block
+        float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
+        float frontZ = -radius * 0.85f;  // sisi DEPAN (menghadap kamera = -Z)
+        float clstX  = radius * 0.5f;    // lebar gerombolan (rapat)
+
         for (int i = 0; i < n; i++)
         {
-            CurGem g = new CurGem();
-            if (origins.Count > 0)
-            {
-                Vector2 o = origins[i % origins.Count];
-                g.x = o.x;
-                // Titik PECAH dipaksa turun ke area DASAR (dekat pangkal silinder)
-                // supaya butiran TIDAK pernah nongol melayang di tengah layar.
-                g.y = Mathf.Max(o.y, VH * 0.72f) + Random.Range(-8f, 8f);
-            }
-            else
-            {
-                // fallback (posisi cincin tak diketahui): dari dekat dasar.
-                g.x = VW * 0.5f + Random.Range(-40f, 40f);
-                g.y = VH * 0.74f + Random.Range(-12f, 12f);
-            }
-            // PECAH seperti kaca lalu JATUH LURUS KE BAWAH karena gravitasi.
-            // TIDAK ada dorongan ke atas (biar tidak terkesan melayang). Tiap
-            // butiran punya TUJUAN mendarat (tx,ty) = MENGGEROMBOL di DASAR pada
-            // SISI KIRI / KANAN silinder (bergantian), lalu menumpuk di sana.
-            // Semua permata mendarat di SATU tumpukan RAPAT di paling DASAR (dekat
-            // pangkal silinder) dengan KETINGGIAN SAMA & posisi saling BERDEKATAN.
-            g.tx = VW * 0.5f + Random.Range(-0.14f, 0.14f) * VW; // kumpul rapat di tengah-bawah
-            g.ty = VH * 0.88f + Random.Range(-6f, 6f);           // ketinggian SAMA di paling bawah
-            g.vx = Random.Range(-20f, 20f);                              // muncratan samping kecil saja
-            g.vy = Random.Range(0f, 60f);                                // HANYA ke bawah (tanpa pop ke atas)
-            g.t = 0f;
-            g.dur = 0f;
-            g.delay = 0f;
-            g.rot = Random.Range(0f, 360f);
-            g.rotv = Random.Range(-260f, 260f);
-            g.size = Random.Range(30f, 44f);
-            g.hooked = false;
-            curGems.Add(g);
+            Vector3 birth = origins.Count > 0
+                ? origins[i % origins.Count]
+                : new Vector3(Random.Range(-clstX, clstX), baseY + 4f * vSpace, frontZ);
+
+            CurGem3D g = new CurGem3D();
+            g.tf = CurMakeGem(birth, size);
+            g.baseScale = g.tf.localScale;
+
+            // Muncrat PECAH: dorongan keluar dari pusat tabung + sedikit ke atas.
+            Vector3 outward = new Vector3(birth.x, 0f, birth.z);
+            if (outward.sqrMagnitude < 0.01f)
+                outward = new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
+            outward = outward.normalized;
+            g.vel = outward * Random.Range(1.5f, 3.5f)
+                  + Vector3.up * Random.Range(1.5f, 4.5f)
+                  + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
+
+            // Titik mendarat: gerombolan RAPAT di depan-bawah, KETINGGIAN SAMA.
+            g.rest = new Vector3(
+                Random.Range(-clstX, clstX),
+                baseY + Random.Range(-0.15f, 0.15f) * vSpace,
+                frontZ + Random.Range(-0.2f, 0.2f) * radius);
+            g.spinV = Random.Range(-220f, 220f);
+            g.t = 0f; g.dur = 0f; g.arrived = false;
+            curGems3D.Add(g);
         }
 
-        // Reset timeline: jatuh ke dasar -> diam menggerombol -> naik satu per satu.
-        // Combo beruntun mulai ulang dari fase 0.
         curGemPhase = 0;
         curGemPhaseT = 0f;
     }
 
     // Rekam posisi WORLD sel-sel cincin yang baru hancur (dipanggil FlashClear
-    // sebelum sel dihancurkan). Dipakai SpawnGemBurst sebagai titik asal butiran.
+    // sebelum sel dihancurkan). Dipakai SpawnGemBurst sebagai titik lahir permata.
     public void CurCaptureRingBurst(List<Transform> ringCells)
     {
         if (curBurstWorld == null) curBurstWorld = new List<Vector3>();
@@ -370,160 +443,151 @@ public partial class Tetris3D
             if (ringCells[i] != null) curBurstWorld.Add(ringCells[i].position);
     }
 
-    // Konversi titik dunia -> koordinat UI logis (VW/VH) sesuai ApplyUiScale.
-    bool CurWorldToUi(Vector3 world, out float ux, out float uy)
+    // Titik UI logis (VW/VH, dari GetHudRow) -> titik DUNIA di depan kamera pada
+    // kedalaman 'depth'. Dipakai supaya permata 3D naik tepat ke chip Permata.
+    Vector3 CurUiToWorld(Vector2 uiPoint, float depth)
     {
-        ux = 0f; uy = 0f;
-        if (cam == null) return false;
-        Vector3 sp = cam.WorldToScreenPoint(world);
-        if (sp.z <= 0f) return false;                 // di belakang kamera
+        if (cam == null) return Vector3.zero;
         float sc = UiScale; if (sc <= 0.0001f) sc = 1f;
-        ux = sp.x / sc;
-        uy = (Screen.height - sp.y) / sc;             // GUI y dihitung dari atas
-        return true;
+        Vector3 sp = new Vector3(uiPoint.x * sc, Screen.height - uiPoint.y * sc, depth);
+        return cam.ScreenToWorldPoint(sp);
     }
 
-    // Maju-kan animasi permata tiap frame + kurangi denyut chip. Dari CurrencyTick.
+    // Maju-kan animasi permata 3D tiap frame + kurangi denyut chip. Dari CurrencyTick.
     void CurTickGems()
     {
         float dt = Time.unscaledDeltaTime;
-        if (dt > 0.033f) dt = 0.033f; // clamp -> fisika stabil walau ada lag spike
+        if (dt > 0.033f) dt = 0.033f; // clamp -> stabil walau ada lag spike
         if (curGemPulse > 0f) curGemPulse -= dt;
 
-        if (curGems == null || curGems.Count == 0) return;
+        if (curGems3D == null || curGems3D.Count == 0) return;
 
+        // Target NAIK = titik dunia yang jatuh tepat di chip Permata (bar atas).
         Rect hsRect, gemRect, coinRect, pauseRect;
         GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
-        Vector2 target = gemRect.center;
+        float depth = (cam != null ? Vector3.Distance(cam.transform.position, Vector3.zero) : 30f) * 0.55f;
+        Vector3 target = CurUiToWorld(gemRect.center, depth);
 
-        const float GRAV          = 6000f; // gravitasi KUAT -> jatuh nyata & makin cepat
-        const float BOUNCE        = 0.24f; // pantulan kecil saat kena dasar
-        const float HOLD_DUR      = 0.55f; // DIAM MENGGEROMBOL di dasar sebelum naik
-        const float RISE_DUR      = 0.34f; // durasi naik permata PERTAMA (berikutnya makin cepat)
-        const float RISE_SPEEDUP  = 0.86f; // <1 -> tiap permata berikutnya naik lebih cepat
-        const float RISE_MIN      = 0.14f; // durasi naik tercepat
-        const float RISE_OVERLAP  = 0.85f; // permata berikut baru mulai saat yang skrg 85% sampai
+        const float GRAV         = 55f;   // gravitasi dunia (jatuh nyata)
+        const float BOUNCE       = 0.22f; // pantulan kecil saat kena dasar
+        const float HOLD_DUR     = 0.45f; // diam menggerombol sebelum naik
+        const float RISE_DUR     = 0.50f; // durasi naik permata PERTAMA
+        const float RISE_SPEEDUP = 0.86f; // <1 -> tiap permata berikutnya lebih cepat
+        const float RISE_MIN     = 0.22f; // durasi naik tercepat
+        const float RISE_OVERLAP = 0.85f; // berikutnya mulai saat yang skrg 85% sampai
 
         curGemPhaseT += dt;
 
         if (curGemPhase == 0)
         {
-            // FASE 1: JATUH LURUS ala PECAHAN KACA. Gravitasi menyeret ke bawah;
-            // sambil jatuh tiap butiran DIGESER mendekati tumpukan rapat di dasar
-            // (tx). Sampai dasar -> memantul kecil -> DIAM menumpuk.
+            // FASE 1: JATUH ala PECAHAN KACA + ditarik ke gerombolan dasar.
             bool allRest = true;
-            for (int i = 0; i < curGems.Count; i++)
+            for (int i = 0; i < curGems3D.Count; i++)
             {
-                CurGem g = curGems[i];
-                g.vy += GRAV * dt;
-                g.y  += g.vy * dt;
-                g.x  += g.vx * dt;
-                float approach = 1f - Mathf.Exp(-5f * dt);   // geser mendatar menuju kolom tumpukan
-                if (g.y >= g.ty)
+                CurGem3D g = curGems3D[i];
+                if (g.tf == null) { curGems3D[i] = g; continue; }
+                g.vel.y -= GRAV * dt;
+                Vector3 p = g.tf.position + g.vel * dt;
+                float ax = 1f - Mathf.Exp(-4f * dt);       // tarik mendatar ke titik gerombol
+                if (p.y <= g.rest.y)
                 {
-                    g.y = g.ty;
-                    if (g.vy > 90f) g.vy = -g.vy * BOUNCE;    // memantul kecil
-                    else            g.vy = 0f;                // berhenti
-                    g.vx *= 0.4f;
-                    approach = 1f - Mathf.Exp(-16f * dt);     // di dasar: rapatkan ke tumpukan
+                    p.y = g.rest.y;
+                    if (g.vel.y < -1.2f) g.vel.y = -g.vel.y * BOUNCE; else g.vel.y = 0f;
+                    g.vel.x *= 0.5f; g.vel.z *= 0.5f;
+                    ax = 1f - Mathf.Exp(-14f * dt);        // di dasar: rapatkan cepat
                 }
-                g.x += (g.tx - g.x) * approach;
-                g.rot += g.rotv * dt;
-                if (g.y >= g.ty - 0.5f) g.rotv *= Mathf.Clamp01(1f - 4f * dt); // putaran meredam saat mendarat
-                curGems[i] = g;
-                bool resting = (g.y >= g.ty - 0.5f) && Mathf.Abs(g.vy) < 18f && Mathf.Abs(g.tx - g.x) < 3f;
+                p.x += (g.rest.x - p.x) * ax;
+                p.z += (g.rest.z - p.z) * ax;
+                g.tf.position = p;
+                g.tf.Rotate(0f, g.spinV * dt, g.spinV * 0.5f * dt, Space.Self);
+                bool resting = (p.y <= g.rest.y + 0.02f) && Mathf.Abs(g.vel.y) < 0.6f
+                    && new Vector2(g.rest.x - p.x, g.rest.z - p.z).sqrMagnitude < 0.04f;
                 if (!resting) allRest = false;
+                curGems3D[i] = g;
             }
-            // lanjut kalau semua sudah diam menumpuk (atau batas waktu aman).
-            if (allRest || curGemPhaseT > 1.5f) { curGemPhase = 1; curGemPhaseT = 0f; }
+            if (allRest || curGemPhaseT > 1.6f) { curGemPhase = 1; curGemPhaseT = 0f; }
         }
         else if (curGemPhase == 1)
         {
-            // FASE 2: DIAM MENGGEROMBOL di dasar (tanpa gerak melayang) sejenak.
+            // FASE 2: DIAM MENGGEROMBOL (cuma berputar pelan) sejenak.
+            for (int i = 0; i < curGems3D.Count; i++)
+            {
+                CurGem3D g = curGems3D[i];
+                if (g.tf != null) g.tf.Rotate(0f, g.spinV * dt, 0f, Space.Self);
+                curGems3D[i] = g;
+            }
             if (curGemPhaseT >= HOLD_DUR)
             {
-                // Siapkan NAIK SATU PER SATU dengan jeda MENGECIL (makin cepat).
-                // Tiap permata dapat DURASI naik sendiri yang makin singkat
-                // (makin cepat). Naiknya BENAR-BENAR satu per satu (lihat fase 3).
+                // Siapkan naik: tiap permata dapat DURASI makin singkat (makin cepat).
                 float d = RISE_DUR;
-                for (int i = 0; i < curGems.Count; i++)
+                for (int i = 0; i < curGems3D.Count; i++)
                 {
-                    CurGem g = curGems[i];
-                    g.hx = g.x; g.hy = g.y;   // titik awal naik (dari dasar)
-                    g.dur = d;                // durasi naik permata ini
-                    g.t = 0f;
-                    g.hooked = false;
-                    curGems[i] = g;
-                    d *= RISE_SPEEDUP;
-                    if (d < RISE_MIN) d = RISE_MIN;
+                    CurGem3D g = curGems3D[i];
+                    if (g.tf != null) g.riseFrom = g.tf.position;
+                    g.dur = d; g.t = 0f; g.arrived = false;
+                    curGems3D[i] = g;
+                    d *= RISE_SPEEDUP; if (d < RISE_MIN) d = RISE_MIN;
                 }
                 curGemPhase = 2; curGemPhaseT = 0f;
             }
         }
         else
         {
-            // FASE 3: NAIK SATU PER SATU (makin cepat). Yang belum giliran DIAM
-            // di dasar; yang naik terbang MELENGKUNG (Bezier) ke chip.
+            // FASE 3: NAIK SATU PER SATU (makin cepat) melengkung ke chip.
             int done = 0;
             bool anyLanded = false;
-            for (int i = 0; i < curGems.Count; i++)
+            for (int i = 0; i < curGems3D.Count; i++)
             {
-                CurGem g = curGems[i];
-                if (g.hooked) { done++; continue; }
-                // SATU PER SATU: permata ini baru boleh naik kalau yang SEBELUMNYA
-                // sudah mendarat, atau sudah hampir sampai (biar mengalir mulus).
-                bool prevReady = (i == 0) || curGems[i - 1].hooked
-                    || (curGems[i - 1].t / curGems[i - 1].dur >= RISE_OVERLAP);
-                if (!prevReady) { curGems[i] = g; continue; } // tetap DIAM di tumpukan bawah
+                CurGem3D g = curGems3D[i];
+                if (g.arrived) { done++; continue; }
+                if (g.tf == null) { g.arrived = true; done++; curGems3D[i] = g; continue; }
+
+                // SATU PER SATU: baru naik kalau yang SEBELUMNYA sudah/hampir sampai.
+                bool prevReady = (i == 0) || curGems3D[i - 1].arrived
+                    || (curGems3D[i - 1].dur > 0f
+                        && curGems3D[i - 1].t / curGems3D[i - 1].dur >= RISE_OVERLAP);
+                if (!prevReady) { curGems3D[i] = g; continue; } // tetap DIAM di dasar
 
                 g.t += dt;
                 float q = Mathf.Clamp01(g.t / g.dur);
                 float e = q * q * (3f - 2f * q);
-                float u = 1f - e;
-                float mx = (g.hx + target.x) * 0.5f;
-                float my = (g.hy + target.y) * 0.5f - 34f; // kontrol sedikit di atas -> lintasan naik yang tegas
-                g.x = u * u * g.hx + 2f * u * e * mx + e * e * target.x;
-                g.y = u * u * g.hy + 2f * u * e * my + e * e * target.y;
-                g.size = Mathf.Lerp(g.size, 12f, e);
-                g.rot += g.rotv * dt;
+                // Bezier kuadratik: lengkung naik yang tegas.
+                Vector3 mid = (g.riseFrom + target) * 0.5f
+                    + Vector3.up * (Vector3.Distance(g.riseFrom, target) * 0.18f);
+                Vector3 pos = Vector3.Lerp(Vector3.Lerp(g.riseFrom, mid, e),
+                                           Vector3.Lerp(mid, target, e), e);
+                g.tf.position = pos;
+                g.tf.localScale = Vector3.Lerp(g.baseScale, g.baseScale * 0.12f, e); // mengecil -> masuk chip
+                g.tf.Rotate(0f, g.spinV * 2f * dt, 0f, Space.Self);
                 if (q >= 1f)
                 {
-                    g.hooked = true;
-                    curGemPulse = 0.32f; // denyut chip tiap permata mendarat
+                    g.arrived = true;
+                    if (g.tf != null) Destroy(g.tf.gameObject);
+                    curGemPulse = 0.32f; // denyut chip tiap permata masuk
                     anyLanded = true;
                     done++;
                 }
-                curGems[i] = g;
+                curGems3D[i] = g;
             }
 
-            if (anyLanded) CurPlayChaChing(); // ding tiap ada permata mendarat
+            if (anyLanded) CurPlayChaChing();
 
-            if (done >= curGems.Count)
+            if (done >= curGems3D.Count)
             {
-                curGems.Clear();
+                for (int i = 0; i < curGems3D.Count; i++)
+                    if (curGems3D[i].tf != null) Destroy(curGems3D[i].tf.gameObject);
+                curGems3D.Clear();
                 curGemPhase = 0; curGemPhaseT = 0f;
             }
         }
     }
 
-    // Gambar butiran permata. Dipanggil KubikaCurrencyHUD.OnGUI (di atas HUD).
-    public void DrawGemBurst()
-    {
-        if (curGems == null || curGems.Count == 0) return;
-        Color gc = new Color(0.62f, 0.35f, 1f);
-        for (int i = 0; i < curGems.Count; i++)
-        {
-            CurGem g = curGems[i];
-            Rect ir = new Rect(g.x - g.size * 0.5f, g.y - g.size * 0.5f, g.size, g.size);
-            Matrix4x4 m = GUI.matrix;
-            GUIUtility.RotateAroundPivot(g.rot, new Vector2(g.x, g.y));
-            DrawGemIcon(ir, gc);
-            GUI.matrix = m;
-        }
-    }
+    // Permata kini objek 3D asli (dirender kamera), jadi TIDAK perlu digambar di
+    // OnGUI lagi. Disisakan sebagai no-op agar pemanggil lama tetap aman.
+    public void DrawGemBurst() { }
 
-    // Denyut chip permata + bunyi saat permata mendarat. Juga dipanggil saat
-    // klaim gelembung Permata (ApplyBuff IT_GEM).
+    // Denyut chip permata + bunyi saat permata masuk. Juga dipanggil saat klaim
+    // gelembung Permata (ApplyBuff IT_GEM).
     public void CurGemChipPulse()
     {
         curGemPulse = 0.32f;
@@ -572,7 +636,7 @@ public class KubikaCurrencyHUD : MonoBehaviour
     void Update()
     {
         FindGame();
-        if (game != null) game.CurrencyTick();
+        if (game != null) game.CurrencyTick(); // animasi permata 3D jalan tiap frame
     }
 
     void OnGUI()
@@ -582,6 +646,5 @@ public class KubikaCurrencyHUD : MonoBehaviour
         game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
         // Chip permata & koin di baris HUD atas (posisi diambil dari GetHudRow).
         game.DrawCurrencyHUD();
-        game.DrawGemBurst();
     }
 }
