@@ -121,6 +121,7 @@ public class KubikaReviveAds : MonoBehaviour
     void DoShow()
     {
         if (_ad == null || !_ad.CanShowAd()) { _wantShow = true; Load(); return; }
+        Tetris3D.BeginAdFullscreen(); // set SEBELUM Show: placeholder editor & sebagian device tidak memicu OnAdFullScreenContentOpened
         _ad.Show(reward => { if (_cb != null) _cb(); });
     }
 
