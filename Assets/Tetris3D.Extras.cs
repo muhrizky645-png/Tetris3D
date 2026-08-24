@@ -315,9 +315,12 @@ public partial class Tetris3D
             goAnimShown = 0f;
         }
 
+        // Jeda kecil di awal (setelah layar revive) biar mata pemain sempat fokus
+        // ke layar Game Over dulu sebelum angka mulai naik.
+        const float START_DELAY = 0.5f;
         // Durasi animasi: cepat (~0.35-1.1 dtk) biar greget tapi tetap kebaca.
         float dur = Mathf.Clamp(score / 18000f, 0.35f, 1.1f);
-        float elapsed = Time.time - goAnimStart;
+        float elapsed = Mathf.Max(0f, Time.time - goAnimStart - START_DELAY);
         float p = dur <= 0f ? 1f : Mathf.Clamp01(elapsed / dur);
         float pe = 1f - (1f - p) * (1f - p); // sedikit melambat di akhir
         goAnimShown = pe * score;
