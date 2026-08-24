@@ -628,8 +628,8 @@ public class KubikaExtraAds : MonoBehaviour
     public const int MODE_BUFF = 0;
     public const int MODE_DROP = 1;
 
-    const string AD_UNIT_BUFF = "ca-app-pub-3186700509396792/1410736235";
-    const string AD_UNIT_DROP = "ca-app-pub-3186700509396792/2222222222";
+    const string AD_UNIT_BUFF = "ca-app-pub-3186700509396792/3839606372";
+    const string AD_UNIT_DROP = "ca-app-pub-3186700509396792/6949035774";
     const string AD_UNIT_TEST = "ca-app-pub-3940256099942544/5224354917";
     const bool   USE_TEST_ADS = false;
 

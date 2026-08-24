@@ -30,7 +30,7 @@ using GoogleMobileAds.Api;
 //    b. Project Settings > Player > Scripting Define Symbols (Android):
 //       tambahkan  KUBIKA_ADMOB
 //    c. Isi AdMob App ID di GoogleMobileAds settings:
-//       ca-app-pub-3186700509396792~3289176146
+//       ca-app-pub-3186700509396792~4847592405
 //    Tanpa define KUBIKA_ADMOB, tombol Peti Koin menampilkan pesan
 //    "fitur iklan belum aktif" (project tetap bisa di-build).
 // =====================================================================
@@ -96,7 +96,7 @@ public partial class Tetris3D
 // =====================================================================
 public class KubikaAds : MonoBehaviour
 {
-    const string AD_UNIT_PROD = "ca-app-pub-3186700509396792/1410736235";
+    const string AD_UNIT_PROD = "ca-app-pub-3186700509396792/6949035774";
     const string AD_UNIT_TEST = "ca-app-pub-3940256099942544/5224354917"; // test rewarded resmi Google
     const bool   USE_TEST_ADS = false;
 

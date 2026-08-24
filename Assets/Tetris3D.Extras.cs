@@ -10,7 +10,7 @@ using UnityEngine;
 //   - Auto-pause saat aplikasi ke background
 //   - Slider sensitivitas geser (dragStep) di menu Jeda
 //   - REVIVE saat game over: 5 detik hitung mundur + SFX detikan,
-//     lanjut dengan menonton iklan (stub; AdMob menyusul). Maks 1x.
+//     lanjut dengan menonton iklan berhadiah (AdMob). Maks 1x.
 // =====================================================================
 public partial class Tetris3D
 {
@@ -22,10 +22,10 @@ public partial class Tetris3D
     bool reviveOffer;           // sedang menawarkan revive (hitung mundur)
     bool reviveUsed;            // sudah revive di game ini (maks 1x)
     bool reviveDeclined;        // pemain lewati / waktu habis
+    bool reviveAdPending;       // iklan revive sedang diminta/ditampilkan
     float reviveTimer;          // sisa detik tawaran revive
     float reviveTickAcc;        // akumulator SFX detikan tiap 1 detik
     const float REVIVE_SECONDS = 5f;
-    const int REVIVE_CLEAR_ROWS = 5;   // baris teratas (dekat plafon) yang dibersihkan
 
     // Deteksi tepi buat haptic
     int prevLines;
@@ -139,6 +139,7 @@ public partial class Tetris3D
         reviveOffer = false;
         reviveUsed = false;
         reviveDeclined = false;
+        reviveAdPending = false;
         reviveTimer = 0f;
         reviveTickAcc = 0f;
     }
@@ -163,8 +164,15 @@ public partial class Tetris3D
     // Dipanggil dari tombol "Tonton Iklan" di layar game over.
     void RequestReviveByAd()
     {
+        if (reviveAdPending) return;
+        reviveAdPending = true;
+        // Bekukan hitung mundur selama iklan diminta/ditampilkan (Part3 hanya
+        // tamat saat reviveTimer <= 0, dan tick SFX butuh reviveTickAcc >= 1).
+        reviveTimer = 9999f;
+        reviveTickAcc = -100000f;
         ShowRewardedAd(() =>
         {
+            reviveAdPending = false;
             reviveUsed = true;
             reviveOffer = false;
             reviveDeclined = false;
@@ -179,11 +187,21 @@ public partial class Tetris3D
         });
     }
 
-    // Bersihkan beberapa baris teratas (dekat plafon) biar ada ruang lagi.
+    // Dipanggil KubikaReviveAds saat iklan revive gagal / tidak tersedia.
+    public void OnReviveAdUnavailable()
+    {
+        reviveAdPending = false;
+        // Lanjutkan lagi hitung mundur supaya pemain bisa coba lagi / lewati.
+        reviveTimer = REVIVE_SECONDS;
+        reviveTickAcc = 0f;
+        Toast(T("adNotReady"));
+    }
+
+    // Bersihkan SEPARUH papan bagian atas biar ada ruang lagi.
     void ClearTopRowsForRevive()
     {
         if (grid == null || cells == null) return;
-        int low = Mathf.Max(1, killLine - REVIVE_CLEAR_ROWS);
+        int low = height / 2;
         for (int r = low; r < height; r++)
             for (int c = 0; c < columns; c++)
             {
@@ -192,17 +210,13 @@ public partial class Tetris3D
             }
     }
 
-    // ---------- IKLAN BERHADIAH (STUB) ----------
-    // AdMob belum terpasang. Sementara: di Editor langsung beri hadiah (buat tes),
-    // di perangkat tampilkan info kalau iklan belum tersedia. Nanti saat AdMob
-    // dipasang, cukup ganti isi fungsi ini -> revive & Peti Koin pakai jalur sama.
+    // ---------- IKLAN BERHADIAH (REVIVE) ----------
+    // Revive pakai rewarded ad khusus (TANPA SSV) lewat KubikaReviveAds.
+    // Di Editor tanpa SDK: langsung beri hadiah (buat tes). Di perangkat tanpa
+    // define KUBIKA_ADMOB: tampilkan info iklan belum tersedia.
     void ShowRewardedAd(Action onReward)
     {
-#if UNITY_EDITOR
-        if (onReward != null) onReward();
-#else
-        Toast(T("adNotReady"));
-#endif
+        KubikaReviveAds.Instance.Show(this, onReward);
     }
 
     void Toast(string msg)
@@ -229,7 +243,10 @@ public partial class Tetris3D
         Color glow = Color.Lerp(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.3f, 0.3f), 1f - reviveTimer / REVIVE_SECONDS);
         RoundRect(new Rect(ringRect.x - 8f, ringRect.y - 8f, ringRect.width + 16f, ringRect.height + 16f), new Color(glow.r, glow.g, glow.b, 0.22f + 0.28f * pulse), ring / 2f + 8f);
         RoundRect(ringRect, new Color(0.10f, 0.12f, 0.20f, 0.95f), ring / 2f);
-        GuiText(ringRect, "" + secs, 120, Color.white, TextAnchor.MiddleCenter);
+        if (reviveAdPending)
+            GuiText(ringRect, "...", 90, Color.white, TextAnchor.MiddleCenter);
+        else
+            GuiText(ringRect, "" + secs, 120, Color.white, TextAnchor.MiddleCenter);
 
         // Tombol tonton iklan -> revive
         float bw = Mathf.Min(VW * 0.74f, 440f);
