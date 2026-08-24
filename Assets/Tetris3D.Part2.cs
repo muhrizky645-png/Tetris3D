@@ -367,6 +367,11 @@ public partial class Tetris3D
                 mats.Add(rend != null ? rend.material : null);
             }
 
+        // Rekam posisi WORLD sel cincin yang akan hancur -> dipakai animasi butiran
+        // permata biar muncul MENYEBAR di sekitar cincin, lalu ditarik naik ke chip
+        // Permata. Lihat Tetris3D.Currency.cs (CurCaptureRingBurst / SpawnGemBurst).
+        CurCaptureRingBurst(objs);
+
         float dur = 0.4f;
         float t = 0f;
         while (t < dur)
