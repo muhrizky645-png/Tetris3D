@@ -32,6 +32,19 @@ public partial class Tetris3D
             return paused || gameOver;
         }
     }
+
+    // ---------------------------------------------------------------
+    //  IKLAN FULLSCREEN "BENAR-BENAR DI DEPAN"
+    //  Set true selama iklan fullscreen (rewarded/interstitial) tampil.
+    //  Selama true, SEMUA HUD IMGUI (skor, chip permata/koin, tombol,
+    //  gelembung, toko, overlay) BERHENTI digambar supaya tidak menimpa
+    //  iklan. Dipanggil dari hook OnAdFullScreenContentOpened/Closed/
+    //  Failed di semua manajer rewarded (KubikaReviveAds, KubikaAds,
+    //  KubikaExtraAds).
+    // ---------------------------------------------------------------
+    public static bool AdFullscreenShowing = false;
+    public static void BeginAdFullscreen() { AdFullscreenShowing = true; }
+    public static void EndAdFullscreen()   { AdFullscreenShowing = false; }
 }
 
 // =====================================================================
@@ -95,9 +108,11 @@ public class KubikaReviveAds : MonoBehaviour
 
     void Hook(RewardedAd ad)
     {
-        ad.OnAdFullScreenContentClosed += () => { Load(); };
+        ad.OnAdFullScreenContentOpened += () => { Tetris3D.BeginAdFullscreen(); };
+        ad.OnAdFullScreenContentClosed += () => { Tetris3D.EndAdFullscreen(); Load(); };
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
+            Tetris3D.EndAdFullscreen();
             if (_game != null) _game.OnReviveAdUnavailable();
             Load();
         };
@@ -214,7 +229,8 @@ public class KubikaMrecDriver : MonoBehaviour
     {
         if (game == null) game = Object.FindFirstObjectByType<Tetris3D>();
         if (game == null) return;
-        bool want = game.MrecShouldShow;
+        // Sembunyikan MREC juga saat ada iklan fullscreen supaya tidak dobel/menimpa iklan.
+        bool want = game.MrecShouldShow && !Tetris3D.AdFullscreenShowing;
         if (want == shown) return;
         shown = want;
         if (want) KubikaMrec.Instance.ShowMrec();
