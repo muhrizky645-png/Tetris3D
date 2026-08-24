@@ -714,6 +714,7 @@ public class KubikaExtraAds : MonoBehaviour
             var ssv = new ServerSideVerificationOptions { CustomData = _custom };
             _ad.SetServerSideVerificationOptions(ssv);
         }
+        Tetris3D.BeginAdFullscreen(); // set SEBELUM Show: placeholder editor & sebagian device tidak memicu OnAdFullScreenContentOpened
         _rewarded = false;
         _ad.Show(reward => { _rewarded = true; if (_cb != null) _cb(); });
     }
