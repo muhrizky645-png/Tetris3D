@@ -221,6 +221,7 @@ public class KubikaTokoHUD : MonoBehaviour
 
     void OnGUI()
     {
+        if (Tetris3D.AdFullscreenShowing) return; // iklan fullscreen -> HUD off (iklan di depan)
         FindGame();
         if (game == null) return;
         game.ApplyUiScale();

@@ -153,13 +153,16 @@ public class KubikaAds : MonoBehaviour
 
     void Hook(RewardedAd ad)
     {
+        ad.OnAdFullScreenContentOpened += () => { Tetris3D.BeginAdFullscreen(); };
         ad.OnAdFullScreenContentClosed += () =>
         {
+            Tetris3D.EndAdFullscreen();
             if (_game != null) _game.SetPetiBusy(false);
             Load(); // preload iklan berikutnya
         };
         ad.OnAdFullScreenContentFailed += (AdError e) =>
         {
+            Tetris3D.EndAdFullscreen();
             if (_game != null)
             {
                 _game.SetPetiBusy(false);
