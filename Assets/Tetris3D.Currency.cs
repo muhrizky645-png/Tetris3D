@@ -264,8 +264,11 @@ public partial class Tetris3D
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
-    // Dibatasi CUR_GEM_MAX biar ringan.
-    const int CUR_GEM_MAX = 12; // batas objek permata biar tidak lag
+    //  Kalau ADA burst BARU sebelum yang lama naik semua -> DITUMPUK (tidak
+    //  reset ke chip), semua turun-kumpul lagi lalu naik bareng. Dibatasi
+    //  CUR_GEM_TOTAL biar tetap ringan.
+    const int CUR_GEM_MAX   = 12; // batas objek permata per burst biar tidak lag
+    const int CUR_GEM_TOTAL = 24; // batas TOTAL objek permata di layar (tumpukan)
 
     struct CurGem3D
     {
@@ -372,13 +375,25 @@ public partial class Tetris3D
     {
         if (curGems3D == null) curGems3D = new List<CurGem3D>();
 
-        // Tuntaskan sisa animasi sebelumnya (bersihkan objek lama) biar rapi.
-        if (curGems3D.Count > 0)
+        // Buang permata yang SUDAH sampai chip / objeknya sudah hilang.
+        for (int i = curGems3D.Count - 1; i >= 0; i--)
         {
-            for (int i = 0; i < curGems3D.Count; i++)
+            if (curGems3D[i].arrived || curGems3D[i].tf == null)
+            {
                 if (curGems3D[i].tf != null) Destroy(curGems3D[i].tf.gameObject);
-            curGems3D.Clear();
-            curGemPulse = 0.32f;
+                curGems3D.RemoveAt(i);
+            }
+        }
+
+        // Permata lama yang MASIH ada TIDAK dibuang -> DITUMPUK dengan burst baru.
+        // Kembalikan ke fase jatuh/menggerombol (reset skala kalau tadi sempat
+        // mengecil saat naik) supaya semua permata naik BARENG nanti, bukan reset.
+        for (int i = 0; i < curGems3D.Count; i++)
+        {
+            CurGem3D g = curGems3D[i];
+            if (g.tf != null) g.tf.localScale = g.baseScale;
+            g.arrived = false; g.t = 0f; g.dur = 0f;
+            curGems3D[i] = g;
         }
 
         // Titik lahir = posisi WORLD block yang hancur (1 block = 1 permata).
@@ -419,9 +434,10 @@ public partial class Tetris3D
                   + Vector3.up * Random.Range(1.5f, 4.5f)
                   + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
 
-            // Titik mendarat: DIBAGI 2 gerombolan RAPAT di PINGGIR kiri & kanan
-            // (selang-seling biar seimbang), KETINGGIAN SAMA. Tidak lagi di tengah.
-            float sideDir = (i % 2 == 0) ? -1f : 1f;
+            // Titik mendarat: DIBAGI 2 gerombolan RAPAT di PINGGIR kiri & kanan.
+            // sideDir dihitung dari TOTAL indeks (termasuk permata lama) biar
+            // tumpukan tetap seimbang kiri-kanan. KETINGGIAN SAMA.
+            float sideDir = (curGems3D.Count % 2 == 0) ? -1f : 1f;
             g.rest = new Vector3(
                 sideDir * sideX + Random.Range(-clstW, clstW),
                 baseY + Random.Range(-0.15f, 0.15f) * vSpace,
@@ -431,6 +447,16 @@ public partial class Tetris3D
             curGems3D.Add(g);
         }
 
+        // Batas TOTAL supaya tetap ringan: buang permata TERTUA kalau kebanyakan.
+        while (curGems3D.Count > CUR_GEM_TOTAL)
+        {
+            if (curGems3D[0].tf != null) Destroy(curGems3D[0].tf.gameObject);
+            curGems3D.RemoveAt(0);
+        }
+
+        // Mulai/ulang animasi dari fase JATUH untuk SEMUA permata (lama + baru)
+        // -> menumpuk mulus, tidak nge-reset lompat ke chip.
+        curGemPulse = 0.32f;
         curGemPhase = 0;
         curGemPhaseT = 0f;
     }
