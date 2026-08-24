@@ -266,11 +266,11 @@ public partial class Tetris3D
     {
         float cx = VW / 2f;
         FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.72f));
-        GlowText(new Rect(0f, VH * 0.16f, VW, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
+        GlowText(new Rect(0f, VH * 0.30f, VW, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
 
         float bw = Mathf.Min(VW * 0.64f, 360f);
         float bx = cx - bw / 2f;
-        float by = VH * 0.30f;
+        float by = VH * 0.40f;
         float bh = 84f, gap = 15f;
 
         if (Btn3D(new Rect(bx, by, bw, bh), T("resume"), new Color(0.20f, 0.82f, 0.46f), false)) paused = false;

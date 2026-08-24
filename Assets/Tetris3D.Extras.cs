@@ -231,15 +231,15 @@ public partial class Tetris3D
         float cx = VW / 2f;
         FillRect(new Rect(0f, 0f, VW, VH), new Color(0f, 0f, 0f, 0.80f));
 
-        GuiText(new Rect(0f, VH * 0.15f, VW, 60f), "GAME OVER", 46, new Color(1f, 0.4f, 0.42f), TextAnchor.MiddleCenter);
-        GuiText(new Rect(0f, VH * 0.22f, VW, 40f), T("reviveAsk"), 26, Color.white, TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, VH * 0.30f, VW, 60f), "GAME OVER", 46, new Color(1f, 0.4f, 0.42f), TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, VH * 0.36f, VW, 40f), T("reviveAsk"), 26, Color.white, TextAnchor.MiddleCenter);
 
         // Lingkaran hitung mundur
         int secs = Mathf.Max(0, Mathf.CeilToInt(reviveTimer));
         float frac = reviveTimer - Mathf.Floor(reviveTimer); // 0..1 dalam 1 detik
         float pulse = 1f - frac;
         float ring = Mathf.Min(VW * 0.40f, 300f);
-        Rect ringRect = new Rect(cx - ring / 2f, VH * 0.29f, ring, ring);
+        Rect ringRect = new Rect(cx - ring / 2f, VH * 0.43f, ring, ring);
         Color glow = Color.Lerp(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.3f, 0.3f), 1f - reviveTimer / REVIVE_SECONDS);
         RoundRect(new Rect(ringRect.x - 8f, ringRect.y - 8f, ringRect.width + 16f, ringRect.height + 16f), new Color(glow.r, glow.g, glow.b, 0.22f + 0.28f * pulse), ring / 2f + 8f);
         RoundRect(ringRect, new Color(0.10f, 0.12f, 0.20f, 0.95f), ring / 2f);
