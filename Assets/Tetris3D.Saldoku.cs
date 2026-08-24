@@ -364,4 +364,104 @@ public partial class Tetris3D
 
         // --- Penelan klik LUAR panel: digambar PALING AKHIR supaya tidak
         //     menutupi input & tombol (mereka digambar lebih dulu -> tangkap
-        //     MouseDown
+        //     MouseDown lebih awal). Klik di luar panel tidak menembus ke game.
+        GUI.Button(new Rect(0f, 0f, sw, sh), GUIContent.none, GUIStyle.none);
+    }
+
+    bool SalButton(Rect r, string label, Color accent)
+    {
+        bool hover = r.Contains(Event.current.mousePosition);
+        RoundRect(r, new Color(accent.r, accent.g, accent.b, hover ? 1f : 0.85f), 14f);
+        GuiText(r, label, 28, Color.white, TextAnchor.MiddleCenter);
+        return GUI.Button(r, GUIContent.none, GUIStyle.none);
+    }
+
+    // ---- teks lokal (ID + fallback EN) ----
+    string SalTitle()     { return SalID ? "Hubungkan Akun SALDOKU" : "Link SALDOKU Account"; }
+    string SalHowto()     { return SalID
+        ? "1. Buka aplikasi SALDOKU.\n2. Menu Game > Hubungkan KUBIKA.\n3. Salin KODE 8 karakter.\n4. Masukkan kode di bawah ini."
+        : "1. Open the SALDOKU app.\n2. Game menu > Link KUBIKA.\n3. Copy the 8-character CODE.\n4. Enter the code below."; }
+    string SalCodeLabel() { return SalID ? "KODE TAUTAN" : "LINK CODE"; }
+    string SalClose()     { return SalID ? "Tutup" : "Close"; }
+    string SalRefresh()   { return SalID ? "Segarkan" : "Refresh"; }
+    string SalUnlink()    { return SalID ? "Putuskan" : "Unlink"; }
+    string SalLinkedAs()  { return SalID ? "Terhubung:" : "Linked:"; }
+    string SalNickLabel() { return SalID ? "Julukan (nama tampilan):" : "Nickname (display name):"; }
+    string SalSave()      { return SalID ? "Simpan" : "Save"; }
+    string SalNickSaved() { return SalID ? "Julukan disimpan." : "Nickname saved."; }
+    string SalPeti()      { return SalID ? "Peti:" : "Chest:"; }
+    string SalToday()     { return SalID ? "Iklan hari ini:" : "Ads today:"; }
+    string SalConnecting(){ return SalID ? "Menghubungkan..." : "Connecting..."; }
+    string SalLoading()   { return SalID ? "Memuat saldo..." : "Loading balance..."; }
+    string SalOkLoading() { return SalID ? "Berhasil! Memuat saldo..." : "Success! Loading balance..."; }
+    string SalOk()        { return SalID ? "Akun terhubung." : "Account linked."; }
+    string SalNetErr()    { return SalID ? "Gagal terhubung ke server." : "Connection failed."; }
+    string SalBadCode()   { return SalID ? "Kode tidak valid / kadaluarsa." : "Invalid or expired code."; }
+    string SalNeedCode()  { return SalID ? "Masukkan kode dulu." : "Enter the code first."; }
+    string SalNotLinked() { return SalID ? "Belum terhubung." : "Not linked yet."; }
+    string SalOfflineKeep(){ return SalID ? "Offline. Pakai saldo tersimpan." : "Offline. Using cached balance."; }
+    string SalTokenExpired(){ return SalID ? "Sesi berakhir. Hubungkan ulang." : "Session expired. Please relink."; }
+}
+
+// =====================================================================
+//  Komponen UI terpisah: chip mata uang di MENU AWAL + overlay Hubungkan.
+//  (Chip saat MAIN tetap digambar KubikaCurrencyHUD.)
+//  DefaultExecutionOrder sangat kecil + GUI.depth sangat kecil supaya
+//  overlay tampil paling depan DAN menangkap input lebih dulu (modal).
+// =====================================================================
+[DefaultExecutionOrder(-30000)]
+public class KubikaSaldokuUI : MonoBehaviour
+{
+    Tetris3D game;
+    bool autoDone;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Bootstrap()
+    {
+        var go = new GameObject("KubikaSaldokuUI");
+        DontDestroyOnLoad(go);
+        go.AddComponent<KubikaSaldokuUI>();
+    }
+
+    void FindGame()
+    {
+        if (game == null) game = Object.FindFirstObjectByType<Tetris3D>();
+    }
+
+    void Update()
+    {
+        FindGame();
+        if (game != null && !autoDone) { autoDone = true; game.AutoRefreshKoinOnStart(); }
+    }
+
+    void OnGUI()
+    {
+        if (Tetris3D.AdFullscreenShowing) return; // iklan fullscreen -> HUD off (iklan di depan)
+        FindGame();
+        if (game == null) return;
+        GUI.depth = -1000; // chip menu + overlay di depan & terima input lebih dulu
+        game.ApplyUiScale(); // skala UI responsif (sama dengan base game)
+
+        if (game.CurrencyMenuVisible && !game.SaldokuOverlayOpen)
+        {
+            float mx = 16f, my = 84f;
+            game.DrawCurrencyHUD(mx, my);
+            Rect kr = game.KoinChipRect(mx, my);
+            if (GUI.Button(kr, GUIContent.none, GUIStyle.none)) game.OpenSaldokuLink();
+        }
+
+        if (game.SaldokuOverlayOpen) game.DrawSaldokuOverlay();
+    }
+}
+
+// ---- DTO JSON (JsonUtility) ----
+[System.Serializable] public class SalVerifyReq  { public string kode; public string device; }
+[System.Serializable] public class SalVerifyResp { public bool status; public string message; public SalVerifyData data; }
+[System.Serializable] public class SalVerifyData { public string game_token; public int user_id; public string nama; public string referral_code; }
+[System.Serializable] public class SalStatusResp { public bool status; public string message; public SalStatusData data; }
+[System.Serializable] public class SalStatusData {
+    public long koin; public long poin; public long rupiah; public int kurs;
+    public int iklan_per_peti; public int poin_per_peti; public int peti_progress; public int sisa_ke_peti;
+    public int iklan_hari_ini; public int batas_harian; public int sisa_iklan; public int peti_hari_ini;
+    public long poin_hari_ini; public string nama;
+}
