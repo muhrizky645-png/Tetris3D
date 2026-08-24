@@ -174,9 +174,7 @@ public class KubikaAds : MonoBehaviour
         if (_ad == null || !_ad.CanShowAd()) { _wantShow = true; Load(); return; }
         if (!string.IsNullOrEmpty(_customData))
         {
-            var ssv = new ServerSideVerificationOptions.Builder()
-                .SetCustomData(_customData)
-                .Build();
+            var ssv = new ServerSideVerificationOptions { CustomData = _customData };
             _ad.SetServerSideVerificationOptions(ssv);
         }
         _ad.Show(reward =>
