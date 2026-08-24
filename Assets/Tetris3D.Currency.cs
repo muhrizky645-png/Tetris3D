@@ -259,8 +259,8 @@ public partial class Tetris3D
     // octahedron, ungu mengkilap emissive) tepat di posisi block itu di DUNIA 3D
     // -- jadi permata benar-benar NYATU dengan scene (kena perspektif, cahaya,
     // bloom), bukan lagi overlay 2D. Alur ala PECAHAN KACA:
-    //  1) Kristal muncrat dari block lalu JATUH (gravitasi dunia) & mengumpul
-    //     RAPAT di depan-bawah tabung, DIBAGI 2 gerombolan di PINGGIR kiri & kanan.
+    //  1) Kristal muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR
+    //     MELEBAR di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan.
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -411,9 +411,14 @@ public partial class Tetris3D
 
         float size   = Mathf.Max(0.2f, blockScale.x * 0.5f); // lebih kecil dari block
         float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
-        float frontZ = -radius * 0.95f;  // sisi DEPAN (menghadap kamera = -Z), sedikit lebih maju
-        float sideX  = radius * 1.28f;   // jarak gerombolan KIRI/KANAN dari tengah -> di LUAR tabung biar tak nabrak block
-        float clstW  = radius * 0.15f;   // lebar tiap gerombolan (rapat, tak melebar ke tengah)
+        float frontZ = -radius * 0.95f;  // sisi DEPAN (menghadap kamera = -Z)
+        // Sebaran MELEBAR kiri & kanan (BUKAN menumpuk di satu titik): tiap sisi
+        // punya deretan kolom yang makin KELUAR dari tengah. Kolom terdalam mulai
+        // di sideX (aman di luar dinding tabung), lalu melebar keluar tiap kolom.
+        int   perSideCols = 6;                                   // kolom melebar per sisi
+        float sideX   = radius * 1.0f;                           // kolom TERDALAM tiap sisi
+        float colStep = radius * 0.22f;                          // jarak antar kolom (melebar keluar)
+        float rowStep = Mathf.Max(size * 1.3f, radius * 0.18f);  // naik 1 baris kalau satu baris penuh
 
         for (int i = 0; i < n; i++)
         {
@@ -434,14 +439,6 @@ public partial class Tetris3D
                   + Vector3.up * Random.Range(1.5f, 4.5f)
                   + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f));
 
-            // Titik mendarat: DIBAGI 2 gerombolan RAPAT di PINGGIR kiri & kanan.
-            // sideDir dihitung dari TOTAL indeks (termasuk permata lama) biar
-            // tumpukan tetap seimbang kiri-kanan. KETINGGIAN SAMA.
-            float sideDir = (curGems3D.Count % 2 == 0) ? -1f : 1f;
-            g.rest = new Vector3(
-                sideDir * sideX + Random.Range(-clstW, clstW),
-                baseY + Random.Range(-0.15f, 0.15f) * vSpace,
-                frontZ + Random.Range(-0.2f, 0.2f) * radius);
             g.spinV = Random.Range(-220f, 220f);
             g.t = 0f; g.dur = 0f; g.arrived = false;
             curGems3D.Add(g);
@@ -452,6 +449,27 @@ public partial class Tetris3D
         {
             if (curGems3D[0].tf != null) Destroy(curGems3D[0].tf.gameObject);
             curGems3D.RemoveAt(0);
+        }
+
+        // ---- SUSUN sebaran MELEBAR untuk SEMUA permata (lama + baru) ----
+        // Dibagi rata: indeks GENAP -> sisi KIRI, GANJIL -> sisi KANAN. Tiap sisi
+        // MENYEBAR KELUAR (kolom demi kolom) membentuk deretan lebar, bukan
+        // tumpukan di satu titik. Kalau satu baris penuh (perSideCols), lanjut ke
+        // baris di atasnya. Sedikit lengkung ke belakang + jitter biar organik.
+        int leftN = 0, rightN = 0;
+        for (int i = 0; i < curGems3D.Count; i++)
+        {
+            CurGem3D g = curGems3D[i];
+            float sideDir = (i % 2 == 0) ? -1f : 1f;
+            int sideIdx = (sideDir < 0f) ? leftN++ : rightN++;
+            int col = sideIdx % perSideCols;
+            int row = sideIdx / perSideCols;
+            float outX = sideX + col * colStep;                 // makin keluar makin MELEBAR
+            g.rest = new Vector3(
+                sideDir * outX + Random.Range(-size * 0.15f, size * 0.15f),
+                baseY + row * rowStep + Random.Range(-0.06f, 0.06f) * vSpace,
+                frontZ + col * (radius * 0.05f) + Random.Range(-0.1f, 0.1f) * radius);
+            curGems3D[i] = g;
         }
 
         // Mulai/ulang animasi dari fase JATUH untuk SEMUA permata (lama + baru)
