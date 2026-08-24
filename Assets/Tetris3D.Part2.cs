@@ -73,7 +73,7 @@ public partial class Tetris3D
         return ch;
     }
 
-    // ---------- PEMILIHAN BENTUK CERDAS (progresif + "tempat rahasia") ----------
+    // ---------- PEMILIHAN BENTUK CERDAS (progresif + \"tempat rahasia\") ----------
     // Pilih tipe balok berikutnya: bentuk menyesuaikan kemajuan & condong ke balok yang ada tempatnya
     int PickNextType()
     {
@@ -651,7 +651,7 @@ public partial class Tetris3D
         main.startColor = c;
         main.gravityModifier = 0.8f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.maxParticles = 24;
+        main.maxParticles = 32;
         var em = ps.emission;
         em.rateOverTime = 0f;
         var sh = ps.shape;
@@ -659,7 +659,7 @@ public partial class Tetris3D
         sh.radius = 0.12f;
         var rend = ps.GetComponent<ParticleSystemRenderer>();
         if (particleMat != null) rend.material = particleMat;
-        ps.Emit(6);
+        ps.Emit(16);
         Destroy(pg, 0.9f);
     }
 }
