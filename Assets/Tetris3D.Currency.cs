@@ -256,12 +256,14 @@ public partial class Tetris3D
 
     // ============ ANIMASI PERMATA: PECAH DARI BLOCK -> NAIK KE CHIP =========
     // Tiap block yang hancur menghasilkan 1 butir permata (DIBATASI maks
-    // CUR_GEM_MAX biar ringan). Permata MENYEBAR dari block lalu benar-benar
-    // JATUH KE BAWAH (gravitasi) sampai LANTAI dekat dasar layar & mengendap
-    // mengelilingi dasar silinder di sana (BUKAN melayang di tengah), JEDA
-    // sejenak, lalu NAIK SATU PER SATU ke chip Permata di HUD atas dengan
-    // ritme MAKIN CEPAT (jeda antar permata mengecil). Chip berdenyut ungu
-    // tiap permata mendarat.
+    // CUR_GEM_MAX biar ringan). Alur ala PECAHAN KACA:
+    //  1) Permata muncrat sedikit dari block lalu BENAR-BENAR JATUH KE BAWAH
+    //     dengan GRAVITASI NYATA (makin cepat), mendarat di lantai dekat dasar
+    //     layar, memantul kecil, lalu DIAM menumpuk (bukan melayang!).
+    //  2) Diam sejenak di lantai.
+    //  3) NAIK SATU PER SATU ke chip Permata di HUD atas, ritme MAKIN CEPAT
+    //     (jeda antar permata mengecil). Yang belum giliran tetap DIAM di lantai.
+    // Chip berdenyut ungu tiap permata mendarat.
     const int CUR_GEM_MAX = 12; // batas partikel permata biar tidak lag
     struct CurGem { public float x, y, vx, vy, hx, hy, tx, ty, t, dur, delay, rot, rotv, size; public bool hooked; }
     List<CurGem> curGems;
@@ -269,13 +271,12 @@ public partial class Tetris3D
     bool  curChaQueued;
     AudioClip curSfxCoin;
     List<Vector3> curBurstWorld;   // posisi WORLD sel cincin terakhir yang hancur
-    int   curGemPhase;    // 0=sebar+jatuh ke lantai, 1=mengendap di dasar, 2=JEDA, 3=naik satu per satu
-    float curGemPhaseT;   // timer fase bersama (fase 0-2) & timer global fase 3 (utk delay giliran)
-    float curGemGx, curGemGy; // titik pusat kumpul (di lantai, sekitar dasar silinder)
+    int   curGemPhase;    // 0=jatuh ke lantai, 1=diam sejenak, 2=naik satu per satu
+    float curGemPhaseT;   // timer fase (fase 0-1) & timer global fase 2 (utk delay giliran)
 
     // Dipanggil dari CurrencyTick saat dapat 'gain' permata dari line clear.
     // Tiap sel cincin yang hancur (posisi direkam CurCaptureRingBurst dari
-    // FlashClear) = 1 permata. Permata menyebar lalu jatuh ke lantai bawah.
+    // FlashClear) = 1 permata. Permata jatuh ke lantai seperti pecahan kaca.
     void SpawnGemBurst(int gain)
     {
         if (curGems == null) curGems = new List<CurGem>();
@@ -323,29 +324,29 @@ public partial class Tetris3D
             }
             else
             {
-                // fallback (posisi cincin tak diketahui): sebar dari tengah papan.
-                g.x = VW * 0.5f + Random.Range(-30f, 30f);
-                g.y = VH * 0.45f + Random.Range(-24f, 24f);
+                // fallback (posisi cincin tak diketahui): dari tengah papan.
+                g.x = VW * 0.5f + Random.Range(-40f, 40f);
+                g.y = VH * 0.42f + Random.Range(-24f, 24f);
             }
-            // MENYEBAR dari block lalu JATUH: dorongan awal ke atas + ke samping
-            // (acak), gravitasi kuat ditambahkan tiap frame di fase 0 -> permata
-            // memuncrat sebentar lalu benar-benar jatuh ke lantai bawah.
-            float ang = Random.Range(0f, Mathf.PI * 2f);
-            float spd = Random.Range(200f, 400f);
-            g.vx = Mathf.Cos(ang) * spd;
-            g.vy = -Mathf.Abs(Mathf.Sin(ang) * spd) - Random.Range(60f, 160f);
+            // PECAH seperti kaca: muncrat KE SAMPING sedikit, dorongan vertikal
+            // KECIL saja (boleh sedikit ke atas/bawah). Gravitasi KUAT di fase 0
+            // yang menyeret jatuh -> terasa benar-benar jatuh, bukan melayang.
+            float side = (g.x >= VW * 0.5f) ? 1f : -1f;
+            g.vx = side * Random.Range(70f, 210f) + Random.Range(-60f, 60f);
+            g.vy = Random.Range(-70f, 30f);
+            g.ty = VH * 0.82f + Random.Range(0f, 12f); // LANTAI per butiran (dekat dasar layar)
             g.t = 0f;
             g.dur = 0f;
             g.delay = 0f;
             g.rot = Random.Range(0f, 360f);
-            g.rotv = Random.Range(-220f, 220f);
+            g.rotv = Random.Range(-260f, 260f);
             g.size = Random.Range(30f, 44f);
             g.hooked = false;
             curGems.Add(g);
         }
 
-        // Reset timeline: sebar+jatuh ke lantai -> mengendap -> JEDA -> naik
-        // satu per satu (makin cepat) ke chip. Combo beruntun mulai ulang dari fase 0.
+        // Reset timeline: jatuh ke lantai -> diam -> naik satu per satu (makin cepat).
+        // Combo beruntun mulai ulang dari fase 0.
         curGemPhase = 0;
         curGemPhaseT = 0f;
     }
@@ -378,6 +379,7 @@ public partial class Tetris3D
     void CurTickGems()
     {
         float dt = Time.unscaledDeltaTime;
+        if (dt > 0.033f) dt = 0.033f; // clamp -> fisika stabil walau ada lag spike
         if (curGemPulse > 0f) curGemPulse -= dt;
 
         if (curGems == null || curGems.Count == 0) return;
@@ -386,137 +388,84 @@ public partial class Tetris3D
         GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
         Vector2 target = gemRect.center;
 
-        const float SHATTER_DUR   = 0.55f; // sebar dari block lalu JATUH ke lantai bawah
-        const float SETTLE_DUR    = 0.28f; // mengendap rapi mengelilingi dasar silinder
-        const float HOLD_DUR      = 0.22f; // JEDA mengambang di dasar
-        const float RISE_DUR      = 0.48f; // durasi naik TIAP permata ke chip
-        const float RISE_STAGGER  = 0.16f; // jeda naik awal antar permata
-        const float STAGGER_DECAY = 0.74f; // <1 -> jeda mengecil -> makin lama makin cepat
+        const float GRAV          = 4200f; // gravitasi KUAT -> jatuh nyata & makin cepat
+        const float BOUNCE        = 0.32f; // pantulan kecil saat kena lantai
+        const float FRICTION      = 0.70f; // gesekan mendatar saat menyentuh lantai
+        const float HOLD_DUR      = 0.26f; // DIAM sejenak di lantai sebelum naik
+        const float RISE_DUR      = 0.46f; // durasi naik TIAP permata ke chip
+        const float RISE_STAGGER  = 0.14f; // jeda naik awal antar permata
+        const float STAGGER_DECAY = 0.72f; // <1 -> jeda mengecil -> makin lama makin cepat
         const float STAGGER_MIN   = 0.03f; // batas bawah jeda
-        const float GRAV          = 3000f; // gravitasi KUAT -> permata benar-benar jatuh ke bawah
-        float floorY = VH * 0.82f;         // LANTAI dekat dasar layar (di atas tombol kontrol)
 
         curGemPhaseT += dt;
 
         if (curGemPhase == 0)
         {
-            // FASE 1: SEBAR + JATUH -> permata memuncrat dari block lalu ditarik
-            // gravitasi jatuh KE BAWAH sampai lantai; begitu menyentuh lantai
-            // berhenti jatuh & geser mendatar melambat (menumpuk di dasar).
-            float damp = Mathf.Clamp01(1f - 1.2f * dt);
+            // FASE 1: JATUH ala PECAHAN KACA -> gravitasi menyeret ke bawah,
+            // mendarat di lantai, memantul kecil, lalu DIAM menumpuk.
+            bool allRest = true;
             for (int i = 0; i < curGems.Count; i++)
             {
                 CurGem g = curGems[i];
                 g.vy += GRAV * dt;
-                g.vx *= damp;
                 g.x += g.vx * dt;
                 g.y += g.vy * dt;
-                if (g.y >= floorY)   // mendarat di lantai
+                float fy = g.ty; // lantai per butiran
+                if (g.y >= fy)
                 {
-                    g.y = floorY;
-                    g.vy = 0f;
-                    g.vx *= 0.7f;    // gesekan lantai -> berhenti mendatar
+                    g.y = fy;
+                    if (g.vy > 80f) { g.vy = -g.vy * BOUNCE; g.vx *= FRICTION; } // memantul
+                    else            { g.vy = 0f; g.vx *= 0.6f; }                 // berhenti
                 }
                 g.rot += g.rotv * dt;
+                if (g.y >= fy - 0.5f) g.rotv *= Mathf.Clamp01(1f - 3f * dt); // putaran meredam saat mendarat
                 curGems[i] = g;
+                bool resting = (g.y >= fy - 0.5f) && Mathf.Abs(g.vy) < 25f && Mathf.Abs(g.vx) < 20f;
+                if (!resting) allRest = false;
             }
-            if (curGemPhaseT >= SHATTER_DUR)
-            {
-                // Pusat X = rata-rata posisi permata (sekitar dasar silinder),
-                // pusat Y = LANTAI (benar-benar di bawah, bukan di tengah).
-                float sx = 0f;
-                for (int i = 0; i < curGems.Count; i++) sx += curGems[i].x;
-                curGemGx = sx / curGems.Count;
-                curGemGy = floorY;
-                // Susun mengendap mengelilingi dasar silinder: sebaran mendatar
-                // di lantai, sedikit menumpuk (tetap dekat lantai).
-                for (int i = 0; i < curGems.Count; i++)
-                {
-                    CurGem g = curGems[i];
-                    g.hx = g.x; g.hy = g.y;
-                    float a = i * 2.3999632f;                       // sudut emas -> merata
-                    float rad = 54f + (i % 3) * 18f;               // sebar mendatar di dasar
-                    g.tx = curGemGx + Mathf.Cos(a) * rad;
-                    g.ty = floorY - Mathf.Abs(Mathf.Sin(a)) * 16f; // tetap dekat lantai (menumpuk)
-                    curGems[i] = g;
-                }
-                curGemPhase = 1; curGemPhaseT = 0f;
-            }
+            // lanjut kalau semua sudah diam di lantai (atau batas waktu aman).
+            if (allRest || curGemPhaseT > 1.4f) { curGemPhase = 1; curGemPhaseT = 0f; }
         }
         else if (curGemPhase == 1)
         {
-            // FASE 2: MENGENDAP -> permata meluncur ke posisi rapi di lantai (dasar silinder).
-            float q = Mathf.Clamp01(curGemPhaseT / SETTLE_DUR);
-            float e = q * q * (3f - 2f * q);
-            for (int i = 0; i < curGems.Count; i++)
-            {
-                CurGem g = curGems[i];
-                g.x = Mathf.Lerp(g.hx, g.tx, e);
-                g.y = Mathf.Lerp(g.hy, g.ty, e);
-                g.rot += g.rotv * 0.4f * dt;
-                curGems[i] = g;
-            }
-            if (curGemPhaseT >= SETTLE_DUR) { curGemPhase = 2; curGemPhaseT = 0f; }
-        }
-        else if (curGemPhase == 2)
-        {
-            // FASE 3: JEDA -> permata mengambang pelan di dasar (di lantai).
-            float bob = Mathf.Sin(curGemPhaseT * 9f) * 5f * dt;
-            for (int i = 0; i < curGems.Count; i++)
-            {
-                CurGem g = curGems[i];
-                g.y += bob;
-                g.rot += g.rotv * 0.25f * dt;
-                curGems[i] = g;
-            }
+            // FASE 2: DIAM total di lantai sejenak (tidak ada gerak melayang).
             if (curGemPhaseT >= HOLD_DUR)
             {
-                // Siapkan NAIK SATU PER SATU dengan jeda MENGECIL (makin cepat):
-                // delay[i] = akumulasi jeda; tiap jeda dikali STAGGER_DECAY.
+                // Siapkan NAIK SATU PER SATU dengan jeda MENGECIL (makin cepat).
                 float acc = 0f, gap = RISE_STAGGER;
                 for (int i = 0; i < curGems.Count; i++)
                 {
                     CurGem g = curGems[i];
                     g.hx = g.x; g.hy = g.y;   // titik awal naik (dari lantai)
                     g.delay = acc;            // giliran naik (berurutan)
-                    g.t = 0f;                 // timer terbang per permata
-                    g.hooked = false;         // belum sampai chip
+                    g.t = 0f;
+                    g.hooked = false;
                     curGems[i] = g;
                     acc += gap;
                     gap *= STAGGER_DECAY;
                     if (gap < STAGGER_MIN) gap = STAGGER_MIN;
                 }
-                curGemPhase = 3; curGemPhaseT = 0f;
+                curGemPhase = 2; curGemPhaseT = 0f;
             }
         }
         else
         {
-            // FASE 4: NAIK SATU PER SATU -> tiap permata menunggu giliran (delay,
-            // makin lama makin rapat), lalu terbang MELENGKUNG (Bezier) dari lantai
-            // ke chip. Chip berdenyut & berbunyi tiap permata mendarat.
+            // FASE 3: NAIK SATU PER SATU (makin cepat). Yang belum giliran DIAM
+            // di lantai; yang naik terbang MELENGKUNG (Bezier) ke chip.
             int done = 0;
             bool anyLanded = false;
             for (int i = 0; i < curGems.Count; i++)
             {
                 CurGem g = curGems[i];
                 if (g.hooked) { done++; continue; }
-
-                // Belum giliran: mengambang pelan di lantai menunggu.
-                if (curGemPhaseT < g.delay)
-                {
-                    g.y += Mathf.Sin((curGemPhaseT + i) * 9f) * 3f * dt;
-                    g.rot += g.rotv * 0.25f * dt;
-                    curGems[i] = g;
-                    continue;
-                }
+                if (curGemPhaseT < g.delay) { curGems[i] = g; continue; } // diam menunggu giliran
 
                 g.t += dt;
                 float q = Mathf.Clamp01(g.t / RISE_DUR);
                 float e = q * q * (3f - 2f * q);
                 float u = 1f - e;
-                // Titik kontrol di atas garis lurus -> lintasan melengkung naik.
                 float mx = (g.hx + target.x) * 0.5f;
-                float my = (g.hy + target.y) * 0.5f - 50f;
+                float my = (g.hy + target.y) * 0.5f - 50f; // kontrol di atas -> lintasan melengkung naik
                 g.x = u * u * g.hx + 2f * u * e * mx + e * e * target.x;
                 g.y = u * u * g.hy + 2f * u * e * my + e * e * target.y;
                 g.size = Mathf.Lerp(g.size, 12f, e);
