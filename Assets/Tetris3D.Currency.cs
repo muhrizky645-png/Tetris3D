@@ -263,6 +263,7 @@ public partial class Tetris3D
     //  1) Muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR MELEBAR
     //     di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan, plus
     //     variasi kedalaman ke DEPAN (ke arah kamera) biar tidak cuma ke samping.
+    //     2 permata TERLUAR tiap sisi dipindah ke DEPAN block (di depan tabung).
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -512,6 +513,8 @@ public partial class Tetris3D
         // baris di atasnya. Selain melebar ke samping, tiap permata juga disebar
         // sedikit ke DEPAN (ke arah kamera, Z lebih negatif) + jitter biar organik.
         int leftN = 0, rightN = 0;
+        int   leftFarIdx = -1, rightFarIdx = -1;   // permata TERLUAR (paling jauh ke samping) tiap sisi
+        float leftFarOut = -1f, rightFarOut = -1f;
         for (int i = 0; i < curGems3D.Count; i++)
         {
             CurGem3D g = curGems3D[i];
@@ -525,6 +528,33 @@ public partial class Tetris3D
                 baseY + row * rowStep + Random.Range(-0.06f, 0.06f) * vSpace,
                 frontZ - Random.Range(0f, frontSpread) + col * (radius * 0.03f) + Random.Range(-0.05f, 0.05f) * radius);
             curGems3D[i] = g;
+
+            // Catat permata yang PALING JAUH ke samping tiap sisi (outX terbesar).
+            if (sideDir < 0f) { if (outX > leftFarOut)  { leftFarOut  = outX; leftFarIdx  = i; } }
+            else              { if (outX > rightFarOut) { rightFarOut = outX; rightFarIdx = i; } }
+        }
+
+        // 2 permata TERLUAR (paling jauh ke samping kiri & kanan) dipindah ke
+        // DEPAN tabung/block: Z jauh lebih ke arah kamera & X ditarik dekat tengah,
+        // seolah permata diletakkan DI DEPAN block -- bukan melebar jauh ke samping.
+        float frontDepth = frontZ - radius * 0.9f;   // jauh lebih ke DEPAN (ke arah kamera)
+        if (leftFarIdx >= 0)
+        {
+            CurGem3D g = curGems3D[leftFarIdx];
+            g.rest = new Vector3(
+                -radius * 0.35f + Random.Range(-size * 0.15f, size * 0.15f),
+                baseY + Random.Range(-0.05f, 0.05f) * vSpace,
+                frontDepth + Random.Range(-0.06f, 0.06f) * radius);
+            curGems3D[leftFarIdx] = g;
+        }
+        if (rightFarIdx >= 0 && rightFarIdx != leftFarIdx)
+        {
+            CurGem3D g = curGems3D[rightFarIdx];
+            g.rest = new Vector3(
+                radius * 0.35f + Random.Range(-size * 0.15f, size * 0.15f),
+                baseY + Random.Range(-0.05f, 0.05f) * vSpace,
+                frontDepth + Random.Range(-0.06f, 0.06f) * radius);
+            curGems3D[rightFarIdx] = g;
         }
 
         // Mulai/ulang animasi dari fase JATUH untuk SEMUA permata (lama + baru)
