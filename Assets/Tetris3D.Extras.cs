@@ -146,7 +146,8 @@ public partial class Tetris3D
     // ---------- AUTO-PAUSE saat app ke background ----------
     void OnApplicationPause(bool pauseStatus)
     {
-        if (pauseStatus && started && !gameOver && !reviveOffer) paused = true;
+        if (pauseStatus && started && !gameOver && !reviveOffer
+            && !AdFullscreenShowing && !AdLoadingActive) paused = true;
     }
 
     // ---------- REVIVE ----------

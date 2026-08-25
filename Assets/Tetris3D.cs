@@ -75,10 +75,10 @@ public partial class Tetris3D : MonoBehaviour
     };
 
     [Header("Efek cahaya (atur kalau kesilauan)")]
-    public float bloomIntensity = 0.3f;
+    public float bloomIntensity = 1f;
     public float bloomThreshold = 0.9f;
-    public float bloomScatter = 0.6f;
-    public float emissionStrength = 0.3f;
+    public float bloomScatter = 0.4f;
+    public float emissionStrength = 0.75f;
     public float vignetteAmount = 0.28f;
 
     [Header("Suara")]
