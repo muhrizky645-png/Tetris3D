@@ -309,7 +309,7 @@ public partial class Tetris3D
         switch (lang)
         {
             case Lang.ID: return "REKOR BARU!";
-            case Lang.ES: return "¡NUEVO RÉCORD!";
+            case Lang.ES: return "\u00a1NUEVO R\u00c9CORD!";
             case Lang.PT: return "NOVO RECORDE!";
             case Lang.FR: return "NOUVEAU RECORD!";
             default: return "NEW BEST!";
