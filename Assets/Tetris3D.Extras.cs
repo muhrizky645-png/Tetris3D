@@ -192,7 +192,7 @@ public partial class Tetris3D
         GoHome();
     }
 
-    // Dipanggil dari tombol \"Tonton Iklan\" di layar game over.
+    // Dipanggil dari tombol "Tonton Iklan" di layar game over.
     void RequestReviveByAd()
     {
         if (reviveAdPending) return;
@@ -260,17 +260,18 @@ public partial class Tetris3D
     void DrawReviveOffer()
     {
         float cx = VW / 2f;
+        float off = MrecUiShift(); // geser ke bawah kalau banner MREC tampil di atas
         FillRect(new Rect(0f, 0f, VW, VH), new Color(0f, 0f, 0f, 0.80f));
 
-        GuiText(new Rect(0f, VH * 0.30f, VW, 60f), "GAME OVER", 46, new Color(1f, 0.4f, 0.42f), TextAnchor.MiddleCenter);
-        GuiText(new Rect(0f, VH * 0.36f, VW, 40f), T("reviveAsk"), 26, Color.white, TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, VH * 0.30f + off, VW, 60f), "GAME OVER", 46, new Color(1f, 0.4f, 0.42f), TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, VH * 0.36f + off, VW, 40f), T("reviveAsk"), 26, Color.white, TextAnchor.MiddleCenter);
 
         // Lingkaran hitung mundur
         int secs = Mathf.Max(0, Mathf.CeilToInt(reviveTimer));
         float frac = reviveTimer - Mathf.Floor(reviveTimer); // 0..1 dalam 1 detik
         float pulse = 1f - frac;
         float ring = Mathf.Min(VW * 0.40f, 300f);
-        Rect ringRect = new Rect(cx - ring / 2f, VH * 0.43f, ring, ring);
+        Rect ringRect = new Rect(cx - ring / 2f, VH * 0.43f + off, ring, ring);
         Color glow = Color.Lerp(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.3f, 0.3f), 1f - reviveTimer / REVIVE_SECONDS);
         RoundRect(new Rect(ringRect.x - 8f, ringRect.y - 8f, ringRect.width + 16f, ringRect.height + 16f), new Color(glow.r, glow.g, glow.b, 0.22f + 0.28f * pulse), ring / 2f + 8f);
         RoundRect(ringRect, new Color(0.10f, 0.12f, 0.20f, 0.95f), ring / 2f);
@@ -317,6 +318,7 @@ public partial class Tetris3D
     void DrawGameOverScore()
     {
         EnsureScoreSfx();
+        float off = MrecUiShift(); // geser ke bawah kalau banner MREC tampil di atas
 
         if (!goAnimInit)
         {
@@ -353,21 +355,21 @@ public partial class Tetris3D
             else Sfx(sfxCount);
         }
 
-        // Label kecil \"SKOR\"
-        GuiText(new Rect(0f, VH * 0.375f, VW, 26f), T("score"), 22, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter);
+        // Label kecil "SKOR"
+        GuiText(new Rect(0f, VH * 0.375f + off, VW, 26f), T("score"), 22, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter);
         // Angka skor besar (emas kalau rekor baru, putih kalau biasa)
         Color numCol = goWasNewHigh ? new Color(1f, 0.86f, 0.32f) : Color.white;
-        GuiText(new Rect(0f, VH * 0.40f, VW, 92f), "" + shown, 80, numCol, TextAnchor.MiddleCenter);
+        GuiText(new Rect(0f, VH * 0.40f + off, VW, 92f), "" + shown, 80, numCol, TextAnchor.MiddleCenter);
 
         // Baris rekor / banner REKOR BARU (muncul berkedip setelah animasi selesai)
         if (goWasNewHigh && p >= 1f)
         {
             float a = 0.65f + 0.35f * Mathf.Sin(Time.time * 6f);
-            GlowText(new Rect(0f, VH * 0.475f, VW, 40f), TNewHigh(), 30, new Color(1f, 0.86f, 0.32f), a);
+            GlowText(new Rect(0f, VH * 0.475f + off, VW, 40f), TNewHigh(), 30, new Color(1f, 0.86f, 0.32f), a);
         }
         else
         {
-            GuiText(new Rect(0f, VH * 0.478f, VW, 30f), T("record") + " " + highScore, 22, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleCenter);
+            GuiText(new Rect(0f, VH * 0.478f + off, VW, 30f), T("record") + " " + highScore, 22, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleCenter);
         }
     }
 

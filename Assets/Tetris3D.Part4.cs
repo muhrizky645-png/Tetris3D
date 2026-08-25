@@ -265,12 +265,13 @@ public partial class Tetris3D
     void DrawPauseMenu()
     {
         float cx = VW / 2f;
+        float off = MrecUiShift(); // geser ke bawah kalau banner MREC tampil di atas
         FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.72f));
-        GlowText(new Rect(0f, VH * 0.30f, VW, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
+        GlowText(new Rect(0f, VH * 0.30f + off, VW, 90f), T("pause"), 72, new Color(0.5f, 0.85f, 1f), 1f);
 
         float bw = Mathf.Min(VW * 0.64f, 360f);
         float bx = cx - bw / 2f;
-        float by = VH * 0.40f;
+        float by = VH * 0.40f + off;
         float bh = 84f, gap = 15f;
 
         if (Btn3D(new Rect(bx, by, bw, bh), T("resume"), new Color(0.20f, 0.82f, 0.46f), false)) paused = false;
@@ -535,11 +536,12 @@ public partial class Tetris3D
             if (score > highScore) { highScore = score; PlayerPrefs.SetInt("tetris3d_hi", highScore); PlayerPrefs.Save(); }
             // Tawaran REVIVE dulu (hitung mundur + tonton iklan) sebelum layar game over biasa.
             if (reviveOffer) { DrawReviveOffer(); return; }
-            FillRect(new Rect(0f, VH * 0.28f, VW, VH * 0.26f), new Color(0f, 0f, 0f, 0.6f));
-            GuiText(new Rect(0f, VH * 0.30f, VW, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
+            float goOff = MrecUiShift(); // geser ke bawah kalau banner MREC tampil di atas
+            FillRect(new Rect(0f, VH * 0.28f + goOff, VW, VH * 0.26f), new Color(0f, 0f, 0f, 0.6f));
+            GuiText(new Rect(0f, VH * 0.30f + goOff, VW, 90f), "GAME OVER", 70, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
             DrawGameOverScore();
-            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RestartGameFull();
-            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f + 100f, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
+            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f + goOff, 300f, 88f), T("playAgain"), new Color(0.20f, 0.80f, 0.45f), false)) RestartGameFull();
+            if (Btn3D(new Rect(VW / 2f - 150f, VH * 0.5f + 100f + goOff, 300f, 72f), T("rankings"), new Color(0.30f, 0.55f, 0.95f), false)) { showRanks = true; LoadRanks(); }
             return;
         }
 
