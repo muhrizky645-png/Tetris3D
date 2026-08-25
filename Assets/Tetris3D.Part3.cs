@@ -509,6 +509,7 @@ public partial class Tetris3D
             { "sensLow",    new[]{ "Calm", "Santai", "Suave", "Calmo", "Doux" } },
             { "sensHigh",   new[]{ "Sensitive", "Sensitif", "Sensible", "Sens\u00edvel", "Sensible" } },
             { "haptic",     new[]{ "Vibration", "Getaran", "Vibraci\u00f3n", "Vibra\u00e7\u00e3o", "Vibration" } },
+            { "privacy",    new[]{ "Privacy", "Privasi", "Privacidad", "Privacidade", "Confidentialit\u00e9" } },
         };
     }
 

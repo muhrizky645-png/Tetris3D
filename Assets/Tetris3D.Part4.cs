@@ -191,6 +191,13 @@ public partial class Tetris3D
         if (Btn3D(new Rect(16f, 16f, pcw, 46f), pf, new Color(0.30f, 0.40f, 0.62f), false))
         { editingProfile = true; showProfile = true; countryPicking = false; lbStatus = ""; }
 
+        // Tombol Kebijakan Privasi (wajib untuk Play Store) - ditaruh di KIRI pemilih
+        // bahasa, tinggi sama (46) biar sejajar rapi. Diketuk -> buka halaman kebijakan
+        // privasi di browser (bukan di dalam game). Lebar 120 biar teks 5 bahasa muat.
+        float ppw = 120f;
+        if (Btn3D(new Rect(VW - 96f - 16f - 10f - ppw, 16f, ppw, 46f), T("privacy"), new Color(0.40f, 0.44f, 0.52f), false))
+            Application.OpenURL("https://saldoku.site/privacy-policy-kubika.php");
+
         // Pemilih bahasa (pojok kanan atas)
         DrawLangPicker(VW - 96f - 16f, 16f);
     }
