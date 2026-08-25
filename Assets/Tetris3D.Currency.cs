@@ -260,10 +260,10 @@ public partial class Tetris3D
     // Permata di HUD (KubikaIcons/Gem_A) sebagai SPRITE billboard (selalu
     // menghadap kamera) -> jadi bentuknya MIRIP ikon. Kalau asset tidak ada,
     // otomatis fallback ke mesh kristal 3D prosedural. Alur ala PECAHAN KACA:
-    //  1) Muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR MELEBAR
-    //     di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan, plus
-    //     variasi kedalaman ke DEPAN (ke arah kamera) biar tidak cuma ke samping.
-    //     2 permata TERLUAR tiap sisi dipindah ke DEPAN block (di depan tabung).
+    //  1) Muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR SETENGAH
+    //     MELINGKAR mengelilingi DEPAN tabung: menutupi sisi KIRI, DEPAN, dan
+    //     KANAN, TAPI TIDAK di belakang. Merata sepanjang busur dengan jari-jari
+    //     & tinggi beragam biar tetap terlihat menyebar (bukan garis tipis).
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -466,20 +466,22 @@ public partial class Tetris3D
         float size   = Mathf.Max(0.1f, blockScale.x * 0.25f); // lebih kecil dari block
         float baseY  = vSpace * 0.6f;    // dasar tabung (dekat pangkal)
         float frontZ = -radius * 0.95f;  // sisi DEPAN (menghadap kamera = -Z)
-        // Sebaran MELEBAR kiri & kanan (BUKAN menumpuk di satu titik): tiap sisi
-        // punya deretan kolom yang makin KELUAR dari tengah. Kolom terdalam mulai
-        // di sideX (aman di luar dinding tabung), lalu melebar keluar tiap kolom.
-        int   perSideCols = 6;                                   // kolom melebar per sisi
-        float sideX   = radius * 1.0f;                           // kolom TERDALAM tiap sisi
-        float colStep = radius * 0.22f;                          // jarak antar kolom (melebar keluar)
-        float rowStep = Mathf.Max(size * 1.3f, radius * 0.18f);  // naik 1 baris kalau satu baris penuh
-        float frontSpread = radius * 0.30f;                      // sebar ke DEPAN (ke arah kamera) biar tak cuma ke samping
+        // Sebaran SETENGAH MELINGKAR mengelilingi DEPAN tabung: menutupi sisi
+        // KIRI, DEPAN, dan KANAN, TAPI TIDAK di belakang. Sudut busur
+        // -arcHalf..+arcHalf (a=0 -> tepat DEPAN/-Z, a=-90 -> kiri, a=+90 ->
+        // kanan). Biar terlihat MENYEBAR (bukan garis tipis) dipakai beberapa
+        // \"cincin\" (band) jari-jari makin ke luar + jitter sudut/jari-jari/tinggi.
+        float ringBase  = radius * 1.05f;  // jari-jari cincin TERDALAM (tepat di luar dinding tabung)
+        float ringStep  = radius * 0.30f;  // jarak antar cincin ke LUAR
+        int   ringBands = 3;               // jumlah cincin biar sebaran terlihat tebal
+        float arcHalf   = 82f;             // setengah sudut busur (derajat); <90 supaya TAK sampai belakang
+        float angJitter = 7f;              // jitter sudut (derajat) biar organik
 
         for (int i = 0; i < n; i++)
         {
             Vector3 birth = origins.Count > 0
                 ? origins[i % origins.Count]
-                : new Vector3(Random.Range(-sideX, sideX), baseY + 4f * vSpace, frontZ);
+                : new Vector3(Random.Range(-ringBase, ringBase), baseY + 4f * vSpace, frontZ);
 
             CurGem3D g = new CurGem3D();
             g.tf = CurMakeGem(birth, size);
@@ -506,55 +508,32 @@ public partial class Tetris3D
             curGems3D.RemoveAt(0);
         }
 
-        // ---- SUSUN sebaran MELEBAR untuk SEMUA permata (lama + baru) ----
-        // Dibagi rata: indeks GENAP -> sisi KIRI, GANJIL -> sisi KANAN. Tiap sisi
-        // MENYEBAR KELUAR (kolom demi kolom) membentuk deretan lebar, bukan
-        // tumpukan di satu titik. Kalau satu baris penuh (perSideCols), lanjut ke
-        // baris di atasnya. Selain melebar ke samping, tiap permata juga disebar
-        // sedikit ke DEPAN (ke arah kamera, Z lebih negatif) + jitter biar organik.
-        int leftN = 0, rightN = 0;
-        int   leftFarIdx = -1, rightFarIdx = -1;   // permata TERLUAR (paling jauh ke samping) tiap sisi
-        float leftFarOut = -1f, rightFarOut = -1f;
-        for (int i = 0; i < curGems3D.Count; i++)
+        // ---- SUSUN sebaran SETENGAH MELINGKAR (depan + samping) SEMUA permata ----
+        // Permata disebar RATA sepanjang busur -arcHalf..+arcHalf (kiri -> depan ->
+        // kanan), TIDAK ada di belakang. Tiap permata dapat sudut merata + jitter,
+        // dan salah satu dari beberapa \"cincin\" (band) jari-jari -> jadi menyebar
+        // tebal & posisinya beda-beda (organik), bukan garis tipis.
+        int count = curGems3D.Count;
+        for (int i = 0; i < count; i++)
         {
             CurGem3D g = curGems3D[i];
-            float sideDir = (i % 2 == 0) ? -1f : 1f;
-            int sideIdx = (sideDir < 0f) ? leftN++ : rightN++;
-            int col = sideIdx % perSideCols;
-            int row = sideIdx / perSideCols;
-            float outX = sideX + col * colStep;                 // makin keluar makin MELEBAR
+
+            float frac = (count > 1) ? (float)i / (count - 1) : 0.5f;
+            float angDeg = Mathf.Lerp(-arcHalf, arcHalf, frac) + Random.Range(-angJitter, angJitter);
+            float ang = angDeg * Mathf.Deg2Rad;
+
+            int band = i % ringBands;                          // pilih cincin (kedalaman) bergiliran
+            float rr = ringBase + band * ringStep
+                     + Random.Range(-size * 0.20f, size * 0.20f);
+
+            float x =  Mathf.Sin(ang) * rr;    // a=0 -> tengah (x=0), a=+/-90 -> samping penuh
+            float z = -Mathf.Cos(ang) * rr;    // a=0 -> DEPAN (-Z); cos>0 utk |a|<90 -> TAK PERNAH +Z (belakang)
+
             g.rest = new Vector3(
-                sideDir * outX + Random.Range(-size * 0.15f, size * 0.15f),
-                baseY + row * rowStep + Random.Range(-0.06f, 0.06f) * vSpace,
-                frontZ - Random.Range(0f, frontSpread) + col * (radius * 0.03f) + Random.Range(-0.05f, 0.05f) * radius);
+                x,
+                baseY + Random.Range(-0.06f, 0.06f) * vSpace,
+                z);
             curGems3D[i] = g;
-
-            // Catat permata yang PALING JAUH ke samping tiap sisi (outX terbesar).
-            if (sideDir < 0f) { if (outX > leftFarOut)  { leftFarOut  = outX; leftFarIdx  = i; } }
-            else              { if (outX > rightFarOut) { rightFarOut = outX; rightFarIdx = i; } }
-        }
-
-        // 2 permata TERLUAR (paling jauh ke samping kiri & kanan) dipindah ke
-        // DEPAN tabung/block: Z jauh lebih ke arah kamera & X ditarik dekat tengah,
-        // seolah permata diletakkan DI DEPAN block -- bukan melebar jauh ke samping.
-        float frontDepth = frontZ - radius * 0.9f;   // jauh lebih ke DEPAN (ke arah kamera)
-        if (leftFarIdx >= 0)
-        {
-            CurGem3D g = curGems3D[leftFarIdx];
-            g.rest = new Vector3(
-                -radius * 0.35f + Random.Range(-size * 0.15f, size * 0.15f),
-                baseY + Random.Range(-0.05f, 0.05f) * vSpace,
-                frontDepth + Random.Range(-0.06f, 0.06f) * radius);
-            curGems3D[leftFarIdx] = g;
-        }
-        if (rightFarIdx >= 0 && rightFarIdx != leftFarIdx)
-        {
-            CurGem3D g = curGems3D[rightFarIdx];
-            g.rest = new Vector3(
-                radius * 0.35f + Random.Range(-size * 0.15f, size * 0.15f),
-                baseY + Random.Range(-0.05f, 0.05f) * vSpace,
-                frontDepth + Random.Range(-0.06f, 0.06f) * radius);
-            curGems3D[rightFarIdx] = g;
         }
 
         // Mulai/ulang animasi dari fase JATUH untuk SEMUA permata (lama + baru)
