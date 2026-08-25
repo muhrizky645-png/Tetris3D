@@ -75,10 +75,10 @@ public partial class Tetris3D : MonoBehaviour
     };
 
     [Header("Efek cahaya (atur kalau kesilauan)")]
-    public float bloomIntensity = 0.7f;
+    public float bloomIntensity = 0.3f;
     public float bloomThreshold = 0.9f;
     public float bloomScatter = 0.6f;
-    public float emissionStrength = 0.5f;
+    public float emissionStrength = 0.3f;
     public float vignetteAmount = 0.28f;
 
     [Header("Suara")]
@@ -301,7 +301,7 @@ public partial class Tetris3D : MonoBehaviour
         GameObject sun = new GameObject("Sun");
         Light lt = sun.AddComponent<Light>();
         lt.type = LightType.Directional;
-        lt.intensity = 1.15f;
+        lt.intensity = 0.9f;
         lt.color = new Color(1f, 0.96f, 0.9f);
         sun.transform.rotation = Quaternion.Euler(35f, 20f, 0f);
 
@@ -461,8 +461,8 @@ public partial class Tetris3D : MonoBehaviour
         Material m = new Material(sh);
         m.color = c;
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
-        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.9f);
-        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.9f);
+        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.35f);
+        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.35f);
         if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.35f);
         m.EnableKeyword("_EMISSION");
         m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
