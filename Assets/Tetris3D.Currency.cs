@@ -261,7 +261,8 @@ public partial class Tetris3D
     // menghadap kamera) -> jadi bentuknya MIRIP ikon. Kalau asset tidak ada,
     // otomatis fallback ke mesh kristal 3D prosedural. Alur ala PECAHAN KACA:
     //  1) Muncrat dari block lalu JATUH (gravitasi dunia) lalu MENYEBAR MELEBAR
-    //     di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan.
+    //     di depan-bawah tabung, dibagi 2 deretan di PINGGIR kiri & kanan, plus
+    //     variasi kedalaman ke DEPAN (ke arah kamera) biar tidak cuma ke samping.
     //  2) DIAM sejenak.
     //  3) NAIK SATU PER SATU (makin cepat) melengkung menuju chip Permata di
     //     bar atas, sambil mengecil, lalu masuk (chip berdenyut).
@@ -288,6 +289,7 @@ public partial class Tetris3D
     float curGemPulse;
     bool  curChaQueued;
     AudioClip curSfxCoin;
+    AudioClip curSfxCoinSoft;   // versi -50% volume utk bunyi permata NAIK satu-per-satu (biar tak berisik saat combo)
     List<Vector3> curBurstWorld;   // posisi WORLD block cincin terakhir yang hancur
     int   curGemPhase;    // 0=jatuh ke dasar, 1=diam menggerombol, 2=naik satu per satu
     float curGemPhaseT;   // timer fase
@@ -470,6 +472,7 @@ public partial class Tetris3D
         float sideX   = radius * 1.0f;                           // kolom TERDALAM tiap sisi
         float colStep = radius * 0.22f;                          // jarak antar kolom (melebar keluar)
         float rowStep = Mathf.Max(size * 1.3f, radius * 0.18f);  // naik 1 baris kalau satu baris penuh
+        float frontSpread = radius * 0.30f;                      // sebar ke DEPAN (ke arah kamera) biar tak cuma ke samping
 
         for (int i = 0; i < n; i++)
         {
@@ -506,7 +509,8 @@ public partial class Tetris3D
         // Dibagi rata: indeks GENAP -> sisi KIRI, GANJIL -> sisi KANAN. Tiap sisi
         // MENYEBAR KELUAR (kolom demi kolom) membentuk deretan lebar, bukan
         // tumpukan di satu titik. Kalau satu baris penuh (perSideCols), lanjut ke
-        // baris di atasnya. Sedikit lengkung ke belakang + jitter biar organik.
+        // baris di atasnya. Selain melebar ke samping, tiap permata juga disebar
+        // sedikit ke DEPAN (ke arah kamera, Z lebih negatif) + jitter biar organik.
         int leftN = 0, rightN = 0;
         for (int i = 0; i < curGems3D.Count; i++)
         {
@@ -519,7 +523,7 @@ public partial class Tetris3D
             g.rest = new Vector3(
                 sideDir * outX + Random.Range(-size * 0.15f, size * 0.15f),
                 baseY + row * rowStep + Random.Range(-0.06f, 0.06f) * vSpace,
-                frontZ + col * (radius * 0.05f) + Random.Range(-0.1f, 0.1f) * radius);
+                frontZ - Random.Range(0f, frontSpread) + col * (radius * 0.03f) + Random.Range(-0.05f, 0.05f) * radius);
             curGems3D[i] = g;
         }
 
@@ -668,7 +672,7 @@ public partial class Tetris3D
                 curGems3D[i] = g;
             }
 
-            if (anyLanded) CurPlayChaChing();
+            if (anyLanded) CurPlayChaChingSoft(); // volume -50% biar tak berisik saat combo (naik satu-per-satu)
 
             if (done >= curGems3D.Count)
             {
@@ -692,18 +696,27 @@ public partial class Tetris3D
         CurPlayChaChing();
     }
 
-    void CurPlayChaChing()
+    void CurPlayChaChing()      // versi NORMAL (koin masuk / klaim gelembung)
     {
         if (!(soundOn && sfxOn) || sfx == null) return;
         if (curSfxCoin == null) curSfxCoin = MakeTone("cur_coin", 900f, 0.10f, 0.5f, 0, 70f);
-        StartCoroutine(CoChaChing());
+        StartCoroutine(CoChaChing(curSfxCoin));
     }
 
-    IEnumerator CoChaChing()
+    // Versi LEBIH PELAN (volume -50%, vol 0.25 vs 0.5): dipakai saat permata NAIK
+    // satu-per-satu, karena saat combo besar bunyinya bertubi-tubi & jadi berisik.
+    void CurPlayChaChingSoft()
     {
-        KbSfxAt(curSfxCoin, 1.0f);
+        if (!(soundOn && sfxOn) || sfx == null) return;
+        if (curSfxCoinSoft == null) curSfxCoinSoft = MakeTone("cur_coin_soft", 900f, 0.10f, 0.25f, 0, 70f);
+        StartCoroutine(CoChaChing(curSfxCoinSoft));
+    }
+
+    IEnumerator CoChaChing(AudioClip clip)
+    {
+        KbSfxAt(clip, 1.0f);
         yield return new WaitForSeconds(0.07f);
-        KbSfxAt(curSfxCoin, 1.5f);
+        KbSfxAt(clip, 1.5f);
         yield return null;
         if (sfx != null) sfx.pitch = 1f;
     }
