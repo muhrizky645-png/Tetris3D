@@ -146,7 +146,8 @@ public partial class Tetris3D
     // ---------- AUTO-PAUSE saat app ke background ----------
     void OnApplicationPause(bool pauseStatus)
     {
-        if (pauseStatus && started && !gameOver && !reviveOffer) paused = true;
+        if (pauseStatus && started && !gameOver && !reviveOffer
+            && !AdFullscreenShowing && !AdLoadingActive) paused = true;
     }
 
     // ---------- REVIVE ----------
@@ -308,7 +309,7 @@ public partial class Tetris3D
         switch (lang)
         {
             case Lang.ID: return "REKOR BARU!";
-            case Lang.ES: return "\u00a1NUEVO R\u00c9CORD!";
+            case Lang.ES: return "¡NUEVO RÉCORD!";
             case Lang.PT: return "NOVO RECORDE!";
             case Lang.FR: return "NOUVEAU RECORD!";
             default: return "NEW BEST!";
