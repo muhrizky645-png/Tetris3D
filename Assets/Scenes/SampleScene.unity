@@ -281,7 +281,7 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -496,10 +496,10 @@ MonoBehaviour:
   - {r: 0.9, g: 0.2, b: 0.2, a: 1}
   - {r: 0.2, g: 0.4, b: 0.95, a: 1}
   - {r: 0.95, g: 0.55, b: 0.1, a: 1}
-  bloomIntensity: 0.7
+  bloomIntensity: 0.3
   bloomThreshold: 0.9
   bloomScatter: 0.2
-  emissionStrength: 0.5
+  emissionStrength: 0.3
   vignetteAmount: 0.28
   soundOn: 1
   sfxOn: 1
