@@ -496,10 +496,10 @@ MonoBehaviour:
   - {r: 0.9, g: 0.2, b: 0.2, a: 1}
   - {r: 0.2, g: 0.4, b: 0.95, a: 1}
   - {r: 0.95, g: 0.55, b: 0.1, a: 1}
-  bloomIntensity: 0.3
+  bloomIntensity: 1
   bloomThreshold: 0.9
-  bloomScatter: 0.2
-  emissionStrength: 0.3
+  bloomScatter: 0.4
+  emissionStrength: 0.75
   vignetteAmount: 0.28
   soundOn: 1
   sfxOn: 1
