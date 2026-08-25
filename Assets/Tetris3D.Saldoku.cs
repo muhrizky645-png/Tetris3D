@@ -250,7 +250,7 @@ public partial class Tetris3D
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
 
         float pw = Mathf.Min(sw * 0.88f, 760f);
-        float ph = Mathf.Min(sh * 0.90f, 720f);
+        float ph = Mathf.Min(sh * 0.92f, cur_linked ? 860f : 720f);
         float px = (sw - pw) * 0.5f;
         float py = (sh - ph) * 0.5f;
 
@@ -326,11 +326,21 @@ public partial class Tetris3D
                 36, Color.white, TextAnchor.UpperLeft);
             yy += 56f;
 
+            // --- Peti besar + animasi (getar makin kencang mendekati penuh,
+            //     terbuka + kilau saat 1 peti didapat) ---
+            {
+                float chestW = Mathf.Min(cw * 0.5f, 200f);
+                float chestH = chestW * 0.84f;
+                Rect chestR = new Rect(cx + (cw - chestW) * 0.5f, yy, chestW, chestH);
+                DrawPetiChest(chestR);
+                yy += chestH + 8f;
+            }
+
             GuiText(new Rect(cx, yy, cw, 32f),
                 SalPeti() + " " + peti_progress + "/" + iklanPerPeti +
                 "   " + SalToday() + " " + iklanHariIni + "/" + batasHarian,
-                22, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperLeft);
-            yy += 50f;
+                22, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperCenter);
+            yy += 44f;
 
             // --- Peti Koin: tonton iklan berhadiah (reward via server SSV) ---
             if (SalButton(new Rect(cx, yy, cw, 74f),
