@@ -20,8 +20,8 @@ using UnityEngine;
 //      Saat saldo Koin BERTAMBAH selagi main, koin-koin terbang ke chip
 //      Koin di HUD + chip berdenyut, supaya pemain yakin koin masuk.
 //
-//   3) PETI BESAR beranimasi (getar makin kencang mendekati penuh,
-//      terbuka + kilau saat 1 peti didapat) - dipakai overlay SALDOKU.
+//   3) PETI BESAR beranimasi (idle selalu jalan, getar makin kencang
+//      mendekati penuh, terbuka + kilau saat 1 peti didapat) - overlay SALDOKU.
 //
 //   4) GESER UI supaya tidak ketutup banner MREC (300x250) di layar
 //      JEDA / GAME OVER / Revive.
@@ -154,7 +154,7 @@ public partial class Tetris3D
     }
 
     // ------------------------------------------------------------------
-    //  (3) PETI BESAR + ANIMASI (getar, terbuka, kilau) - overlay SALDOKU
+    //  (3) PETI BESAR + ANIMASI (idle, getar, terbuka, kilau) - overlay SALDOKU
     // ------------------------------------------------------------------
     const float PETI_OPEN_DUR = 3f;
     float petiOpenAnimEnd = 0f;
@@ -163,6 +163,9 @@ public partial class Tetris3D
     public void TriggerPetiOpenAnim() { petiOpenAnimEnd = Time.unscaledTime + PETI_OPEN_DUR; }
 
     // Gambar peti (chest) blocky emas. baseR = posisi & ukuran dasar (tanpa getar).
+    // SELALU beranimasi: idle (napas naik-turun + goyang + kedut + rotasi + halo +
+    // kilau kecil) walau peti masih 0/5, getar makin kencang mendekati penuh, lalu
+    // terbuka + kilau penuh saat 1 peti didapat.
     public void DrawPetiChest(Rect baseR)
     {
         float prog01 = iklanPerPeti > 0 ? Mathf.Clamp01(peti_progress / (float)iklanPerPeti) : 0f;
@@ -171,11 +174,26 @@ public partial class Tetris3D
             ? Mathf.Clamp01((PETI_OPEN_DUR - (petiOpenAnimEnd - Time.unscaledTime)) / 0.45f)
             : 0f;
 
-        float shakeAmp = Mathf.Lerp(1.2f, 6f, prog01) + (opening ? 7f : 0f);
-        float gate = (prog01 > 0.02f || opening) ? 1f : 0.25f;
-        float shakeX = Mathf.Sin(Time.unscaledTime * 26f) * shakeAmp * gate;
-        float shakeY = Mathf.Abs(Mathf.Sin(Time.unscaledTime * 31f)) * shakeAmp * 0.22f * gate;
-        Rect r = new Rect(baseR.x + shakeX, baseR.y - shakeY, baseR.width, baseR.height);
+        float tt = Time.unscaledTime;
+
+        // --- Animasi IDLE: SELALU bergerak walau peti masih 0/5 ---
+        float breathe = Mathf.Sin(tt * 2.3f) * (baseR.height * 0.03f);   // napas naik-turun
+        float sway = Mathf.Sin(tt * 1.4f) * 3f;                          // geser kiri-kanan halus
+        float twitchP = Mathf.Repeat(tt, 1.8f);                          // kedut berkala tiap ~1.8 dtk
+        float twitch = (twitchP < 0.30f) ? Mathf.Sin(twitchP * 70f) * 4f * (1f - twitchP / 0.30f) : 0f;
+
+        // --- Getar makin kencang mendekati penuh + ekstra kuat saat terbuka ---
+        float shakeAmp = Mathf.Lerp(0f, 5f, prog01) + (opening ? 9f : 0f);
+        float shakeX = Mathf.Sin(tt * 26f) * shakeAmp;
+        float shakeY = Mathf.Abs(Mathf.Sin(tt * 31f)) * shakeAmp * 0.22f;
+
+        // --- Goyang rotasi (idle halus + guncang saat terbuka) ---
+        float idleRot = Mathf.Sin(tt * 1.9f) * 2.2f + (opening ? Mathf.Sin(tt * 28f) * 2.5f : 0f);
+
+        Rect r = new Rect(baseR.x + sway + twitch + shakeX, baseR.y - breathe - shakeY, baseR.width, baseR.height);
+
+        Matrix4x4 baseM = GUI.matrix;
+        GUIUtility.RotateAroundPivot(idleRot, new Vector2(r.center.x, r.yMax));
 
         float w = r.width, h = r.height;
         Color wood  = new Color(0.60f, 0.40f, 0.18f);
@@ -184,12 +202,13 @@ public partial class Tetris3D
         Color gold  = new Color(1f, 0.82f, 0.28f);
         Color goldD = new Color(0.80f, 0.58f, 0.14f);
 
-        // halo cahaya saat terbuka
-        if (opening)
+        // halo cahaya: lembut berdenyut selalu, terang saat terbuka
         {
-            float gl = 0.25f + 0.35f * openP * (0.6f + 0.4f * Mathf.Sin(Time.unscaledTime * 8f));
+            float glowA = 0.10f + (opening
+                ? 0.4f * openP * (0.6f + 0.4f * Mathf.Sin(tt * 8f))
+                : 0.06f * (0.5f + 0.5f * Mathf.Sin(tt * 2.5f)));
             RoundRect(new Rect(r.x - w * 0.18f, r.y - h * 0.22f, w * 1.36f, h * 1.4f),
-                new Color(1f, 0.9f, 0.45f, gl * 0.5f), w * 0.4f);
+                new Color(1f, 0.9f, 0.45f, glowA), w * 0.4f);
         }
 
         // ---- badan peti ----
@@ -219,6 +238,16 @@ public partial class Tetris3D
         RoundRect(new Rect(lid.x, lid.yMax - lidH * 0.22f, w, lidH * 0.22f), goldD, 4f);
         RoundRect(new Rect(lid.x, lid.y, w * 0.05f, lidH), goldD, 4f);
         RoundRect(new Rect(lid.xMax - w * 0.05f, lid.y, w * 0.05f, lidH), goldD, 4f);
+
+        // kilau kecil menyapu tutup (glint) - jalan terus biar tidak terlihat mati
+        {
+            float gsweep = Mathf.Repeat(tt * 0.5f, 1.4f) / 1.4f;   // 0..1 menyapu
+            float gx = lid.x + gsweep * w;
+            float ga = 0.35f * Mathf.Sin(gsweep * Mathf.PI);       // muncul-hilang halus
+            if (ga > 0.01f)
+                RoundRect(new Rect(gx - w * 0.05f, lid.y + 3f, w * 0.10f, lidH * 0.5f),
+                    new Color(1f, 1f, 0.9f, ga), w * 0.05f);
+        }
         GUI.matrix = oldM;
 
         // ---- gembok emas di depan ----
@@ -227,11 +256,10 @@ public partial class Tetris3D
         RoundRect(new Rect(r.x + w * 0.5f - lockS * 0.5f, lockY, lockS, lockS), gold, lockS * 0.26f);
         RoundRect(new Rect(r.x + w * 0.5f - lockS * 0.14f, lockY + lockS * 0.30f, lockS * 0.28f, lockS * 0.42f), goldD, 3f);
 
-        // ---- kilau (sparkle) saat terbuka ----
-        if (opening)
+        // ---- kilau (sparkle): idle sedikit + lembut, terbuka banyak + terang ----
         {
-            float tt = Time.unscaledTime;
-            int ns = 6;
+            int ns = opening ? 6 : 3;
+            float baseA = opening ? 0.85f * openP : 0.5f;
             for (int i = 0; i < ns; i++)
             {
                 float a = (i / (float)ns) * Mathf.PI * 2f + tt * 1.4f;
@@ -239,9 +267,12 @@ public partial class Tetris3D
                 float sx = r.center.x + Mathf.Cos(a) * rad;
                 float sy = (lid.y + lidH * 0.2f) + Mathf.Sin(a) * rad * 0.65f;
                 float ss = Mathf.Max(6f, w * 0.06f) * (0.55f + 0.45f * Mathf.Sin(tt * 6f + i));
-                DrawSparkle(new Vector2(sx, sy), ss, new Color(1f, 0.96f, 0.65f, 0.85f * openP));
+                float twk = 0.45f + 0.55f * Mathf.Sin(tt * 5f + i * 2f);
+                DrawSparkle(new Vector2(sx, sy), ss, new Color(1f, 0.96f, 0.65f, baseA * twk));
             }
         }
+
+        GUI.matrix = baseM;
     }
 
     void DrawSparkle(Vector2 c, float s, Color col)
