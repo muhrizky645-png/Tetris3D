@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AOC_Chest_Energy_Demo
+  m_Controller: {fileID: 9100000, guid: ce546c88d29320c458cf810a90c7c410, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: de4a0476d94057441a233f302644c198, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 39dc0c5e40cd78943be966276a6c87b6, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 644e8f378ac26a14fbe02e2a922111a4, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: dadc37188cfdc174c982ab2d4b94281e, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 6f7b50828d15c5242ba305fb00dcf11c, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: ea580ba6595fe7d40b1458cc128b55d1, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 85e73f67280a0f24a9065c4c14a236c3, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 0da33e6aa0ae04c40a94924c92f32783, type: 2}

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AOC_Chest_Royal_Demo
+  m_Controller: {fileID: 9100000, guid: ce546c88d29320c458cf810a90c7c410, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: de4a0476d94057441a233f302644c198, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 3c9e2830987c6804687fd175bdb19454, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 644e8f378ac26a14fbe02e2a922111a4, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 0be842b8025236645b212aa215d0eb28, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 6f7b50828d15c5242ba305fb00dcf11c, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: aae5686589b09fc4b8ad6f8d536888f0, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 85e73f67280a0f24a9065c4c14a236c3, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 4fc90d04f396fe8499de54aac39b5ab2, type: 2}

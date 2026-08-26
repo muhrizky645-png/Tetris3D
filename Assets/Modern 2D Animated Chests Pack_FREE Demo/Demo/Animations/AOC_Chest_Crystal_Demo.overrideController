@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AOC_Chest_Crystal_Demo
+  m_Controller: {fileID: 9100000, guid: ce546c88d29320c458cf810a90c7c410, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: de4a0476d94057441a233f302644c198, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 0e5e03ad7257bfd43b19af64a1af2573, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 644e8f378ac26a14fbe02e2a922111a4, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: f1d567e0360c7b741b239ca94c0610ed, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 6f7b50828d15c5242ba305fb00dcf11c, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 83c6a74b3ff505b4cbadf35e89a49a39, type: 2}

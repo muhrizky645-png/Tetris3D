@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a9a3655e920491848b260ebe6af6c683
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 360538
+  packageName: "Modern 2D Animated Chests \u2013 FREE Demo"
+  packageVersion: 1.0.2
+  assetPath: Assets/Modern 2D Animated Chests Pack_FREE Demo/Editor/AnimationDependencyInstaller.cs
+  uploadId: 944322
