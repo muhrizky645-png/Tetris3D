@@ -250,7 +250,7 @@ public partial class Tetris3D
         RoundRect(new Rect(0f, 0f, sw, sh), new Color(0f, 0f, 0f, 0.72f), 0f);
 
         float pw = Mathf.Min(sw * 0.88f, 760f);
-        float ph = Mathf.Min(sh * 0.92f, cur_linked ? 740f : 720f);
+        float ph = Mathf.Min(sh * 0.92f, cur_linked ? 810f : 720f);
         float px = (sw - pw) * 0.5f;
         float py = (sh - ph) * 0.5f;
 
@@ -336,8 +336,11 @@ public partial class Tetris3D
                 yy += chestH + 8f;
             }
 
-            // Jarak kecil saja antara peti dan blok menu di bawahnya.
-            yy += 12f;
+            // PENTING: grafik peti digambar JAUH lebih besar dari kotak dasarnya
+            // (lihat PETI_VIEW_SCALE di DrawPetiChest), jadi gambar peti meluber ke
+            // bawah melewati chestR. Beri jarak cukup supaya teks progres di bawah
+            // TIDAK ketabrak badan peti.
+            yy += 92f;
 
             // Teks progres 0/5 0/20 -> mepet DI ATAS tombol Tonton Iklan.
             GuiText(new Rect(cx, yy, cw, 32f),
