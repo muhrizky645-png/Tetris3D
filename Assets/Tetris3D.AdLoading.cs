@@ -161,7 +161,7 @@ public partial class Tetris3D
     const float PETI_OPEN_DUR = 3f;
     // Skala tampilan peti animasi terhadap kotak dasar (baseR). Naikkan utk
     // peti lebih besar, turunkan utk lebih kecil.
-    const float PETI_VIEW_SCALE = 6f;
+    const float PETI_VIEW_SCALE = 4f;
     float petiOpenAnimEnd = 0f;
 
     public int PetiProgress { get { return peti_progress; } }
@@ -454,7 +454,8 @@ public class KubikaPetiWatcher : MonoBehaviour
 //  transparan, lalu RT itu digambar di overlay SALDOKU via GUI.DrawTexture
 //  (di DrawPetiChest). Dengan cara ini animasi tulang 2D asli tetap jalan
 //  DAN layering IMGUI tetap benar (peti tidak ketutup panel overlay).
-//  Peti ditaruh jauh (area kosong) supaya kamera hanya melihat peti.
+//  Peti ditaruh agak jauh (di luar pandangan kamera game) TAPI cukup dekat
+//  ke origin supaya presisi float tidak rusak (animasi tetap mulus).
 // =====================================================================
 [DefaultExecutionOrder(-760)]
 public class KubikaPetiChest3D : MonoBehaviour
@@ -464,7 +465,7 @@ public class KubikaPetiChest3D : MonoBehaviour
     const string PREFAB_PATH = "Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/PF_Chest_Royal";
     const string ST_IDLE = "ANIM_Chest_Royal_Idle";
     const string ST_OPEN = "ANIM_Chest_Royal_Open";
-    const float FAR = 100000f;   // area kosong khusus overlay peti
+    const float FAR = 1000f;      // di luar pandangan kamera game, tapi dekat origin -> presisi float aman
     const int RT_SIZE = 512;
 
     GameObject chest;
@@ -500,7 +501,7 @@ public class KubikaPetiChest3D : MonoBehaviour
         var prefab = Resources.Load<GameObject>(PREFAB_PATH);
         if (prefab == null) { ok = false; return; }   // -> fallback peti kode lama
 
-        // Peti di-instantiate di area kosong yang jauh dari scene game.
+        // Peti di-instantiate di area kosong (di luar pandangan kamera game).
         chest = Instantiate(prefab);
         chest.name = "KubikaPetiChestInstance";
         chest.transform.SetParent(transform, false);
@@ -510,7 +511,8 @@ public class KubikaPetiChest3D : MonoBehaviour
         anim = chest.GetComponentInChildren<Animator>();
         if (anim != null)
         {
-            anim.updateMode = AnimatorUpdateMode.UnscaledTime; // jalan walau game beku
+            anim.updateMode = AnimatorUpdateMode.UnscaledTime;           // jalan walau game beku
+            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;        // tetap animasi walau di luar layar kamera utama
             anim.Play(ST_IDLE, 0, 0f);
         }
 
