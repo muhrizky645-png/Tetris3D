@@ -333,18 +333,19 @@ public partial class Tetris3D
                 float chestH = chestW * 0.84f;
                 Rect chestR = new Rect(cx + (cw - chestW) * 0.5f, yy, chestW, chestH);
                 DrawPetiChest(chestR);
-                // Jarak bawah lega supaya animasi peti tidak menabrak teks progres.
-                yy += chestH + 44f;
+                yy += chestH + 8f;
             }
 
+            // Turunkan blok (teks progres + tombol Tonton Iklan) mendekati tombol
+            // Segarkan/Putuskan di bawah. Ruang kosong dibiarkan di bawah peti.
+            yy += 92f;
+
+            // Teks progres 0/5 0/20 -> mepet DI ATAS tombol Tonton Iklan.
             GuiText(new Rect(cx, yy, cw, 32f),
                 SalPeti() + " " + peti_progress + "/" + iklanPerPeti +
                 "   " + SalToday() + " " + iklanHariIni + "/" + batasHarian,
                 22, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperCenter);
-            yy += 44f;
-
-            // Jarak ekstra supaya tombol Watch Ad turun lebih jauh dari teks progres.
-            yy += 48f;
+            yy += 36f;
 
             // --- Peti Koin: tonton iklan berhadiah (reward via server SSV) ---
             if (SalButton(new Rect(cx, yy, cw, 74f),
@@ -353,15 +354,21 @@ public partial class Tetris3D
                 WatchPetiAd();
             yy += 86f;
 
+            // Status HANYA memakan ruang kalau ada teksnya -> saat kosong, tombol
+            // Tonton Iklan tetap mepet dengan Segarkan/Putuskan di bawah.
             if (!string.IsNullOrEmpty(petiStatus))
+            {
                 GuiText(new Rect(cx, yy, cw, 30f), petiStatus, 22,
                     new Color(0.75f, 1f, 0.8f), TextAnchor.UpperLeft);
-            yy += 40f;
+                yy += 40f;
+            }
 
             if (!string.IsNullOrEmpty(linkStatus))
+            {
                 GuiText(new Rect(cx, yy, cw, 30f), linkStatus, 22,
                     new Color(1f, 0.85f, 0.5f), TextAnchor.UpperLeft);
-            yy += 42f;
+                yy += 42f;
+            }
 
             float bw = (cw - 16f) * 0.5f;
             if (SalButton(new Rect(cx, yy, bw, 68f), linkBusy ? "..." : SalRefresh(),
