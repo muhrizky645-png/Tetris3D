@@ -73,7 +73,7 @@ public partial class Tetris3D
         return ch;
     }
 
-    // ---------- PEMILIHAN BENTUK CERDAS (progresif + \"tempat rahasia\") ----------
+    // ---------- PEMILIHAN BENTUK CERDAS (progresif + "tempat rahasia") ----------
     // Pilih tipe balok berikutnya: bentuk menyesuaikan kemajuan & condong ke balok yang ada tempatnya
     int PickNextType()
     {
@@ -333,7 +333,7 @@ public partial class Tetris3D
             score += pts;
             lines += full.Count;
 
-            yield return StartCoroutine(CascadeGravity());
+            yield return StartCoroutine(CascadeGravity(full));
         }
 
         RecalcLevel();
@@ -407,9 +407,12 @@ public partial class Tetris3D
             for (int c = 0; c < columns; c++) { grid[c, r] = -1; cells[c, r] = null; }
     }
 
-    // Gravitasi cascade: tiap kotak jatuh sendiri ngisi ruang kosong di kolomnya
-    IEnumerator CascadeGravity()
+    // Gravitasi ala Tetris klasik: HANYA blok di ATAS cincin yang hancur yang turun.
+    // Blok di bawah cincin tetap di tempat; celah lama TIDAK dirapatkan.
+    IEnumerator CascadeGravity(List<int> clearedRows)
     {
+        var cleared = new HashSet<int>(clearedRows);
+
         var movers = new List<Transform>();
         var fromY = new List<float>();
         var toY = new List<float>();
@@ -419,7 +422,7 @@ public partial class Tetris3D
             int write = 0;
             for (int r = 0; r < height; r++)
             {
-                if (grid[c, r] == -1) continue;
+                if (cleared.Contains(r)) continue; // buang HANYA baris cincin yang hancur
                 if (r != write)
                 {
                     grid[c, write] = grid[c, r];
@@ -436,6 +439,8 @@ public partial class Tetris3D
                 }
                 write++;
             }
+            // kosongkan sisa baris paling atas (yang isinya sudah digeser turun)
+            for (int r = write; r < height; r++) { grid[c, r] = -1; cells[c, r] = null; }
         }
 
         if (movers.Count == 0) yield break;
