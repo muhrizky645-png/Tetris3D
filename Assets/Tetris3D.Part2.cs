@@ -442,11 +442,16 @@ public partial class Tetris3D
         yield return StartCoroutine(AnimateFall(movers, fromY, toY));
     }
 
-    // Gravitasi ala Tetris klasik: HANYA blok di ATAS cincin yang hancur yang turun.
-    // Blok di bawah cincin tetap di tempat; celah lama TIDAK dirapatkan.
+    // Gravitasi clear cincin: blok di BAWAH cincin TETAP DIAM (celah kejebak dibiarkan),
+    // sedangkan blok di ATAS cincin JATUH menumpuk rapat di atas tumpukan bawah
+    // (atau sampai dasar kalau di bawahnya kosong), sehingga ruang kosong yang bisa
+    // dijangkau blok dari atas akan terisi. Baris cincin sudah dikosongkan di FlashClear.
     IEnumerator ClearedRowGravity(List<int> clearedRows)
     {
-        var cleared = new HashSet<int>(clearedRows);
+        // Baris cincin TERENDAH = batas: di bawahnya diam, di atasnya jatuh.
+        int minC = height;
+        foreach (int r in clearedRows) if (r < minC) minC = r;
+        if (minC >= height) yield break;
 
         var movers = new List<Transform>();
         var fromY = new List<float>();
@@ -454,28 +459,40 @@ public partial class Tetris3D
 
         for (int c = 0; c < columns; c++)
         {
-            int write = 0;
-            for (int r = 0; r < height; r++)
+            // Titik pijak = tepat di atas blok TERAKHIR yang ada di bawah cincin.
+            // Kalau di bawah cincin kosong semua -> blok atas jatuh sampai dasar (0).
+            int landBase = 0;
+            for (int r = 0; r < minC; r++)
+                if (grid[c, r] != -1) landBase = r + 1;
+
+            // Kumpulkan blok di ATAS cincin (dari bawah ke atas). Baris cincin sudah kosong.
+            var upGrid = new List<int>();
+            var upObj = new List<GameObject>();
+            for (int r = minC; r < height; r++)
             {
-                if (cleared.Contains(r)) continue; // buang HANYA baris cincin yang hancur
-                if (r != write)
-                {
-                    grid[c, write] = grid[c, r];
-                    cells[c, write] = cells[c, r];
-                    grid[c, r] = -1;
-                    cells[c, r] = null;
-                    GameObject go = cells[c, write];
-                    if (go != null)
-                    {
-                        movers.Add(go.transform);
-                        fromY.Add(go.transform.localPosition.y);
-                        toY.Add(CellLocalPos(c, write).y);
-                    }
-                }
-                write++;
+                if (grid[c, r] == -1) continue;
+                upGrid.Add(grid[c, r]);
+                upObj.Add(cells[c, r]);
             }
-            // kosongkan sisa baris paling atas (yang isinya sudah digeser turun)
-            for (int r = write; r < height; r++) { grid[c, r] = -1; cells[c, r] = null; }
+
+            // Kosongkan mulai titik pijak ke atas (posisi lama blok atas + ruang di bawah cincin).
+            // Baris di bawah titik pijak TIDAK disentuh -> blok bawah tetap nempel.
+            for (int r = landBase; r < height; r++) { grid[c, r] = -1; cells[c, r] = null; }
+
+            // Tumpuk rapat blok atas mulai dari titik pijak (mengisi ruang kosong yang terjangkau).
+            for (int i = 0; i < upGrid.Count; i++)
+            {
+                int w = landBase + i;
+                grid[c, w] = upGrid[i];
+                cells[c, w] = upObj[i];
+                GameObject go = upObj[i];
+                if (go != null)
+                {
+                    movers.Add(go.transform);
+                    fromY.Add(go.transform.localPosition.y);
+                    toY.Add(CellLocalPos(c, w).y);
+                }
+            }
         }
 
         yield return StartCoroutine(AnimateFall(movers, fromY, toY));
