@@ -8,10 +8,10 @@ using UnityEngine;
 //  mengubah file gameplay lama. Berisi 4 hal:
 //
 //   1) EFEK LOADING IKLAN (semua iklan)
-//      Sesudah klik "Tonton Iklan" ada jeda saat iklan DIMUAT. Dulu game
+//      Sesudah klik \"Tonton Iklan\" ada jeda saat iklan DIMUAT. Dulu game
 //      tetap jalan (balok jatuh) padahal layar diam -> terkesan nge-bug.
 //      Sekarang: selama iklan diminta tapi BELUM tampil fullscreen,
-//      tampilkan overlay "Memuat iklan..." + BEKUKAN game (timeScale=0),
+//      tampilkan overlay \"Memuat iklan...\" + BEKUKAN game (timeScale=0),
 //      lalu normal lagi setelah iklan selesai. Dideteksi otomatis dari
 //      flag sibuk yang sudah ada (kbAdBusy / petiBusy / reviveAdPending)
 //      jadi tidak perlu mengubah manajer iklan mana pun.
@@ -21,9 +21,11 @@ using UnityEngine;
 //      Koin di HUD + chip berdenyut, supaya pemain yakin koin masuk.
 //
 //   3) PETI BESAR beranimasi - overlay SALDOKU.
-//      OPSI A: render prefab animasi Royal (PF_Chest_Royal) lewat kamera
-//      khusus ke RenderTexture berlatar transparan, lalu gambar di posisi
-//      peti. Kalau prefab tidak tersedia -> fallback peti gambar-kode lama.
+//      OPSI B: gambar sprite peti Royal (SPR_Royal_Close / SPR_Royal_Open)
+//      LANGSUNG via GUI.DrawTexture (anti-gagal di URP, tanpa kamera/RT).
+//      Ada efek idle (napas, goyang, getar, halo, kilau) + ganti ke sprite
+//      terbuka saat peti didapat. Kalau sprite tidak ada -> fallback peti
+//      gambar-kode lama.
 //
 //   4) GESER UI supaya tidak ketutup banner MREC (300x250) di layar
 //      JEDA / GAME OVER / Revive.
@@ -40,7 +42,7 @@ public partial class Tetris3D
         get { return (kbAdBusy || petiBusy || reviveAdPending) && !AdFullscreenShowing; }
     }
 
-    // Overlay "Memuat iklan..." : latar gelap + spinner titik berputar.
+    // Overlay \"Memuat iklan...\" : latar gelap + spinner titik berputar.
     public void DrawAdLoadingOverlay()
     {
         float sw = VW, sh = VH;
@@ -63,7 +65,7 @@ public partial class Tetris3D
                 new Color(1f, 0.78f, 0.2f, a), dot * 0.5f);
         }
 
-        string msg = (lang == Lang.ID) ? "Memuat iklan..." : "Loading ad...";
+        string msg = (lang == Lang.ID) ? \"Memuat iklan...\" : \"Loading ad...\";
         GuiText(new Rect(0f, cy + R + 26f, sw, 44f), msg, 28, Color.white, TextAnchor.MiddleCenter);
     }
 
@@ -159,35 +161,80 @@ public partial class Tetris3D
     //  (3) PETI BESAR + ANIMASI - overlay SALDOKU
     // ------------------------------------------------------------------
     const float PETI_OPEN_DUR = 3f;
-    // Skala tampilan peti animasi terhadap kotak dasar (baseR). Naikkan utk
-    // peti lebih besar, turunkan utk lebih kecil.
+    // Skala tampilan peti terhadap kotak dasar (baseR). Naikkan utk peti
+    // lebih besar, turunkan utk lebih kecil.
     const float PETI_VIEW_SCALE = 4f;
     float petiOpenAnimEnd = 0f;
 
     public int PetiProgress { get { return peti_progress; } }
     public void TriggerPetiOpenAnim() { petiOpenAnimEnd = Time.unscaledTime + PETI_OPEN_DUR; }
 
-    // OPSI A: gambar peti dari prefab animasi Royal (dirender kamera ke
-    // RenderTexture berlatar transparan). Kalau prefab tidak ada, fallback
-    // ke peti gambar-kode lama supaya tidak pernah kosong/error.
+    // OPSI B: gambar sprite peti Royal LANGSUNG via GUI.DrawTexture. Sprite
+    // diambil dari Resources (SPR_Royal_Close / SPR_Royal_Open) oleh
+    // KubikaPetiChest3D. Anti-gagal di URP karena tidak pakai kamera/RT.
+    // Kalau sprite tidak tersedia -> fallback peti gambar-kode lama.
     public void DrawPetiChest(Rect baseR)
     {
         bool opening = Time.unscaledTime < petiOpenAnimEnd;
-        RenderTexture rt = KubikaPetiChest3D.Report(peti_progress, iklanPerPeti, opening);
-        if (rt != null)
+        Texture tex = KubikaPetiChest3D.Report(opening);
+        if (tex == null) { DrawPetiChestProcedural(baseR); return; }
+        if (Event.current != null && Event.current.type != EventType.Repaint) return;
+
+        float prog01 = iklanPerPeti > 0 ? Mathf.Clamp01(peti_progress / (float)iklanPerPeti) : 0f;
+        float openP = opening
+            ? Mathf.Clamp01((PETI_OPEN_DUR - (petiOpenAnimEnd - Time.unscaledTime)) / 0.45f)
+            : 0f;
+        float tt = Time.unscaledTime;
+
+        // --- Animasi IDLE: SELALU bergerak (napas + goyang halus) ---
+        float breathe = Mathf.Sin(tt * 2.3f) * (baseR.height * 0.02f);
+        float sway = Mathf.Sin(tt * 1.4f) * 3f;
+
+        // --- Getar makin kencang mendekati penuh + ekstra saat terbuka ---
+        float shakeAmp = Mathf.Lerp(0f, 4f, prog01) + (opening ? 8f : 0f);
+        float shakeX = Mathf.Sin(tt * 26f) * shakeAmp;
+        float shakeY = Mathf.Abs(Mathf.Sin(tt * 31f)) * shakeAmp * 0.22f;
+
+        // --- Goyang rotasi (idle halus + guncang saat terbuka) ---
+        float idleRot = Mathf.Sin(tt * 1.9f) * 1.6f + (opening ? Mathf.Sin(tt * 28f) * 2.2f : 0f);
+
+        // Ukuran gambar peti (skala terhadap kotak dasar), berpusat di posisi peti.
+        float side = baseR.height * PETI_VIEW_SCALE;
+        Vector2 c = new Vector2(baseR.center.x + sway + shakeX, baseR.center.y - breathe - shakeY);
+        Rect drawR = new Rect(c.x - side * 0.5f, c.y - side * 0.5f, side, side);
+
+        Matrix4x4 baseM = GUI.matrix;
+        GUIUtility.RotateAroundPivot(idleRot, new Vector2(drawR.center.x, drawR.yMax - side * 0.14f));
+
+        // halo cahaya lembut berdenyut, terang saat terbuka
         {
-            if (Event.current == null || Event.current.type == EventType.Repaint)
-            {
-                // Peti animasi digambar lebih besar dari kotak dasar, berpusat
-                // di posisi peti. Ubah PETI_VIEW_SCALE utk besar/kecil.
-                float side = baseR.height * PETI_VIEW_SCALE;
-                Rect drawR = new Rect(baseR.center.x - side * 0.5f,
-                                      baseR.center.y - side * 0.5f, side, side);
-                GUI.DrawTexture(drawR, rt, ScaleMode.ScaleToFit, true);
-            }
-            return;
+            float glowA = 0.08f + (opening
+                ? 0.4f * openP * (0.6f + 0.4f * Mathf.Sin(tt * 8f))
+                : 0.05f * (0.5f + 0.5f * Mathf.Sin(tt * 2.5f)));
+            RoundRect(new Rect(drawR.x + side * 0.14f, drawR.y + side * 0.20f, side * 0.72f, side * 0.62f),
+                new Color(1f, 0.9f, 0.45f, glowA), side * 0.3f);
         }
-        DrawPetiChestProcedural(baseR);
+
+        // gambar sprite peti Royal (alpha-blend supaya latar transparan)
+        GUI.DrawTexture(drawR, tex, ScaleMode.ScaleToFit, true);
+
+        // kilau (sparkle): idle sedikit + lembut, terbuka banyak + terang
+        {
+            int ns = opening ? 6 : 3;
+            float baseA = opening ? 0.85f * openP : 0.45f;
+            for (int i = 0; i < ns; i++)
+            {
+                float a = (i / (float)ns) * Mathf.PI * 2f + tt * 1.4f;
+                float rad = side * (0.18f + 0.1f * Mathf.Sin(tt * 3f + i * 1.7f));
+                float sx = drawR.center.x + Mathf.Cos(a) * rad;
+                float sy = drawR.center.y - side * 0.05f + Mathf.Sin(a) * rad * 0.65f;
+                float ss = Mathf.Max(6f, side * 0.04f) * (0.55f + 0.45f * Mathf.Sin(tt * 6f + i));
+                float twk = 0.45f + 0.55f * Mathf.Sin(tt * 5f + i * 2f);
+                DrawSparkle(new Vector2(sx, sy), ss, new Color(1f, 0.96f, 0.65f, baseA * twk));
+            }
+        }
+
+        GUI.matrix = baseM;
     }
 
     // Gambar peti (chest) blocky emas - FALLBACK gambar-kode.
@@ -342,7 +389,7 @@ public class KubikaAdGate : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject("KubikaAdGate");
+        var go = new GameObject(\"KubikaAdGate\");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaAdGate>();
     }
@@ -391,7 +438,7 @@ public class KubikaCoinFlyHUD : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject("KubikaCoinFlyHUD");
+        var go = new GameObject(\"KubikaCoinFlyHUD\");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaCoinFlyHUD>();
     }
@@ -432,7 +479,7 @@ public class KubikaPetiWatcher : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject("KubikaPetiWatcher");
+        var go = new GameObject(\"KubikaPetiWatcher\");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaPetiWatcher>();
     }
@@ -448,41 +495,31 @@ public class KubikaPetiWatcher : MonoBehaviour
 }
 
 // =====================================================================
-//  (OPSI A) PETI ANIMASI 3D
-//  Render prefab PF_Chest_Royal (Animator state: Idle/Open/Pickup, TANPA
-//  parameter) lewat kamera ortho KHUSUS ke RenderTexture berlatar
-//  transparan, lalu RT itu digambar di overlay SALDOKU via GUI.DrawTexture
-//  (di DrawPetiChest). Dengan cara ini animasi tulang 2D asli tetap jalan
-//  DAN layering IMGUI tetap benar (peti tidak ketutup panel overlay).
-//  Peti ditaruh agak jauh (di luar pandangan kamera game) TAPI cukup dekat
-//  ke origin supaya presisi float tidak rusak (animasi tetap mulus).
+//  (OPSI B) PETI SPRITE ROYAL
+//  Muat sprite peti Royal (SPR_Royal_Close / SPR_Royal_Open) dari Resources
+//  saat start, lalu balikkan Texture-nya lewat Report(opening) untuk
+//  digambar LANGSUNG via GUI.DrawTexture di overlay SALDOKU (DrawPetiChest).
+//  Cara ini anti-gagal di URP (tidak pakai kamera/RenderTexture) dan
+//  layering IMGUI tetap benar. Kalau sprite tidak ada -> Report balikkan
+//  null -> pemanggil pakai fallback peti gambar-kode.
 // =====================================================================
 [DefaultExecutionOrder(-760)]
 public class KubikaPetiChest3D : MonoBehaviour
 {
     static KubikaPetiChest3D I;
 
-    const string PREFAB_PATH = "Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/PF_Chest_Royal";
-    const string ST_IDLE = "ANIM_Chest_Royal_Idle";
-    const string ST_OPEN = "ANIM_Chest_Royal_Open";
-    const float FAR = 1000f;      // di luar pandangan kamera game, tapi dekat origin -> presisi float aman
-    const int RT_SIZE = 512;
+    const string SPR_CLOSE = \"Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Close\";
+    const string SPR_OPEN  = \"Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Open\";
 
-    GameObject chest;
-    Animator anim;
-    Camera cam;
-    Transform camT;
-    RenderTexture rt;
+    Texture texClose;
+    Texture texOpen;
     bool ok;
     bool triedBuild;
-
-    static bool s_opening;
-    static bool s_wasOpening;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject("KubikaPetiChest3D");
+        var go = new GameObject(\"KubikaPetiChest3D\");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaPetiChest3D>();
     }
@@ -498,99 +535,21 @@ public class KubikaPetiChest3D : MonoBehaviour
         if (triedBuild) return;
         triedBuild = true;
 
-        var prefab = Resources.Load<GameObject>(PREFAB_PATH);
-        if (prefab == null) { ok = false; return; }   // -> fallback peti kode lama
-
-        // Peti di-instantiate di area kosong (di luar pandangan kamera game).
-        chest = Instantiate(prefab);
-        chest.name = "KubikaPetiChestInstance";
-        chest.transform.SetParent(transform, false);
-        chest.transform.position = new Vector3(FAR, FAR, 0f);
-        chest.transform.rotation = Quaternion.identity;
-
-        anim = chest.GetComponentInChildren<Animator>();
-        if (anim != null)
-        {
-            anim.updateMode = AnimatorUpdateMode.UnscaledTime;           // jalan walau game beku
-            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;        // tetap animasi walau di luar layar kamera utama
-            anim.Play(ST_IDLE, 0, 0f);
-        }
-
-        // RenderTexture berlatar transparan.
-        rt = new RenderTexture(RT_SIZE, RT_SIZE, 16, RenderTextureFormat.ARGB32);
-        rt.antiAliasing = 1;
-        rt.Create();
-
-        // Kamera ortho khusus -> render peti ke RT (tidak render ke layar).
-        var camGo = new GameObject("KubikaPetiChestCam");
-        camGo.transform.SetParent(transform, false);
-        cam = camGo.AddComponent<Camera>();
-        cam.orthographic = true;
-        cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = new Color(0f, 0f, 0f, 0f);   // transparan
-        cam.cullingMask = ~0;
-        cam.nearClipPlane = 0.01f;
-        cam.farClipPlane = 100f;
-        cam.allowHDR = false;
-        cam.allowMSAA = false;
-        cam.targetTexture = rt;
-        camT = camGo.transform;
-
-        FrameChest();
-        ok = true;
+        // Sprite di-import sebagai Single sprite -> ambil tekstur sumbernya.
+        var sClose = Resources.Load<Sprite>(SPR_CLOSE);
+        var sOpen  = Resources.Load<Sprite>(SPR_OPEN);
+        texClose = sClose != null ? sClose.texture : Resources.Load<Texture2D>(SPR_CLOSE) as Texture;
+        texOpen  = sOpen  != null ? sOpen.texture  : Resources.Load<Texture2D>(SPR_OPEN) as Texture;
+        if (texOpen == null) texOpen = texClose;    // aman kalau sprite terbuka tak ada
+        ok = texClose != null;                       // -> fallback peti kode kalau gagal
     }
 
-    // Bingkai kamera supaya peti pas di RT (margin utk buka + ruang di atas).
-    void FrameChest()
-    {
-        Bounds b;
-        if (!ComputeBounds(out b))
-        {
-            camT.position = new Vector3(FAR, FAR, -10f);
-            cam.orthographicSize = 3f;
-            return;
-        }
-        float half = Mathf.Max(b.extents.x, b.extents.y);
-        if (half < 0.001f) half = 1f;
-        cam.orthographicSize = half * 1.5f;
-        // geser sedikit ke atas supaya tutup peti saat terbuka tidak terpotong
-        camT.position = new Vector3(b.center.x, b.center.y + b.extents.y * 0.25f, b.center.z - 10f);
-    }
-
-    bool ComputeBounds(out Bounds b)
-    {
-        b = new Bounds(chest.transform.position, Vector3.zero);
-        var rends = chest.GetComponentsInChildren<Renderer>();
-        bool any = false;
-        for (int i = 0; i < rends.Length; i++)
-        {
-            if (rends[i] is ParticleSystemRenderer) continue; // partikel diabaikan utk framing
-            if (!any) { b = rends[i].bounds; any = true; }
-            else b.Encapsulate(rends[i].bounds);
-        }
-        return any;
-    }
-
-    // Dipanggil dari OnGUI (DrawPetiChest). Simpan status buka, balikkan RT.
-    // return null kalau prefab tidak tersedia -> pemanggil pakai fallback.
-    public static RenderTexture Report(int progress, int perPeti, bool opening)
+    // Dipanggil dari OnGUI (DrawPetiChest). Balikkan tekstur peti sesuai
+    // status: terbuka -> sprite Open, selain itu -> sprite Close.
+    // return null kalau sprite tidak tersedia -> pemanggil pakai fallback.
+    public static Texture Report(bool opening)
     {
         if (I == null || !I.ok) return null;
-        s_opening = opening;
-        return I.rt;
-    }
-
-    void Update()
-    {
-        if (!ok || anim == null) return;
-        if (s_opening && !s_wasOpening) anim.Play(ST_OPEN, 0, 0f);
-        else if (!s_opening && s_wasOpening) anim.Play(ST_IDLE, 0, 0f);
-        s_wasOpening = s_opening;
-    }
-
-    void OnDestroy()
-    {
-        if (cam != null) cam.targetTexture = null;
-        if (rt != null) { rt.Release(); Destroy(rt); }
+        return (opening && I.texOpen != null) ? I.texOpen : I.texClose;
     }
 }
