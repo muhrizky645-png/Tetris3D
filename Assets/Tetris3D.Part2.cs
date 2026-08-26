@@ -333,7 +333,7 @@ public partial class Tetris3D
             score += pts;
             lines += full.Count;
 
-            yield return StartCoroutine(CascadeGravity(full));
+            yield return StartCoroutine(ClearedRowGravity(full));
         }
 
         RecalcLevel();
@@ -407,9 +407,44 @@ public partial class Tetris3D
             for (int c = 0; c < columns; c++) { grid[c, r] = -1; cells[c, r] = null; }
     }
 
+    // Gravitasi cascade PENUH: tiap kotak jatuh mengisi ruang kosong di kolomnya.
+    // Dipakai efek item (Bom/Palu) yang menyisakan lubang acak & harus dirapatkan.
+    IEnumerator CascadeGravity()
+    {
+        var movers = new List<Transform>();
+        var fromY = new List<float>();
+        var toY = new List<float>();
+
+        for (int c = 0; c < columns; c++)
+        {
+            int write = 0;
+            for (int r = 0; r < height; r++)
+            {
+                if (grid[c, r] == -1) continue;
+                if (r != write)
+                {
+                    grid[c, write] = grid[c, r];
+                    cells[c, write] = cells[c, r];
+                    grid[c, r] = -1;
+                    cells[c, r] = null;
+                    GameObject go = cells[c, write];
+                    if (go != null)
+                    {
+                        movers.Add(go.transform);
+                        fromY.Add(go.transform.localPosition.y);
+                        toY.Add(CellLocalPos(c, write).y);
+                    }
+                }
+                write++;
+            }
+        }
+
+        yield return StartCoroutine(AnimateFall(movers, fromY, toY));
+    }
+
     // Gravitasi ala Tetris klasik: HANYA blok di ATAS cincin yang hancur yang turun.
     // Blok di bawah cincin tetap di tempat; celah lama TIDAK dirapatkan.
-    IEnumerator CascadeGravity(List<int> clearedRows)
+    IEnumerator ClearedRowGravity(List<int> clearedRows)
     {
         var cleared = new HashSet<int>(clearedRows);
 
@@ -443,6 +478,12 @@ public partial class Tetris3D
             for (int r = write; r < height; r++) { grid[c, r] = -1; cells[c, r] = null; }
         }
 
+        yield return StartCoroutine(AnimateFall(movers, fromY, toY));
+    }
+
+    // Animasi jatuh bersama (lerp 0.16 dtk) untuk daftar balok yang bergeser turun.
+    IEnumerator AnimateFall(List<Transform> movers, List<float> fromY, List<float> toY)
+    {
         if (movers.Count == 0) yield break;
 
         float dur = 0.16f;
