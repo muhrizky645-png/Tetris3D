@@ -20,8 +20,10 @@ using UnityEngine;
 //      Saat saldo Koin BERTAMBAH selagi main, koin-koin terbang ke chip
 //      Koin di HUD + chip berdenyut, supaya pemain yakin koin masuk.
 //
-//   3) PETI BESAR beranimasi (idle selalu jalan, getar makin kencang
-//      mendekati penuh, terbuka + kilau saat 1 peti didapat) - overlay SALDOKU.
+//   3) PETI BESAR beranimasi - overlay SALDOKU.
+//      OPSI A: render prefab animasi Royal (PF_Chest_Royal) lewat kamera
+//      khusus ke RenderTexture berlatar transparan, lalu gambar di posisi
+//      peti. Kalau prefab tidak tersedia -> fallback peti gambar-kode lama.
 //
 //   4) GESER UI supaya tidak ketutup banner MREC (300x250) di layar
 //      JEDA / GAME OVER / Revive.
@@ -154,7 +156,7 @@ public partial class Tetris3D
     }
 
     // ------------------------------------------------------------------
-    //  (3) PETI BESAR + ANIMASI (idle, getar, terbuka, kilau) - overlay SALDOKU
+    //  (3) PETI BESAR + ANIMASI - overlay SALDOKU
     // ------------------------------------------------------------------
     const float PETI_OPEN_DUR = 3f;
     float petiOpenAnimEnd = 0f;
@@ -162,11 +164,28 @@ public partial class Tetris3D
     public int PetiProgress { get { return peti_progress; } }
     public void TriggerPetiOpenAnim() { petiOpenAnimEnd = Time.unscaledTime + PETI_OPEN_DUR; }
 
-    // Gambar peti (chest) blocky emas. baseR = posisi & ukuran dasar (tanpa getar).
-    // SELALU beranimasi: idle (napas naik-turun + goyang + kedut + rotasi + halo +
-    // kilau kecil) walau peti masih 0/5, getar makin kencang mendekati penuh, lalu
-    // terbuka + kilau penuh saat 1 peti didapat.
+    // OPSI A: gambar peti dari prefab animasi Royal (dirender kamera ke
+    // RenderTexture berlatar transparan). Kalau prefab tidak ada, fallback
+    // ke peti gambar-kode lama supaya tidak pernah kosong/error.
     public void DrawPetiChest(Rect baseR)
+    {
+        bool opening = Time.unscaledTime < petiOpenAnimEnd;
+        RenderTexture rt = KubikaPetiChest3D.Report(peti_progress, iklanPerPeti, opening);
+        if (rt != null)
+        {
+            if (Event.current == null || Event.current.type == EventType.Repaint)
+                GUI.DrawTexture(baseR, rt, ScaleMode.ScaleToFit, true);
+            return;
+        }
+        DrawPetiChestProcedural(baseR);
+    }
+
+    // Gambar peti (chest) blocky emas - FALLBACK gambar-kode.
+    // baseR = posisi & ukuran dasar (tanpa getar). SELALU beranimasi: idle
+    // (napas naik-turun + goyang + kedut + rotasi + halo + kilau kecil) walau
+    // peti masih 0/5, getar makin kencang mendekati penuh, lalu terbuka +
+    // kilau penuh saat 1 peti didapat.
+    void DrawPetiChestProcedural(Rect baseR)
     {
         float prog01 = iklanPerPeti > 0 ? Mathf.Clamp01(peti_progress / (float)iklanPerPeti) : 0f;
         bool opening = Time.unscaledTime < petiOpenAnimEnd;
@@ -415,5 +434,151 @@ public class KubikaPetiWatcher : MonoBehaviour
         int p = game.PetiProgress;
         if (prev >= 0 && p < prev) game.TriggerPetiOpenAnim();
         prev = p;
+    }
+}
+
+// =====================================================================
+//  (OPSI A) PETI ANIMASI 3D
+//  Render prefab PF_Chest_Royal (Animator state: Idle/Open/Pickup, TANPA
+//  parameter) lewat kamera ortho KHUSUS ke RenderTexture berlatar
+//  transparan, lalu RT itu digambar di overlay SALDOKU via GUI.DrawTexture
+//  (di DrawPetiChest). Dengan cara ini animasi tulang 2D asli tetap jalan
+//  DAN layering IMGUI tetap benar (peti tidak ketutup panel overlay).
+//  Peti ditaruh jauh (area kosong) supaya kamera hanya melihat peti.
+// =====================================================================
+[DefaultExecutionOrder(-760)]
+public class KubikaPetiChest3D : MonoBehaviour
+{
+    static KubikaPetiChest3D I;
+
+    const string PREFAB_PATH = "Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/PF_Chest_Royal";
+    const string ST_IDLE = "ANIM_Chest_Royal_Idle";
+    const string ST_OPEN = "ANIM_Chest_Royal_Open";
+    const float FAR = 100000f;   // area kosong khusus overlay peti
+    const int RT_SIZE = 512;
+
+    GameObject chest;
+    Animator anim;
+    Camera cam;
+    Transform camT;
+    RenderTexture rt;
+    bool ok;
+    bool triedBuild;
+
+    static bool s_opening;
+    static bool s_wasOpening;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Bootstrap()
+    {
+        var go = new GameObject("KubikaPetiChest3D");
+        DontDestroyOnLoad(go);
+        go.AddComponent<KubikaPetiChest3D>();
+    }
+
+    void Awake()
+    {
+        I = this;
+        Build();
+    }
+
+    void Build()
+    {
+        if (triedBuild) return;
+        triedBuild = true;
+
+        var prefab = Resources.Load<GameObject>(PREFAB_PATH);
+        if (prefab == null) { ok = false; return; }   // -> fallback peti kode lama
+
+        // Peti di-instantiate di area kosong yang jauh dari scene game.
+        chest = Instantiate(prefab);
+        chest.name = "KubikaPetiChestInstance";
+        chest.transform.SetParent(transform, false);
+        chest.transform.position = new Vector3(FAR, FAR, 0f);
+        chest.transform.rotation = Quaternion.identity;
+
+        anim = chest.GetComponentInChildren<Animator>();
+        if (anim != null)
+        {
+            anim.updateMode = AnimatorUpdateMode.UnscaledTime; // jalan walau game beku
+            anim.Play(ST_IDLE, 0, 0f);
+        }
+
+        // RenderTexture berlatar transparan.
+        rt = new RenderTexture(RT_SIZE, RT_SIZE, 16, RenderTextureFormat.ARGB32);
+        rt.antiAliasing = 1;
+        rt.Create();
+
+        // Kamera ortho khusus -> render peti ke RT (tidak render ke layar).
+        var camGo = new GameObject("KubikaPetiChestCam");
+        camGo.transform.SetParent(transform, false);
+        cam = camGo.AddComponent<Camera>();
+        cam.orthographic = true;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0f, 0f, 0f, 0f);   // transparan
+        cam.cullingMask = ~0;
+        cam.nearClipPlane = 0.01f;
+        cam.farClipPlane = 100f;
+        cam.allowHDR = false;
+        cam.allowMSAA = false;
+        cam.targetTexture = rt;
+        camT = camGo.transform;
+
+        FrameChest();
+        ok = true;
+    }
+
+    // Bingkai kamera supaya peti pas di RT (margin utk buka + ruang di atas).
+    void FrameChest()
+    {
+        Bounds b;
+        if (!ComputeBounds(out b))
+        {
+            camT.position = new Vector3(FAR, FAR, -10f);
+            cam.orthographicSize = 3f;
+            return;
+        }
+        float half = Mathf.Max(b.extents.x, b.extents.y);
+        if (half < 0.001f) half = 1f;
+        cam.orthographicSize = half * 1.5f;
+        // geser sedikit ke atas supaya tutup peti saat terbuka tidak terpotong
+        camT.position = new Vector3(b.center.x, b.center.y + b.extents.y * 0.25f, b.center.z - 10f);
+    }
+
+    bool ComputeBounds(out Bounds b)
+    {
+        b = new Bounds(chest.transform.position, Vector3.zero);
+        var rends = chest.GetComponentsInChildren<Renderer>();
+        bool any = false;
+        for (int i = 0; i < rends.Length; i++)
+        {
+            if (rends[i] is ParticleSystemRenderer) continue; // partikel diabaikan utk framing
+            if (!any) { b = rends[i].bounds; any = true; }
+            else b.Encapsulate(rends[i].bounds);
+        }
+        return any;
+    }
+
+    // Dipanggil dari OnGUI (DrawPetiChest). Simpan status buka, balikkan RT.
+    // return null kalau prefab tidak tersedia -> pemanggil pakai fallback.
+    public static RenderTexture Report(int progress, int perPeti, bool opening)
+    {
+        if (I == null || !I.ok) return null;
+        s_opening = opening;
+        return I.rt;
+    }
+
+    void Update()
+    {
+        if (!ok || anim == null) return;
+        if (s_opening && !s_wasOpening) anim.Play(ST_OPEN, 0, 0f);
+        else if (!s_opening && s_wasOpening) anim.Play(ST_IDLE, 0, 0f);
+        s_wasOpening = s_opening;
+    }
+
+    void OnDestroy()
+    {
+        if (cam != null) cam.targetTexture = null;
+        if (rt != null) { rt.Release(); Destroy(rt); }
     }
 }
