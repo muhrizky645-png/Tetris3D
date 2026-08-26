@@ -159,6 +159,9 @@ public partial class Tetris3D
     //  (3) PETI BESAR + ANIMASI - overlay SALDOKU
     // ------------------------------------------------------------------
     const float PETI_OPEN_DUR = 3f;
+    // Skala tampilan peti animasi terhadap kotak dasar (baseR). Naikkan utk
+    // peti lebih besar, turunkan utk lebih kecil.
+    const float PETI_VIEW_SCALE = 6f;
     float petiOpenAnimEnd = 0f;
 
     public int PetiProgress { get { return peti_progress; } }
@@ -174,7 +177,14 @@ public partial class Tetris3D
         if (rt != null)
         {
             if (Event.current == null || Event.current.type == EventType.Repaint)
-                GUI.DrawTexture(baseR, rt, ScaleMode.ScaleToFit, true);
+            {
+                // Peti animasi digambar lebih besar dari kotak dasar, berpusat
+                // di posisi peti. Ubah PETI_VIEW_SCALE utk besar/kecil.
+                float side = baseR.height * PETI_VIEW_SCALE;
+                Rect drawR = new Rect(baseR.center.x - side * 0.5f,
+                                      baseR.center.y - side * 0.5f, side, side);
+                GUI.DrawTexture(drawR, rt, ScaleMode.ScaleToFit, true);
+            }
             return;
         }
         DrawPetiChestProcedural(baseR);
