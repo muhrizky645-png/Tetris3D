@@ -326,10 +326,10 @@ public partial class Tetris3D
                 36, Color.white, TextAnchor.UpperLeft);
             yy += 56f;
 
-            // --- Peti besar + animasi (getar makin kencang mendekati penuh,
-            //     terbuka + kilau saat 1 peti didapat) ---
+            // --- Peti + animasi (getar makin kencang mendekati penuh,
+            //     terbuka + kilau saat 1 peti didapat). Ukuran dikecilkan sesuai permintaan. ---
             {
-                float chestW = Mathf.Min(cw * 0.5f, 200f);
+                float chestW = Mathf.Min(cw * 0.34f, 140f);
                 float chestH = chestW * 0.84f;
                 Rect chestR = new Rect(cx + (cw - chestW) * 0.5f, yy, chestW, chestH);
                 DrawPetiChest(chestR);
@@ -341,6 +341,9 @@ public partial class Tetris3D
                 "   " + SalToday() + " " + iklanHariIni + "/" + batasHarian,
                 22, new Color(0.80f, 0.82f, 0.90f), TextAnchor.UpperCenter);
             yy += 44f;
+
+            // Jarak ekstra supaya tombol Watch Ad turun sedikit dari peti.
+            yy += 28f;
 
             // --- Peti Koin: tonton iklan berhadiah (reward via server SSV) ---
             if (SalButton(new Rect(cx, yy, cw, 74f),
