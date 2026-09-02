@@ -8,10 +8,10 @@ using UnityEngine;
 //  mengubah file gameplay lama. Berisi 4 hal:
 //
 //   1) EFEK LOADING IKLAN (semua iklan)
-//      Sesudah klik \"Tonton Iklan\" ada jeda saat iklan DIMUAT. Dulu game
+//      Sesudah klik "Tonton Iklan" ada jeda saat iklan DIMUAT. Dulu game
 //      tetap jalan (balok jatuh) padahal layar diam -> terkesan nge-bug.
 //      Sekarang: selama iklan diminta tapi BELUM tampil fullscreen,
-//      tampilkan overlay \"Memuat iklan...\" + BEKUKAN game (timeScale=0),
+//      tampilkan overlay "Memuat iklan..." + BEKUKAN game (timeScale=0),
 //      lalu normal lagi setelah iklan selesai. Dideteksi otomatis dari
 //      flag sibuk yang sudah ada (kbAdBusy / petiBusy / reviveAdPending)
 //      jadi tidak perlu mengubah manajer iklan mana pun.
@@ -42,7 +42,7 @@ public partial class Tetris3D
         get { return (kbAdBusy || petiBusy || reviveAdPending) && !AdFullscreenShowing; }
     }
 
-    // Overlay \"Memuat iklan...\" : latar gelap + spinner titik berputar.
+    // Overlay "Memuat iklan..." : latar gelap + spinner titik berputar.
     public void DrawAdLoadingOverlay()
     {
         float sw = VW, sh = VH;
@@ -65,7 +65,7 @@ public partial class Tetris3D
                 new Color(1f, 0.78f, 0.2f, a), dot * 0.5f);
         }
 
-        string msg = (lang == Lang.ID) ? \"Memuat iklan...\" : \"Loading ad...\";
+        string msg = (lang == Lang.ID) ? "Memuat iklan..." : "Loading ad...";
         GuiText(new Rect(0f, cy + R + 26f, sw, 44f), msg, 28, Color.white, TextAnchor.MiddleCenter);
     }
 
@@ -389,7 +389,7 @@ public class KubikaAdGate : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject(\"KubikaAdGate\");
+        var go = new GameObject("KubikaAdGate");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaAdGate>();
     }
@@ -438,7 +438,7 @@ public class KubikaCoinFlyHUD : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject(\"KubikaCoinFlyHUD\");
+        var go = new GameObject("KubikaCoinFlyHUD");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaCoinFlyHUD>();
     }
@@ -479,7 +479,7 @@ public class KubikaPetiWatcher : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject(\"KubikaPetiWatcher\");
+        var go = new GameObject("KubikaPetiWatcher");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaPetiWatcher>();
     }
@@ -508,8 +508,8 @@ public class KubikaPetiChest3D : MonoBehaviour
 {
     static KubikaPetiChest3D I;
 
-    const string SPR_CLOSE = \"Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Close\";
-    const string SPR_OPEN  = \"Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Open\";
+    const string SPR_CLOSE = "Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Close";
+    const string SPR_OPEN  = "Modern 2D Animated Chests Pack_FREE Demo/Chests/Royal/Sprites/SPR_Royal_Open";
 
     Texture texClose;
     Texture texOpen;
@@ -519,7 +519,7 @@ public class KubikaPetiChest3D : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        var go = new GameObject(\"KubikaPetiChest3D\");
+        var go = new GameObject("KubikaPetiChest3D");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaPetiChest3D>();
     }
