@@ -21,13 +21,10 @@ public partial class Tetris3D
 
         curStone = stoneEnabled && Random.value < EffectiveStoneChance();
 
-        if (!curStone)
-        {
-            int spins = Random.Range(0, 4);
-            for (int k = 0; k < spins; k++)
-                for (int i = 0; i < curBox.Length; i++)
-                    curBox[i] = new Vector2Int(curBox[i].y, (curN - 1) - curBox[i].x);
-        }
+        // F2: TIDAK ada rotasi acak saat balok muncul. Dulu balok diputar 0-3 kali
+        // secara acak, padahal kotak NEXT menggambar bentuk pada orientasi dasar,
+        // sehingga preview jadi tidak jujur dan bantuan (assist) yang sudah cari
+        // celah pas ikut rusak. Sekarang balok muncul persis seperti di pratinjau.
 
         // Kolom depan diambil dari sudut ISTIRAHAT (targetSpin), bukan sudut animasi (spinDeg),
         // biar balok baru selalu muncul pas di tengah walau tabung masih berputar.
@@ -545,8 +542,13 @@ public partial class Tetris3D
     // Naik level dari skor, syarat makin gede tiap level (berjenjang)
     void RecalcLevel()
     {
-        int guard = 0;
-        while (score >= nextLevelScore && guard++ < 100)
+        // F4: maksimal NAIK SATU level per kejadian clear. Dulu memakai while, jadi
+        // satu combo besar bisa melompati beberapa level sekaligus dan memanggil
+        // OnLevelUp() berkali-kali dalam satu frame -> StageUp (papan dibersihkan)
+        // atau baris sampah bertumpuk sekaligus, terasa tidak adil & bikin kaget.
+        // Sisa kelebihan skor tetap tersimpan di nextLevelScore, jadi level
+        // berikutnya menyusul pada clear sesudahnya.
+        if (score >= nextLevelScore)
         {
             level++;
             OnLevelUp();
@@ -656,6 +658,10 @@ public partial class Tetris3D
     void ClearBoard()
     {
         StopAllCoroutines();
+        // F8: reset pitch SFX ke normal. Sfx() menaikkan pitch mengikuti combo;
+        // kalau game berakhir / di-retry saat pitch masih tinggi, semua suara
+        // sesudahnya ikut melengking sampai combo berikutnya menormalkannya.
+        if (sfx != null) sfx.pitch = 1f;
         DestroyBoardObjects();
         columns = Mathf.Max(3, startColumns);
         radius = baseRadius;
