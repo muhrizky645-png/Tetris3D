@@ -464,7 +464,7 @@ MonoBehaviour:
   startColumns: 15
   maxColumns: 30
   columnsPerStage: 3
-  height: 18
+  height: 14
   radius: 4
   vSpace: 1.3
   fallInterval: 0.8
@@ -499,7 +499,7 @@ MonoBehaviour:
   bloomIntensity: 1
   bloomThreshold: 0.9
   bloomScatter: 0.4
-  emissionStrength: 0.75
+  emissionStrength: 0.6
   vignetteAmount: 0.28
   soundOn: 1
   sfxOn: 1
