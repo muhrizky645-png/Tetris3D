@@ -28,7 +28,7 @@ public partial class Tetris3D : MonoBehaviour
     public float fallInterval = 0.8f;
 
     [Header("Skor & level")]
-    public int cellPoints = 10;      // poin per kotak (skor cincin = jumlah kolom x ini x combo)
+    public int cellPoints = 12;      // poin per kotak (skor cincin = jumlah kolom x ini x combo)
     public int baseLevelScore = 600; // skor buat naik ke level 2
     public int levelStep = 250;      // tiap level, syarat naik nambah segini (berjenjang)
     public float comboSeconds = 10f; // jendela combo: clear lagi dalam sekian detik -> pengali naik
