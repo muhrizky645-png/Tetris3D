@@ -155,6 +155,20 @@ public partial class Tetris3D
     // ---------- LOOP ----------
     void Update()
     {
+        // F7: konsumsi tombol TURUN DI AWAL frame, bukan di baris terakhir Update().
+        // Update() punya LIMA jalur early-return (!started, paused, clearing,
+        // gameOver/reviveOffer, dan HardDrop lewat spasi) sementara reset
+        // btnSoftDrop = false dulu cuma ada di baris paling bawah, jadi tidak pernah
+        // kejalan di kelima jalur itu. Urutan per frame: Update -> render -> OnGUI,
+        // jadi OnGUI (Part4) menyetel btnSoftDrop untuk dikonsumsi Update frame
+        // berikutnya. Kalau pemain melepas tombol TURUN pas clearing atau pas jeda,
+        // OnGUI berhenti menyetel tapi Update sudah keluar duluan tanpa mereset ->
+        // nilai true tertinggal dan balok berikutnya meluncur di interval 0.05s
+        // selama satu frame. Baca-lalu-langsung-false di sini membuat SEMUA jalur
+        // keluar ikut bersih, dan di jalur normal perilakunya persis sama.
+        bool softDropHeld = btnSoftDrop;
+        btnSoftDrop = false;
+
         LoadExtrasPrefs();
         if (extrasToastTime > 0f) extrasToastTime -= Time.deltaTime;
 
@@ -238,6 +252,16 @@ public partial class Tetris3D
             }
             if (reviveOffer)
             {
+                // F6: selagi iklan revive diminta, RequestReviveByAd() sudah membekukan
+                // hitung mundur (reviveTimer = 9999f). Pembekuan itu tidak punya batas
+                // sendiri, jadi kalau SDK iklan tidak pernah memanggil balik pemain
+                // terkunci ~2,8 jam di layar "...". Watchdog di Extras yang melepasnya.
+                if (reviveAdPending)
+                {
+                    TickReviveAdWatchdog();
+                    return;
+                }
+
                 reviveTimer -= Time.deltaTime;
                 reviveTickAcc += Time.deltaTime;
                 if (reviveTickAcc >= 1f) { reviveTickAcc -= 1f; Sfx(sfxTick); Haptic(25); }
@@ -290,7 +314,7 @@ public partial class Tetris3D
             if (kb.spaceKey.wasPressedThisFrame) { HardDrop(); return; }
         }
 
-        bool softDrop = (Keyboard.current != null && Keyboard.current.downArrowKey.isPressed) || btnSoftDrop;
+        bool softDrop = (Keyboard.current != null && Keyboard.current.downArrowKey.isPressed) || softDropHeld;
         float interval = softDrop ? 0.05f : fallInterval;
         fallTimer += Time.deltaTime;
         if (fallTimer >= interval)
@@ -301,8 +325,6 @@ public partial class Tetris3D
 
         // Tabung selalu ikut memusatkan balok aktif (termasuk SETELAH ROTATE), biar tetap fokus di tengah.
         if (active != null && !clearing && !gameOver) UpdateTargetSpin();
-
-        btnSoftDrop = false;
     }
 
     // ---------- Leaderboard (UGS) ----------
