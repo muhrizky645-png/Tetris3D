@@ -18,8 +18,8 @@ public partial class Tetris3D : MonoBehaviour
 {
     [Header("Bentuk tabung")]
     public int startColumns = 15;   // kolom awal (kecil = gampang bikin cincin)
-    public int maxColumns = 30;     // batas kolom saat diameter membesar
-    public int columnsPerStage = 3; // tambahan kolom tiap babak baru
+    public int maxColumns = 24;     // batas kolom saat diameter membesar (24: tabung tidak kelewat lebar)
+    public int columnsPerStage = 2; // tambahan kolom tiap babak baru -> 15,17,19,21,23,24
     public int height = 18;
     public float radius = 3.4f;     // radius awal (ikut membesar tiap babak)
     public float vSpace = 1.35f;
