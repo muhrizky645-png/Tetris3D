@@ -462,7 +462,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   startColumns: 15
-  maxColumns: 30
+  maxColumns: 24
   columnsPerStage: 3
   height: 14
   radius: 4
