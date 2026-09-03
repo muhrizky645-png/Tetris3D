@@ -26,7 +26,9 @@ public partial class Tetris3D
     bool reviveAdPending;       // iklan revive sedang diminta/ditampilkan
     float reviveTimer;          // sisa detik tawaran revive
     float reviveTickAcc;        // akumulator SFX detikan tiap 1 detik
+    float reviveAdWait;         // F6: sudah berapa detik menunggu callback iklan revive
     const float REVIVE_SECONDS = 5f;
+    const float REVIVE_AD_TIMEOUT = 12f;   // F6: batas sabar nunggu SDK iklan
 
     // Deteksi tepi buat haptic
     int prevLines;
@@ -159,6 +161,7 @@ public partial class Tetris3D
         reviveAdPending = false;
         reviveTimer = 0f;
         reviveTickAcc = 0f;
+        reviveAdWait = 0f;
     }
 
     // Akhiri tawaran revive. Dipanggil dari DUA jalur yang HARUS sama persis:
@@ -202,9 +205,15 @@ public partial class Tetris3D
         // tamat saat reviveTimer <= 0, dan tick SFX butuh reviveTickAcc >= 1).
         reviveTimer = 9999f;
         reviveTickAcc = -100000f;
+        // F6: pembekuan di atas TIDAK punya batas sendiri. Kalau SDK iklan tidak
+        // pernah memanggil balik, pemain akan terkunci ~2,8 jam. Watchdog di
+        // TickReviveAdWatchdog() (dipanggil tiap frame dari Part3.Update) yang
+        // membatalkan pembekuan setelah REVIVE_AD_TIMEOUT detik.
+        reviveAdWait = 0f;
         ShowRewardedAd(() =>
         {
             reviveAdPending = false;
+            reviveAdWait = 0f;
             reviveUsed = true;
             reviveOffer = false;
             reviveDeclined = false;
@@ -219,10 +228,26 @@ public partial class Tetris3D
         });
     }
 
+    // F6: dipanggil tiap frame dari Part3.Update() selagi reviveAdPending true.
+    // Pakai Time.unscaledDeltaTime, BUKAN Time.deltaTime, karena SDK iklan lazim
+    // menyetel Time.timeScale = 0 saat iklan fullscreen tampil -- kalau pakai
+    // deltaTime, watchdog-nya ikut beku dan sama sekali tidak menolong.
+    void TickReviveAdWatchdog()
+    {
+        reviveAdWait += Time.unscaledDeltaTime;
+        if (reviveAdWait < REVIVE_AD_TIMEOUT) return;
+        reviveAdWait = 0f;
+        // Pakai jalur gagal yang sudah ada: reviveAdPending dimatikan, hitung
+        // mundur dikembalikan ke 5 detik, dan pemain dapat toast "Iklan belum
+        // tersedia" sehingga bisa mencoba lagi atau menekan LEWATI.
+        OnReviveAdUnavailable();
+    }
+
     // Dipanggil KubikaReviveAds saat iklan revive gagal / tidak tersedia.
     public void OnReviveAdUnavailable()
     {
         reviveAdPending = false;
+        reviveAdWait = 0f;
         // Lanjutkan lagi hitung mundur supaya pemain bisa coba lagi / lewati.
         reviveTimer = REVIVE_SECONDS;
         reviveTickAcc = 0f;
