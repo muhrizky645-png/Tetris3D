@@ -560,9 +560,17 @@ public partial class Tetris3D
         float pad = 16f;
         float y = VH - bh - pad;
 
-        if (Btn3D(new Rect(pad, y, bw, bh), T("rotate"), new Color(0.16f, 0.78f, 0.40f), false)) Rotate();
-        if (Btn3D(new Rect(VW / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false)) HardDrop();
-        if (Btn3D(new Rect(VW - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true)) btnSoftDrop = true; // tahan buat turun cepat
+        // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
+        // dihancurkan (coroutine ResolveBoard) atau saat belum ada balok aktif.
+        // LockPiece() menyetel active = null lalu animasi clear berjalan ~0.5 dtk;
+        // di jeda itu Rotate()/HardDrop() akan memanggil RedrawActive()/LockPiece()
+        // yang membaca active.Length -> NullReferenceException.
+        // Tombol tetap DIGAMBAR (Btn3D dipanggil lebih dulu), hanya aksinya diabaikan.
+        bool ctrlReady = !clearing && active != null && !gameOver && !paused;
+
+        if (Btn3D(new Rect(pad, y, bw, bh), T("rotate"), new Color(0.16f, 0.78f, 0.40f), false) && ctrlReady) Rotate();
+        if (Btn3D(new Rect(VW / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false) && ctrlReady) HardDrop();
+        if (Btn3D(new Rect(VW - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true) && ctrlReady) btnSoftDrop = true; // tahan buat turun cepat
 
         // ---- Kotak preview: bentuk balok BERIKUTNYA (di bawah tombol Jeda) ----
         {
