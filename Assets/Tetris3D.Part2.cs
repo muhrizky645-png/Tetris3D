@@ -611,6 +611,11 @@ public partial class Tetris3D
         DestroyGhost();
     }
 
+    // F13: lubang baris sampah yang dipakai TERAKHIR kali. Baris sampah berikutnya
+    // menurunkan lubangnya dari sini (digeser paling jauh 1 kolom) supaya lubang
+    // antar baris SEJAJAR dan membentuk lorong yang bisa ditembus balok.
+    List<int> lastGarbageGaps;
+
     // Baris sampah naik dari bawah (fase diameter maksimum)
     void AddGarbageRow()
     {
@@ -625,10 +630,32 @@ public partial class Tetris3D
                 if (cells[c, r] != null) PlaceObj(cells[c, r], c, r);
             }
 
-        var gaps = new HashSet<int>();
+        // F13: lubang TIDAK lagi diacak dari nol tiap baris. Dengan garbageGapCount = 2
+        // di 24 kolom, peluang lubang baris baru sejajar dengan baris sebelumnya sangat
+        // kecil -> tumpukan sampah jadi tembok berlubang selang-seling yang mustahil
+        // ditembus balok apa pun. Itu terasa TIDAK ADIL, bukan sulit. Sekarang lubang
+        // diturunkan dari baris sampah sebelumnya dan digeser maksimal 1 kolom, jadi
+        // terbentuk lorong menyambung ke atas: pemain masih harus mengarahkan balok,
+        // tapi jalannya selalu ada.
         int gapN = Mathf.Clamp(garbageGapCount, 1, columns - 1);
+        var gaps = new HashSet<int>();
+
+        if (lastGarbageGaps != null && lastGarbageGaps.Count > 0)
+        {
+            for (int i = 0; i < lastGarbageGaps.Count && gaps.Count < gapN; i++)
+                gaps.Add(Wrap(lastGarbageGaps[i] + Random.Range(-1, 2)));
+        }
+
+        // Tambal sisa kuota: baris sampah PERTAMA tiap sesi (lastGarbageGaps masih
+        // kosong), atau kalau ada lubang yang bertabrakan setelah digeser dan dibuang
+        // HashSet. Loop lama tetap dipakai sebagai fallback acak.
         int guard = 0;
         while (gaps.Count < gapN && guard++ < 500) gaps.Add(Random.Range(0, columns));
+
+        // Simpan pola lubang ini buat baris sampah berikutnya.
+        if (lastGarbageGaps == null) lastGarbageGaps = new List<int>();
+        lastGarbageGaps.Clear();
+        foreach (int g in gaps) lastGarbageGaps.Add(g);
 
         for (int c = 0; c < columns; c++)
         {
@@ -676,6 +703,9 @@ public partial class Tetris3D
         levelUpTime = 0f; comboTime = 0f;
         comboCount = 0; comboExpire = 0f;
         gameOverHandled = false; showProfile = false; showRanks = false; editingProfile = false;
+        // F13: buang pola lubang baris sampah sesi sebelumnya, biar lorongnya tidak
+        // terbawa ke sesi baru (retry / ke menu).
+        if (lastGarbageGaps != null) lastGarbageGaps.Clear();
         ApplyGeometry();
         ApplyStageColors();
     }
