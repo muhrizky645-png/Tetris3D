@@ -17,6 +17,38 @@ public partial class Tetris3D
     // yaitu saat papan sudah tenang. Lihat AddGarbageRow().
     int pendingGarbage;
 
+    // ---------- LOCK DELAY ----------
+    // Dulu balok langsung terkunci begitu tick jatuh berikutnya gagal turun, jadi
+    // TIDAK ADA jendela penyesuaian terakhir sama sekali. Padahal kontrol utama
+    // game ini adalah geser layar yang sifatnya analog: pemain sering baru sadar
+    // posisinya meleset satu kolom tepat saat balok mendarat, dan sudah terlambat.
+    // Sekarang balok yang menyentuh tumpukan menunggu LOCK_DELAY detik dulu.
+    //
+    // Hitungannya di-reset tiap kali pemain benar-benar menggeser atau memutar
+    // (lihat TouchLockDelay), tapi dibatasi LOCK_MAX_RESETS supaya balok tidak
+    // bisa ditahan melayang selamanya dengan menggeser bolak-balik.
+    //
+    // HARD DROP tidak lewat jalur ini sama sekali - HardDrop() memanggil
+    // LockPiece() langsung, jadi menjatuhkan balok tetap terasa tegas & instan.
+    const float LOCK_DELAY = 0.5f;
+    const int LOCK_MAX_RESETS = 15;
+    float lockTimer;
+    int lockResets;
+
+    // Bunyi "tidak bisa" untuk rotasi yang gagal. Dideklarasikan di sini (bukan di
+    // Tetris3D.cs) supaya penambahan ini tidak menuntut file itu ikut ditulis ulang;
+    // isinya dibuat di Part3.SetupAudio(). Kelas ini partial, jadi field-nya sama.
+    AudioClip sfxDeny;
+
+    // Urutan percobaan WALL KICK saat rotasi terhalang. Indeks 0 = rotasi di tempat.
+    // Ini SILINDER, jadi tidak ada dinding kiri/kanan - yang menghalangi selalu
+    // tumpukan blok, dan Wrap() sudah mengurus kolom yang melingkar. Offset +-2
+    // dipakai karena game ini punya bentuk selebar 5 (pentomino), yang sering butuh
+    // ruang lebih dari satu kolom untuk berputar. Tiga offset terakhir mengangkat
+    // balok satu baris, untuk kasus terjepit di permukaan yang tidak rata.
+    static readonly int[] kickCol = { 0, -1, 1, -2, 2, 0, -1, 1 };
+    static readonly int[] kickRow = { 0, 0, 0, 0, 0, 1, 1, 1 };
+
     // ---------- PIECE ----------
     void SpawnPiece()
     {
@@ -84,6 +116,10 @@ public partial class Tetris3D
             for (int i = 0; i < ghost.Length; i++)
                 ghost[i] = MakeGhostBlock(gc);
         }
+
+        // Balok baru selalu mulai dengan jatah lock delay penuh.
+        lockTimer = 0f;
+        lockResets = 0;
 
         RedrawActive();
         UpdateTargetSpin();
@@ -295,23 +331,73 @@ public partial class Tetris3D
             curRow += dRow;
             RedrawActive();
             if (dCol != 0) UpdateTargetSpin();
+            // Gerakan yang berhasil memperpanjang jendela lock delay (kalau balok
+            // memang sedang menyentuh tumpukan). Aman dipanggil di semua kondisi:
+            // TouchLockDelay() langsung keluar kalau balok belum mendarat.
+            TouchLockDelay();
             return true;
         }
         return false;
     }
 
+    // Reset hitung mundur lock delay karena pemain baru saja melakukan sesuatu
+    // (menggeser atau memutar) selagi balok sudah menyentuh tumpukan.
+    //
+    // lockTimer <= 0f berarti balok belum mendarat, jadi tidak ada apa-apa untuk
+    // di-reset - ini juga yang membuat Move(0,-1) dari gravitasi biasa tidak
+    // menghabiskan jatah reset.
+    //
+    // Batas LOCK_MAX_RESETS penting: tanpa itu pemain bisa menahan satu balok
+    // melayang tanpa batas dengan menggeser bolak-balik, dan game endless jadi
+    // tidak pernah benar-benar menekan.
+    void TouchLockDelay()
+    {
+        if (lockTimer <= 0f) return;
+        if (lockResets >= LOCK_MAX_RESETS) return;
+        lockResets++;
+        lockTimer = 0f;
+    }
+
     void Rotate()
     {
-        if (curStone) return; // balok batu gak bisa diputar
+        // Balok BATU memang tidak bisa diputar. Dulu fungsi ini langsung return
+        // tanpa tanda apa pun, jadi pemain mengira tombolnya rusak. Getaran singkat
+        // memberi tahu "tombolmu terbaca, baloknya saja yang memang kaku".
+        if (curStone) { Haptic(15); return; }
+        if (active == null || curBox == null) return;
+
         Vector2Int[] nb = new Vector2Int[curBox.Length];
         for (int i = 0; i < curBox.Length; i++)
             nb[i] = new Vector2Int(curBox[i].y, (curN - 1) - curBox[i].x);
-        if (Valid(nb, curCol, curRow))
+
+        // WALL KICK: dulu hanya orientasi di tempat yang dicoba, dan kalau terhalang
+        // rotasi GAGAL DIAM-DIAM. Sekarang beberapa offset dicoba berurutan, dari
+        // yang paling dekat ke yang paling jauh, jadi balok yang mepet tumpukan
+        // masih bisa diputar dengan menggeser sedikit.
+        //
+        // curCol sengaja TIDAK di-Wrap di sini, mengikuti konvensi Move() yang juga
+        // membiarkan curCol melewati batas - Valid() dan RedrawActive() sudah
+        // memanggil Wrap() sendiri di setiap sel.
+        for (int k = 0; k < kickCol.Length; k++)
         {
+            int nc = curCol + kickCol[k];
+            int nr = curRow + kickRow[k];
+            if (!Valid(nb, nc, nr)) continue;
+
             curBox = nb;
+            curCol = nc;
+            curRow = nr;
             RedrawActive();
             Sfx(sfxRotate);
+            // Rotasi yang berhasil juga memperpanjang jendela lock delay, supaya
+            // pemain bisa membetulkan orientasi tepat sebelum balok terkunci.
+            TouchLockDelay();
+            return;
         }
+
+        // Semua percobaan buntu. Beri tanda, jangan diam saja.
+        Sfx(sfxDeny);
+        Haptic(15);
     }
 
     void LockPiece()
@@ -575,6 +661,8 @@ public partial class Tetris3D
 
     void HardDrop()
     {
+        // Hard drop sengaja MELEWATI lock delay: pemain sudah menyatakan niatnya
+        // dengan tegas, jadi jendela penyesuaian justru akan terasa lamban.
         while (Move(0, -1)) { }
         Sfx(sfxDrop);
         LockPiece();
@@ -764,6 +852,9 @@ public partial class Tetris3D
         // F3: batalkan juga undian BATU buat balok berikutnya (stoneEnabled sudah
         // di-reset false di atas). PickNextType() sesudah ini akan mengundi ulang.
         nextStone = false;
+        // Lock delay: sesi baru mulai bersih, jatah reset penuh.
+        lockTimer = 0f;
+        lockResets = 0;
         ApplyGeometry();
         ApplyStageColors();
     }
