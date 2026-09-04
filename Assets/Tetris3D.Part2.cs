@@ -7,10 +7,44 @@ using Object = UnityEngine.Object;
 
 public partial class Tetris3D
 {
+    // F3: apakah balok BERIKUTNYA (yang tampil di kotak NEXT) berupa balok BATU.
+    // Diundi bareng bentuknya di PickNextType(), bukan lagi saat balok muncul,
+    // supaya kotak pratinjau bisa menggambarnya abu-abu sejak sekarang.
+    bool nextStone;
+
+    // F11: jumlah baris sampah yang TERTUNDA karena saat level naik ternyata masih
+    // ada balok yang sedang jatuh. Diterapkan di awal SpawnPiece() berikutnya,
+    // yaitu saat papan sudah tenang. Lihat AddGarbageRow().
+    int pendingGarbage;
+
     // ---------- PIECE ----------
     void SpawnPiece()
     {
+        // F11: terapkan baris sampah yang tertunda SEKARANG, selagi papan tenang
+        // (balok lama sudah terkunci, balok baru belum dibuat). Lihat AddGarbageRow().
+        while (pendingGarbage > 0)
+        {
+            pendingGarbage--;
+            AddGarbageRow();
+        }
+
+        // F11: sampah yang baru naik bisa saja langsung melewati garis mati. Dulu
+        // pemeriksaan ini selalu terjadi SESUDAH AddGarbageRow() (di ResolveBoard),
+        // jadi diulang di sini biar urutannya tetap sama setelah penundaan.
+        if (TooHigh())
+        {
+            gameOver = true;
+            Sfx(sfxGameOver);
+            return;
+        }
+
         curType = nextType;
+
+        // F3: sifat BATU sudah diundi bareng bentuknya waktu pratinjau digambar,
+        // jadi di sini tinggal dipakai. Harus disalin SEBELUM PickNextType() di
+        // baris bawah, karena fungsi itu menimpa nextStone dengan undian baru.
+        curStone = nextStone;
+
         nextType = PickNextType();
         curN = boxSize[curType];
         int[] s = shapes[curType];
@@ -18,8 +52,6 @@ public partial class Tetris3D
         curBox = new Vector2Int[n];
         for (int i = 0; i < n; i++)
             curBox[i] = new Vector2Int(s[i * 2], s[i * 2 + 1]);
-
-        curStone = stoneEnabled && Random.value < EffectiveStoneChance();
 
         // F2: TIDAK ada rotasi acak saat balok muncul. Dulu balok diputar 0-3 kali
         // secara acak, padahal kotak NEXT menggambar bentuk pada orientasi dasar,
@@ -72,8 +104,17 @@ public partial class Tetris3D
 
     // ---------- PEMILIHAN BENTUK CERDAS (progresif + "tempat rahasia") ----------
     // Pilih tipe balok berikutnya: bentuk menyesuaikan kemajuan & condong ke balok yang ada tempatnya
+    //
+    // F3: fungsi ini SEKALIAN mengundi apakah balok berikutnya berupa balok BATU
+    // (nextStone). Dulu undian batu terjadi di SpawnPiece(), yaitu SESUDAH kotak
+    // pratinjau NEXT digambar, sehingga pratinjau tidak pernah bisa memberi tahu
+    // pemain bahwa balok berikutnya tidak bisa diputar. Karena PickNextType()
+    // dipanggil dari Start(), SpawnPiece(), RetryGame(), dan GoHome(), menaruh
+    // undiannya di sini bikin nextStone selalu ikut ter-update di semua jalur.
     int PickNextType()
     {
+        nextStone = stoneEnabled && Random.value < EffectiveStoneChance();
+
         List<int> pool = AllowedShapes();
         float assist = Mathf.Max(assistMin, assistStart - (level - 1) * assistDecayPerLevel);
         if (Random.value < assist)
@@ -619,6 +660,17 @@ public partial class Tetris3D
     // Baris sampah naik dari bawah (fase diameter maksimum)
     void AddGarbageRow()
     {
+        // F11: JANGAN dorong papan naik selagi masih ada balok yang jatuh.
+        // Fungsi ini menggeser SELURUH isi grid naik satu baris, tapi balok aktif
+        // (curRow/curCol beserta GameObject-nya) tidak ikut digeser. Lewat jalur
+        // normal ini aman, karena baris sampah dipicu dari ResolveBoard() saat
+        // balok sudah terkunci (active == null). TAPI clear akibat ITEM
+        // (Bom/Palu/Garis) lewat ResolveClearsNoSpawn() memanggil RecalcLevel()
+        // selagi balok masih jatuh -> balok aktif bisa mendadak tumpang tindih
+        // dengan tumpukan yang baru naik, atau hilang tertelan saat dikunci.
+        // Jadi barisnya ditunda dulu, lalu diterapkan di awal SpawnPiece().
+        if (active != null) { pendingGarbage++; return; }
+
         for (int c = 0; c < columns; c++)
             if (cells[c, height - 1] != null) Destroy(cells[c, height - 1]);
 
@@ -706,6 +758,12 @@ public partial class Tetris3D
         // F13: buang pola lubang baris sampah sesi sebelumnya, biar lorongnya tidak
         // terbawa ke sesi baru (retry / ke menu).
         if (lastGarbageGaps != null) lastGarbageGaps.Clear();
+        // F11: buang sisa baris sampah tertunda dari sesi sebelumnya, biar sesi baru
+        // tidak langsung kena sampah warisan.
+        pendingGarbage = 0;
+        // F3: batalkan juga undian BATU buat balok berikutnya (stoneEnabled sudah
+        // di-reset false di atas). PickNextType() sesudah ini akan mengundi ulang.
+        nextStone = false;
         ApplyGeometry();
         ApplyStageColors();
     }
