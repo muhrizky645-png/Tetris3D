@@ -479,12 +479,16 @@ public partial class Tetris3D
         if (ev.type == EventType.MouseDown) pointerDown = true;
         else if (ev.type == EventType.MouseUp) pointerDown = false;
 
-        // Update rekor tertinggi
-        if (score > highScore)
-        {
-            highScore = score;
-            PlayerPrefs.SetInt("tetris3d_hi", highScore);
-        }
+        // F12: highScore TIDAK lagi dinaikkan selagi bermain. Dulu di sini ada
+        //   if (score > highScore) { highScore = score; PlayerPrefs.SetInt(...); }
+        // yang jalan tiap frame, sehingga begitu skor melewati rekor, chip REKOR di
+        // HUD cuma jadi cermin dari skor besar di tengah -- dua angka kembar, dan
+        // rekor lama yang seharusnya jadi target buruan hilang dari layar.
+        // Sekarang highScore diam sepanjang satu run dan baru disimpan di blok
+        // gameOver di bawah, jadi chip REKOR terus memampangkan angka yang harus
+        // dikalahkan. Konsekuensi yang disengaja: kalau aplikasi ditutup paksa di
+        // tengah run, skor run itu hilang -- sama seperti SubmitScore() yang juga
+        // baru berjalan saat game over.
 
         // Rekor sebelum run ini (buat deteksi rekor baru di layar game over)
         if (started && !gameOver && score == 0) runBaselineHi = highScore;
@@ -506,13 +510,21 @@ public partial class Tetris3D
         Rect hsRect, gemRect, coinRect, pauseRect;
         GetHudRow(out hsRect, out gemRect, out coinRect, out pauseRect);
 
+        // F12: chip HUD ini digambar SEBELUM blok if (gameOver) di bawah, dan blok itu
+        // menimpa highScore dengan skor final. Tanpa penahan, frame game over kedua
+        // sudah memampangkan rekor baru padahal animasi hitung-naik di
+        // DrawGameOverScore() baru mulai -- kejutannya bocor. Selama layar game over
+        // chip dikunci ke runBaselineHi (rekor LAMA), dan DrawGameOverScore() yang
+        // berhak mengungkap rekor baru lewat animasi + sfxNewHigh.
+        int hudHi = gameOver ? runBaselineHi : highScore;
+
         // Chip skor tertinggi (kiri) - mahkota + angka
         RoundRect(new Rect(hsRect.x - 3f, hsRect.y - 3f, hsRect.width + 6f, hsRect.height + 6f), new Color(1f, 0.8f, 0.2f, 0.22f), 20f);
         RoundRect(hsRect, new Color(0.06f, 0.08f, 0.12f, 0.92f), 18f);
         if (crownTex != null)
             GUI.DrawTexture(new Rect(hsRect.x + 14f, hsRect.y + (hsRect.height - 32f) / 2f, 38f, 32f), crownTex, ScaleMode.StretchToFill, true, 0f,
                 new Color(1f, 0.85f, 0.28f), Vector4.zero, Vector4.zero);
-        GuiText(new Rect(hsRect.x + 60f, hsRect.y, hsRect.width - 70f, hsRect.height), "" + highScore, 32, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
+        GuiText(new Rect(hsRect.x + 60f, hsRect.y, hsRect.width - 70f, hsRect.height), "" + hudHi, 32, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleLeft);
 
         // Skor besar di tengah (fokus utama, mirip Block Blast)
         float bigScoreY = hsRect.yMax + 12f;
