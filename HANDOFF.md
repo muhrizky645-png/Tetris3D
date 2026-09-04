@@ -1,10 +1,15 @@
 # HANDOFF — KUBIKA TOWER (Tetris3D)
 
 **Dibuat:** 2 September 2026  
-**Status:** DAFTAR RENCANA. Belum ada satu baris kode gameplay yang diubah.  
+**Diperbarui:** 4 September 2026  
+**Status:** Bagian 2 & 3 SUDAH DIEKSEKUSI. F1–F13 selesai kecuali F9.  
 **Repo:** `muhrizky645-png/Tetris3D` — branch `main`
 
 Dokumen ini adalah hasil audit read-only seluruh kode inti, plus daftar perubahan yang ingin dilakukan. Tujuannya supaya pekerjaan bisa dilanjutkan kapan saja tanpa harus mengaudit ulang.
+
+Bagian 3 (perbaikan cepat) dan Bagian 2 (tuning diameter) **sudah dikerjakan** — lihat **Bagian 0.5** untuk status, SHA commit, dan beberapa koreksi penting terhadap isi dokumen ini sendiri. Bagian 4 ke bawah masih rencana.
+
+Dokumen pendamping: **`SETUP-TROUBLESHOOTING.md`** (masalah Unity / Safe Mode / LFS / build review).
 
 ---
 
@@ -19,13 +24,118 @@ Hal-hal berikut adalah **keputusan desain sadar**, bukan bug. Jangan "diperbaiki
 
 3. **Wipe papan di `StageUp()` boleh tetap ada.** Awalnya ini dianggap masalah, tapi karena game-nya endless dan sengaja mudah, wipe itu justru katup relief yang memungkinkan run panjang. Migrasi papan lintas-babak diturunkan jadi **opsional / nanti** (lihat Lampiran A).
 
-4. **`maxColumns = 30` terlalu lebar.** Ini yang ingin diturunkan. Lihat Bagian 2.
+4. **`maxColumns = 30` terlalu lebar.** Sudah diturunkan ke 24 — lihat Bagian 2 dan 0.5.
+
+---
+
+## 0.5 STATUS EKSEKUSI (per 4 September 2026)
+
+### LANGKAH MANUAL YANG BELUM DIKONFIRMASI — BACA INI DULU
+
+Tiga tunable di bawah sudah diubah di kode, **tapi kemungkinan besar belum aktif di game.** Semua tunable di `Tetris3D.cs` adalah field `public` pada MonoBehaviour, sehingga Unity **menserialisasi nilainya ke dalam `SampleScene`** pada GameObject `Game`. **Nilai yang tersimpan di scene menang atas nilai default di C#.** Mengubah angka di kode saja tidak berefek apa-apa pada scene yang sudah ada.
+
+Buka `SampleScene` -> pilih GameObject **`Game`** -> ubah di Inspector -> **Ctrl+S**:
+
+| Header di Inspector | Field | Nilai baru |
+|---|---|---|
+| Skor & level | Cell Points | **12** |
+| Bentuk tabung | Max Columns | **24** |
+| Bentuk tabung | Columns Per Stage | **2** |
+
+**JANGAN** pakai klik-kanan -> **Reset** pada komponen. Itu mengembalikan SELURUH field ke default dan menghapus setelan lain yang sudah dirapikan.
+
+Field privat (`lastGarbageGaps`, `nextStone`, `pendingGarbage`, `runBaselineHi`) tidak diserialisasi, jadi F3, F5, F10, F11, F12, dan F13 **tidak butuh langkah Inspector** — begitu di-pull langsung aktif.
+
+Jebakan yang sama berlaku untuk setiap usulan di Bagian 4 yang menyentuh field `public`.
+
+### Perbaikan cepat — status
+
+| # | Ringkas | File | Status | Commit |
+|---|---|---|---|---|
+| F1 | Guard `ctrlReady` untuk tombol saat clearing | `Part4.cs` | SELESAI | `47f1ac7` |
+| F2 | Hapus rotasi acak di `SpawnPiece` | `Part2.cs` | SELESAI | `f2991bf` |
+| F3 | Batu diundi di `PickNextType` + pratinjau abu-abu | `Part2.cs` + `Part4.cs` | SELESAI | `a863a9a` + `9971c22` |
+| F4 | `RecalcLevel` `while` -> `if` (maks 1 level/event) | `Part2.cs` | SELESAI | `f2991bf` |
+| F5 | Tombol TUTUP selalu tampil di layar profil | `Part4.cs` | SELESAI | `9971c22` |
+| F6 | Watchdog 12 dtk untuk iklan revive | `Extras.cs` + `Part3.cs` | SELESAI | `a9f49ee` + `c586597` |
+| F7 | `btnSoftDrop` dikonsumsi di awal `Update()` | `Part3.cs` | SELESAI | `c586597` |
+| F8 | `sfx.pitch = 1f` di `ClearBoard()` | `Part2.cs` | SELESAI | `f2991bf` |
+| F9 | Coroutine reward mati oleh `StopAllCoroutines()` | `Part2.cs` dll | **BELUM** | — |
+| F10 | `ResolveClearsNoSpawn` -> `ClearedRowGravity` | `Gelembung2.cs` | SELESAI | `886e830` |
+| F11 | `AddGarbageRow` ditunda saat balok masih aktif | `Part2.cs` | SELESAI | `a863a9a` |
+| F12 | `highScore` tidak lagi ditulis tiap frame | `Part4.cs` | SELESAI | `877bcd3` |
+| F13 | Celah baris sampah selaras ±1 kolom | `Part2.cs` | SELESAI | `0bcb13e` |
+
+**F9 satu-satunya yang tersisa**, dan memang paling besar dari ke-13 — butuh memindahkan coroutine reward ke komponen terpisah supaya tidak ikut mati oleh `StopAllCoroutines()` milik `Tetris3D`.
+
+**Catatan lintas-file.** F3 dan F6 masing-masing tersebar di dua file. Sempat terjadi hampir-celaka pada F6: `TickReviveAdWatchdog()` sudah ada di `Extras.cs` tapi belum ada yang memanggilnya, dan C# **tidak memberi peringatan** untuk method privat yang tak terpakai — jadi perbaikannya diam-diam tidak aktif. Kalau sebuah perbaikan menyentuh helper di satu file dan pemanggilnya di file lain, **dorong keduanya sebelum menyatakan selesai.**
+
+### Tuning yang sudah diterapkan
+
+| Field | Lama | Baru | Commit |
+|---|---|---|---|
+| `maxColumns` | 30 | **24** | `05b8a3f` |
+| `columnsPerStage` | 3 | **2** | `05b8a3f` |
+| `cellPoints` | 10 | **12** | `adf4a07` |
+
+Sisa Bagian 4 belum dikerjakan.
+
+Perbaikan lain di luar daftar F: **`Tetris3D.AdLoading.cs`** tadinya tidak bisa dikompilasi sama sekali (30 error, seluruh proyek masuk Safe Mode). Sudah diperbaiki — lihat Lampiran B dan `SETUP-TROUBLESHOOTING.md`.
+
+---
+
+### KOREKSI 1 — pesan commit `05b8a3fa` SALAH
+
+Pesan commit `05b8a3fa` menulis *"level 17 lewat kolom, bukan level 13"* untuk bentuk aneh. **Itu keliru.** Pesan commit tidak bisa diubah setelah didorong, jadi koreksinya dicatat di sini.
+
+Bentuk aneh dipicu oleh `weirdShapeColumns = 20` **atau** `weirdShapeLevel = 12`, mana pun yang tercapai lebih dulu.
+
+| | Progresi kolom | `columns >= 20` di | `level >= 12` di | Bentuk aneh mulai |
+|---|---|---|---|---|
+| Lama (30/3) | 15 -> 18(L5) -> 21(L9) | **L9** | L12 | **L9** |
+| Baru (24/2) | 15 -> 17(L5) -> 19(L9) -> 21(L13) | L13 | **L12** | **L12** |
+
+Jadi bentuk aneh bergeser **L9 -> L12**, yaitu **3 level lebih lambat** — bukan 8 level seperti yang tersirat di pesan commit. Kodenya sendiri benar; hanya narasinya yang salah.
+
+Konsekuensi yang penting untuk pekerjaan berikutnya: setelah tuning ini **`weirdShapeLevel` yang jadi pengikat**, bukan lagi `weirdShapeColumns`. Kalau ingin bentuk aneh datang lebih lambat, naikkan `weirdShapeLevel` 12 -> 14. Mengutak-atik `weirdShapeColumns` sekarang tidak akan terasa. (Keduanya field `public` — butuh langkah Inspector.)
+
+### KOREKSI 2 — cakupan F10 jauh lebih sempit dari yang ditulis semula
+
+Teks F10 di Bagian 3 menyuruh mengganti `CascadeGravity()` di `BombBlast` **dan** `HammerBlast`. Setelah kodenya benar-benar dibaca, itu **salah, dan akan merusak game kalau diterapkan mentah-mentah**:
+
+- **`BombBlast` wajib tetap memakai `CascadeGravity()`.** Bom menghancurkan sekitar 50% sel secara acak di seluruh papan, jadi lubangnya tersebar ke mana-mana. `ClearedRowGravity()` hanya mengerti satu batas baris; kalau dipakai di sini, blok akan **menggantung di udara**.
+- **`HammerBlast` tidak ada bedanya.** Palu selalu menghabisi baris 0 dan 1, sehingga `landBase` selalu 0 dan kedua fungsi memberi hasil yang identik. Menggantinya sia-sia.
+- **Yang benar-benar tidak konsisten adalah `ResolveClearsNoSpawn()`** — jalur clear beruntun akibat item. Hanya satu baris di situ yang diubah.
+
+Pelajarannya: catatan hasil audit bisa terlalu kasar. **Baca kodenya lagi sebelum mempercayai catatan lama.**
+
+### Catatan F12 — ada harganya
+
+Rekor sekarang **hanya ditulis saat game over**. Kalau aplikasi ditutup paksa di tengah run yang sedang memecahkan rekor, rekor itu hilang. Ini harga yang dibayar untuk mengembalikan ketegangan "kejar rekormu" — dulu chip BEST di HUD selalu sama persis dengan skor berjalan, jadi rekor tidak pernah terasa dikejar. Mudah dibalik kalau ternyata tidak disukai.
+
+### Catatan F3 — keputusan implementasi
+
+Undian batu ditaruh sebagai **efek samping di dalam `PickNextType()`**, bukan lewat helper `RollNext()` yang baru. Alasannya `PickNextType()` sudah dipanggil dari `Start()`, `SpawnPiece()`, `RetryGame()`, dan `GoHome()`, sehingga keempat jalur otomatis memperbarui `nextStone` tanpa perlu menyentuh `Tetris3D.cs`. Efek samping ini ditulis di komentar tepat di atas method-nya.
+
+**Urutan di `SpawnPiece()` kritis:** `curStone = nextStone;` harus dijalankan **sebelum** `nextType = PickNextType();`, karena `PickNextType()` langsung menimpa `nextStone` dengan undian berikutnya.
+
+### Catatan F6 — belum bisa diuji
+
+Watchdog revive tidak bisa diuji selama define `KUBIKA_ADMOB` mati, karena jalur gagal langsung dipanggil seketika tanpa menunggu. Uji setelah iklan dihidupkan lagi pasca-review Play Store.
+
+### Yang belum diverifikasi
+
+Semua perubahan didorong lewat GitHub API, yang mengharuskan **menulis ulang isi file secara penuh** setiap kali. Ukuran byte tiap file sudah dicek dan selisihnya wajar, tapi **belum ada satu pun yang benar-benar dikompilasi**. Setelah `git pull`, buka Unity dan periksa Console sebelum melanjutkan pekerjaan lain.
+
+Ini bukan kekhawatiran teoretis: bug asli di `AdLoading.cs` yang membuat proyek masuk Safe Mode persis lahir dari penulisan ulang file yang escaping-nya rusak.
 
 ---
 
 ## 1. URGENT — bukan gameplay, tapi harus ditangani lebih dulu
 
 ### 1.1 Keystore ter-commit di repo publik
+
+**BELUM DIKERJAKAN.** Butuh perintah git lokal, tidak bisa lewat API.
 
 `Keystore/kubika-upload.keystore` (2.696 byte) ada di dalam repo, dan repo ini **publik**. Itu upload key Play Store dan bisa diunduh siapa saja. Kalau password-nya juga tertulis di `CODEMAGIC_SETUP.md`, keystore harus dianggap bocor total.
 
@@ -48,7 +158,7 @@ Keystore/
 
 ---
 
-## 2. TUNING DIAMETER (permintaan utama)
+## 2. TUNING DIAMETER (permintaan utama) — SUDAH DITERAPKAN (Opsi A)
 
 ### 2.1 Kenapa 30 terasa terlalu lebar
 
@@ -82,47 +192,42 @@ Jadi stage-up terjadi di **level 5, 9, 13, 17, 21**.
 
 | Opsi | maxColumns | columnsPerStage | Progresi kolom | Diameter maks tercapai | radius maks | dist kamera |
 |---|---|---|---|---|---|---|
-| **A — REKOMENDASI** | **24** | **2** | 15 → 17 → 19 → 21 → 23 → 24 | level 21 | 5,44 | 38,1 |
+| **A — DIPILIH & DITERAPKAN** | **24** | **2** | 15 → 17 → 19 → 21 → 23 → 24 | level 21 | 5,44 | 38,1 |
 | B — paling lega | 21 | 2 | 15 → 17 → 19 → 21 | level 13 | 4,76 | 36,6 |
 | C — perubahan minimal | 27 | 3 | 15 → 18 → 21 → 24 → 27 | level 17 | 6,12 | 39,6 |
-| sekarang | 30 | 3 | 15 → 18 → 21 → 24 → 27 → 30 | level 21 | 6,80 | 41,1 |
+| lama | 30 | 3 | 15 → 18 → 21 → 24 → 27 → 30 | level 21 | 6,80 | 41,1 |
 
 **Kenapa Opsi A:**
 - Lebar maksimum turun 20% (30 → 24 slot), jauh lebih mudah dilacak
-- `columnsPerStage = 2` menjaga **jumlah stage-up tetap 5** dan diameter maks tetap tercapai di **level 21**, sama seperti sekarang. Jadi pacing progresi tidak berubah sama sekali — hanya titik akhirnya lebih sempit
+- `columnsPerStage = 2` menjaga **jumlah stage-up tetap 5** dan diameter maks tetap tercapai di **level 21**, sama seperti sebelumnya. Jadi pacing progresi tidak berubah sama sekali — hanya titik akhirnya lebih sempit
 - Kamera 7% lebih dekat, blok 7% lebih besar di layar
-- `maxDiameterLevel` tetap 21, sehingga eskalasi endgame (`EffectiveStoneChance`, baris sampah ganda) berjalan di level yang sama seperti sekarang
+- `maxDiameterLevel` tetap 21, sehingga eskalasi endgame (`EffectiveStoneChance`, baris sampah ganda) berjalan di level yang sama seperti sebelumnya
 
 Opsi B lebih lega tapi memicu endgame di level 13 — untuk game yang sengaja mudah itu terlalu cepat.
 
-### 2.4 Efek samping yang perlu diputuskan
+### 2.4 Efek samping
 
 **Skor per cincin turun.** Rumusnya `columns * cellPoints * rowMult * combo`. Cincin tunggal: 30 x 10 = 300 menjadi 24 x 10 = 240 (turun 20%).
 
-Dua pilihan:
-- **Terima saja.** Skor leaderboard lama jadi tidak sebanding dengan yang baru
-- **Kompensasi:** `cellPoints` 10 -> 12, sehingga 24 x 12 = 288 (mendekati 300). Skala skor lama tetap kurang lebih sebanding
+Sudah dikompensasi dengan **`cellPoints` 10 -> 12**, sehingga 24 x 12 = 288 (mendekati 300) dan skala skor lama di leaderboard `tetris3d_global` tetap kurang lebih sebanding.
 
-Rekomendasi: kompensasi dengan `cellPoints = 12`, karena leaderboard `tetris3d_global` sudah punya entri.
-
-**Tidak ada perubahan lain yang diperlukan.** `weirdShapeColumns = 20` tetap terlampaui (kolom mencapai 21 di level 13), dan `weirdShapeLevel = 12` tetap memicu bentuk aneh di level 12 seperti sekarang.
+**Efek ke bentuk aneh.** `weirdShapeColumns = 20` sekarang baru terlampaui di level 13 (saat kolom mencapai 21), sehingga `weirdShapeLevel = 12` yang memicu lebih dulu. Bentuk aneh bergeser dari **level 9 ke level 12**. Lihat KOREKSI 1 di Bagian 0.5 — pesan commit `05b8a3fa` salah menuliskan angka ini.
 
 ---
 
-## 3. PERBAIKAN CEPAT (kerjakan lebih dulu — semuanya kecil & lokal)
+## 3. PERBAIKAN CEPAT — SELESAI kecuali F9
 
-Semua di bawah ini perubahannya beberapa baris, risikonya rendah, dan tidak menyentuh arsitektur.
+Semua di bawah ini perubahannya beberapa baris, risikonya rendah, dan tidak menyentuh arsitektur. Status ringkas ada di tabel Bagian 0.5.
 
-### F1. CRASH — tombol aktif selagi baris meledak
-**File:** `Assets/Tetris3D.Part4.cs` (`OnGUI`)
+### F1. SELESAI — CRASH: tombol aktif selagi baris meledak
+**File:** `Assets/Tetris3D.Part4.cs` (`OnGUI`) · commit `47f1ac7`
 
 `Update()` berhenti lebih awal saat `clearing == true`, tapi `OnGUI` tetap menggambar tombol ROTASI / JATUH / TURUN. Selama animasi clear (0,4 dtk + gravitasi 0,16 dtk per rantai, bisa lebih dari 2 dtk saat combo), `active == null`. Tap ROTASI memanggil `Rotate()` -> `RedrawActive()` -> `active.Length` -> **NullReferenceException**. Sama untuk JATUH -> `HardDrop()` -> `Move()`.
 
-**Perbaikan:** nonaktifkan / abaikan ketiga tombol saat `clearing || active == null || gameOver || paused`.  
-**Catatan:** `UseBuffFromInv()` di `Toko.cs` sudah punya guard `clearing` — tinggal disamakan.
+**Dikerjakan:** `bool ctrlReady = !clearing && active != null && !gameOver && !paused;` lalu `&& ctrlReady` ditambahkan sesudah tiap pemanggilan `Btn3D(...)`.
 
-### F2. Preview NEXT berbohong
-**File:** `Assets/Tetris3D.Part2.cs` (`SpawnPiece`)
+### F2. SELESAI — Preview NEXT berbohong
+**File:** `Assets/Tetris3D.Part2.cs` (`SpawnPiece`) · commit `f2991bf`
 
 ```
 int spins = Random.Range(0, 4);
@@ -133,17 +238,17 @@ Balok diputar 0–3 kali secara acak **setelah** `nextType` ditentukan, sementar
 
 Efek kedua, lebih penting: ini **membunuh seluruh sistem assist**. `PickNextType()` -> `FindFittingShape()` bekerja keras mencari bentuk **beserta rotasinya** yang muat rapi, lalu rotasinya diacak lagi di sini. Jadi `assistStart = 0.85` praktis tidak berefek, dan ongkos CPU-nya terbuang.
 
-**Perbaikan:** hapus blok rotasi acak itu. Preview jadi jujur DAN assist jadi berfungsi. Karena game ini sengaja mudah, assist yang akhirnya bekerja adalah keuntungan.
+**Dikerjakan:** blok rotasi acak dihapus. Preview jadi jujur DAN assist jadi berfungsi.
 
-### F3. Balok BATU tidak diumumkan
-**File:** `Assets/Tetris3D.Part2.cs` (`SpawnPiece`, `PickNextType`)
+### F3. SELESAI — Balok BATU tidak diumumkan
+**File:** `Assets/Tetris3D.Part2.cs` + `Part4.cs` · commit `a863a9a` + `9971c22`
 
 `curStone` diundi di dalam `SpawnPiece()`, jadi preview tidak pernah bisa menunjukkan bahwa balok berikutnya adalah batu (tidak bisa diputar). Mulai level 18 dengan peluang naik sampai 45%, pemain dapat balok yang tidak bisa diputar tanpa peringatan.
 
-**Perbaikan:** tambah field `nextStone`, undi bersamaan dengan `nextType`, gambar preview dengan `StoneColor()` kalau `nextStone == true`.
+**Dikerjakan:** field `nextStone` diundi di `PickNextType()`; kotak NEXT menggambar sel dengan `StoneColor()` dan chip judulnya ikut abu-abu. Lihat catatan implementasi di Bagian 0.5 — urutan baris di `SpawnPiece()` kritis.
 
-### F4. Combo memicu banyak level sekaligus
-**File:** `Assets/Tetris3D.Part2.cs` (`RecalcLevel`)
+### F4. SELESAI — Combo memicu banyak level sekaligus
+**File:** `Assets/Tetris3D.Part2.cs` (`RecalcLevel`) · commit `f2991bf`
 
 ```
 while (score >= nextLevelScore && guard++ < 100)
@@ -151,71 +256,74 @@ while (score >= nextLevelScore && guard++ < 100)
 
 Rantai 4 cincin dengan combo x4 di 24 kolom bisa memberi ribuan poin dalam satu event -> naik 3–4 level sekaligus -> `OnLevelUp()` jalan 3–4 kali -> plafon turun 3 baris + 3 baris sampah, atau `StageUp()` berkali-kali. **Pemain dihukum karena bermain bagus.**
 
-**Perbaikan:** batasi maksimal **1 level per event**. Ubah `while` jadi `if`. Sisa skor tetap terhitung untuk level berikutnya karena `nextLevelScore` bersifat akumulatif.
+**Dikerjakan:** `while` diganti `if`, maksimal 1 level per event. Sisa skor tetap terhitung untuk level berikutnya karena `nextLevelScore` bersifat akumulatif.
 
-### F5. Pemain terkunci di layar Buat Profil
-**File:** `Assets/Tetris3D.Part3.cs` / `Part4.cs` (`DrawProfileScreen`)
+### F5. SELESAI — Pemain terkunci di layar Buat Profil
+**File:** `Assets/Tetris3D.Part4.cs` (`DrawProfileScreen`) · commit `9971c22`
 
 Tombol TUTUP hanya muncul kalau `editingProfile == true`. Saat game over pertama, `showProfile = true` dengan `editingProfile = false`, sehingga **tidak ada jalan keluar tanpa mengisi nama**. Dan karena `OnGUI` `return` di titik itu, animasi count-up skor & layar Game Over pertama tidak pernah terlihat. Sesi pertama pemain berakhir dengan formulir, bukan perayaan.
 
-**Perbaikan:** selalu tampilkan tombol TUTUP / NANTI SAJA. Idealnya tunda layar profil sampai setelah animasi skor selesai.
+**Dikerjakan:** guard `editingProfile &&` dihapus, tombol TUTUP selalu digambar. Aman karena `gameOverHandled` sudah `true` di titik itu, jadi menutup layar profil jatuh ke layar GAME OVER normal dan profil masih bisa dibuat lain kali lewat chip di menu.
 
-### F6. Layar revive bisa menggantung selamanya
-**File:** `Assets/Tetris3D.Extras.cs` (`RequestReviveByAd`)
+**Belum dikerjakan (opsional):** menunda layar profil sampai animasi skor selesai.
+
+### F6. SELESAI — Layar revive bisa menggantung selamanya
+**File:** `Assets/Tetris3D.Extras.cs` + `Part3.cs` · commit `a9f49ee` + `c586597`
 
 `reviveTimer = 9999f`. Kalau callback SDK iklan tidak pernah datang (kasus tepi AdMob yang nyata), pemain terkunci di layar revive tanpa jalan keluar.
 
-**Perbaikan:** ganti jadi timeout wajar (~12 dtk) lalu jatuh ke `OnReviveAdUnavailable()`.
+**Dikerjakan:** `TickReviveAdWatchdog()` dengan `REVIVE_AD_TIMEOUT = 12f`, dipanggil dari `Part3.Update()` di dalam `if (reviveOffer)`. Memakai `Time.unscaledDeltaTime`, bukan `deltaTime`, karena iklan sering menyetel `timeScale = 0`. Setelah timeout jatuh ke `OnReviveAdUnavailable()`.
 
-### F7. `btnSoftDrop` tidak dibersihkan di jalur early-return
-**File:** `Assets/Tetris3D.Part3.cs` (`Update`)
+### F7. SELESAI — `btnSoftDrop` tidak dibersihkan di jalur early-return
+**File:** `Assets/Tetris3D.Part3.cs` (`Update`) · commit `c586597`
 
 Di-set di `OnGUI`, direset di baris **terakhir** `Update()`. Semua `return` lebih awal (clearing / paused / gameOver / revive) melewatkan reset, sehingga begitu clearing selesai balok langsung menyelonong turun cepat.
 
-**Perbaikan:** reset `btnSoftDrop = false` di awal `Update()`, atau sebelum setiap `return`.
+**Dikerjakan:** flag dikonsumsi di awal `Update()` (`bool softDropHeld = btnSoftDrop; btnSoftDrop = false;`) dan reset di baris terakhir dihapus. Urutan frame-nya Update -> render -> OnGUI, jadi `OnGUI` memang menyetel flag untuk `Update` frame berikutnya.
 
-### F8. `sfx.pitch` bocor -> SELURUH SFX jadi sumbang permanen
-**File:** `Assets/Tetris3D.Part2.cs` (`ClearBoard`), `Gelembung.cs` (`KbSfxAt`), `Currency.cs` (`CurPlayChaChing`)
+### F8. SELESAI — `sfx.pitch` bocor -> SELURUH SFX jadi sumbang permanen
+**File:** `Assets/Tetris3D.Part2.cs` (`ClearBoard`) · commit `f2991bf`
 
 `ClearBoard()` memanggil `StopAllCoroutines()`. Kalau coroutine yang sedang memodifikasi `sfx.pitch` (`KbSfxAt`, `CoChaChing`, `BombBlast`, `HammerBlast`) terbunuh sebelum meresetnya, pitch tertinggal di nilai non-1 dan **semua SFX jadi sumbang sampai aplikasi direstart**.
 
-**Perbaikan:** tambahkan `if (sfx != null) sfx.pitch = 1f;` di `ClearBoard()`. Jangka panjang: pakai `AudioSource` terpisah untuk SFX ber-pitch, atau `PlayOneShot` tanpa memutasi pitch global.
+**Dikerjakan:** `if (sfx != null) sfx.pitch = 1f;` di `ClearBoard()`.
 
-### F9. Iklan sudah ditonton tapi Koin tidak masuk
+**Jangka panjang (belum):** pakai `AudioSource` terpisah untuk SFX ber-pitch, atau `PlayOneShot` tanpa memutasi pitch global.
+
+### F9. BELUM — Iklan sudah ditonton tapi Koin tidak masuk
 **File:** `Assets/Tetris3D.Part2.cs` (`ClearBoard`), `PetiKoin.cs` (`CoAfterPetiAd`), `Gelembung2.cs`
 
 `StopAllCoroutines()` di `ClearBoard()` juga membunuh `CoAfterPetiAd()` / `CoAfterBubbleDrop()`, sehingga refresh Koin dari server tidak pernah terjadi. **Ini keluhan monetisasi serius** — pemain menonton iklan dan tidak mendapat apa-apa.
 
-**Perbaikan:** jalankan coroutine terkait reward di GameObject/komponen terpisah yang tidak ikut terkena `StopAllCoroutines()` milik `Tetris3D`, atau ganti `StopAllCoroutines()` dengan penghentian selektif berdasarkan handle coroutine.
+**Rencana:** jalankan coroutine terkait reward di GameObject/komponen terpisah yang tidak ikut terkena `StopAllCoroutines()` milik `Tetris3D`, atau ganti `StopAllCoroutines()` dengan penghentian selektif berdasarkan handle coroutine.
 
-### F10. Bom & Palu memakai gravitasi yang sudah ditolak
-**File:** `Assets/Tetris3D.Gelembung2.cs` (`BombBlast`, `HammerBlast`)
+### F10. SELESAI (cakupan diperbaiki) — gravitasi item tidak konsisten
+**File:** `Assets/Tetris3D.Gelembung2.cs` (`ResolveClearsNoSpawn`) · commit `886e830`
 
-Line clear normal memakai `ClearedRowGravity()` (lubang menetap — desain owner). Tapi Bom dan Palu memakai `CascadeGravity()` (kompaksi penuh per kolom) — **persis mekanik yang owner buang karena terlalu mudah**.
+Line clear normal memakai `ClearedRowGravity()` (lubang menetap — desain owner). Tapi clear beruntun akibat item memakai `CascadeGravity()` (kompaksi penuh per kolom) — **persis mekanik yang owner buang karena terlalu mudah**. Cascade memicu clear berantai yang masuk ke `ResolveClearsNoSpawn()` dan memberi skor, baris, dan combo penuh.
 
-Akibatnya:
-- Bom jadi tombol reset papan: hancurkan 50% blok acak, lalu cascade **menghapus semua lubang** yang terkumpul sepanjang run
-- Cascade memicu clear berantai yang masuk ke `ResolveClearsNoSpawn()` dan memberi skor, baris, dan combo penuh
-- Aturan fisika berubah tanpa pemberitahuan — inilah sumber "tidak bisa diprediksi" yang sesungguhnya
+**Dikerjakan:** satu baris di `ResolveClearsNoSpawn()`, `CascadeGravity()` -> `ClearedRowGravity(full)`.
 
-**Perbaikan:** ganti `CascadeGravity()` menjadi `ClearedRowGravity()` di kedua jalur item. Konsisten dengan desain, dan Bom jadi keputusan taktis, bukan tombol ajaib.
+**PENTING:** `BombBlast` dan `HammerBlast` sengaja **tidak** diubah. Lihat KOREKSI 2 di Bagian 0.5 untuk alasannya — mengubahnya akan membuat blok menggantung di udara.
 
-### F11. `AddGarbageRow()` bisa menabrak balok aktif
-**File:** `Assets/Tetris3D.Part2.cs` (`AddGarbageRow`)
+### F11. SELESAI — `AddGarbageRow()` bisa menabrak balok aktif
+**File:** `Assets/Tetris3D.Part2.cs` (`AddGarbageRow`, `SpawnPiece`) · commit `a863a9a`
 
 Dari `ResolveBoard()` aman (`active` sudah null). Tapi dari **`ResolveClearsNoSpawn()`** (jalur Bom/Palu) `active` masih hidup — pemain memakai item saat balok sedang jatuh. Tumpukan digeser ke atas menembus balok aktif, semua `Valid()` gagal, balok langsung lock dan menimpa grid. **Papan rusak.**
 
-**Perbaikan:** kalau `active != null`, naikkan `curRow` sebanyak 1 sesudah pergeseran, atau tunda `AddGarbageRow()` sampai balok terkunci.
+**Dikerjakan:** `AddGarbageRow()` diawali `if (active != null) { pendingGarbage++; return; }`, dan antrean dikuras di awal `SpawnPiece()`. Pemeriksaan `TooHigh()` ikut dipindah ke `SpawnPiece()` supaya urutan cek kalah tetap sama seperti sebelumnya (dulu selalu dicek SESUDAH baris sampah ditambahkan).
 
-### F12. `highScore` di-update live saat bermain
-**File:** `Assets/Tetris3D.Part4.cs` (`OnGUI`)
+`pendingGarbage` tidak perlu direset di `StageUp()`, karena `AddGarbageRow` hanya jalan saat `columns >= maxColumns` — dan di titik itu `StageUp()` tidak mungkin jalan lagi.
+
+### F12. SELESAI — `highScore` di-update live saat bermain
+**File:** `Assets/Tetris3D.Part4.cs` (`OnGUI`) · commit `877bcd3`
 
 `if (score > highScore)` jalan setiap pass `OnGUI` (Layout + Repaint, beberapa kali per frame), termasuk `PlayerPrefs.SetInt`. Akibatnya chip BEST di HUD selalu sama dengan skor sekarang, sehingga **ketegangan "kejar rekormu" hilang total**. Ditambah penulisan `PlayerPrefs` tiap frame.
 
-**Perbaikan:** update `highScore` hanya sekali saat game over. Selama bermain, tampilkan `runBaselineHi` (rekor sebelum run ini dimulai).
+**Dikerjakan:** blok update live dihapus; blok game over jadi satu-satunya penulis `highScore`. HUD memakai `int hudHi = gameOver ? runBaselineHi : highScore;`. Ada konsekuensinya — lihat catatan di Bagian 0.5.
 
-### F13. Celah baris sampah tidak selaras antar baris
-**File:** `Assets/Tetris3D.Part2.cs` (`AddGarbageRow`)
+### F13. SELESAI — Celah baris sampah tidak selaras antar baris
+**File:** `Assets/Tetris3D.Part2.cs` (`AddGarbageRow`) · commit `0bcb13e`
 
 ```
 while (gaps.Count < gapN && guard++ < 500) gaps.Add(Random.Range(0, columns));
@@ -223,7 +331,7 @@ while (gaps.Count < gapN && guard++ < 500) gaps.Add(Random.Range(0, columns));
 
 Posisi celah **diacak ulang dari nol setiap baris**. Dua baris sampah dengan celah di posisi berbeda praktis tidak bisa dibersihkan. Itu bukan tangga kesulitan, itu spiral kematian.
 
-**Perbaikan:** simpan `lastGarbageGaps`, dan untuk baris berikutnya gunakan posisi yang sama atau bergeser maksimal 1 kolom. Ini standar di garbage Tetris kompetitif.
+**Dikerjakan:** field `lastGarbageGaps` menyimpan posisi celah baris sebelumnya; baris berikutnya memakai posisi yang sama digeser maksimal 1 kolom (`Random.Range(-1, 2)` lalu `Wrap`). Hasilnya celah membentuk kanal diagonal yang bisa ditembus, bukan dinding papan catur. Ini standar di garbage Tetris kompetitif.
 
 ---
 
@@ -231,12 +339,12 @@ Posisi celah **diacak ulang dari nol setiap baris**. Dua baris sampah dengan cel
 
 | Field | Sekarang | Usulan | Alasan |
 |---|---|---|---|
-| `maxColumns` | 30 | **24** | 30 terlalu lebar; 20% lebih sedikit slot untuk dilacak |
-| `columnsPerStage` | 3 | **2** | Menjaga 5 stage-up & diameter maks tetap di level 21 |
-| `cellPoints` | 10 | **12** | Kompensasi skor akibat cincin lebih sempit (leaderboard tetap sebanding) |
+| `maxColumns` | 30 | **24 — SUDAH** | 30 terlalu lebar; 20% lebih sedikit slot untuk dilacak |
+| `columnsPerStage` | 3 | **2 — SUDAH** | Menjaga 5 stage-up & diameter maks tetap di level 21 |
+| `cellPoints` | 10 | **12 — SUDAH** | Kompensasi skor akibat cincin lebih sempit (leaderboard tetap sebanding) |
 | `garbageGapCount` | 2 | **4** | 2 celah di 24 kolom = spiral kematian; ~1 celah per 6 kolom |
-| celah sampah | acak per baris | **selaras antar baris** | Lihat F13 |
-| `RecalcLevel` | sampai 100 level/event | **maks 1 level/event** | Lihat F4 |
+| celah sampah | acak per baris | **selaras — SUDAH** | Lihat F13 |
+| `RecalcLevel` | sampai 100 level/event | **maks 1 — SUDAH** | Lihat F4 |
 | `minPlayHeight` | 11 | **12** | Pentomino setinggi 5 butuh ruang manuver |
 | `stoneChance` cap | 0,45 | **0,30** | Balok tak bisa diputar; sudah dibantu F3 tapi 45% terlalu keras |
 | `stoneStartLevel` | 18 | 18 (tetap) | Sudah pas |
@@ -246,8 +354,11 @@ Posisi celah **diacak ulang dari nol setiap baris**. Dua baris sampah dengan cel
 | `baseLevelScore` | 600 | **800** | Level 2 sekarang cuma butuh 2 cincin; terlalu cepat |
 | `levelStep` | 250 | **300** | Menyesuaikan `baseLevelScore` |
 | `fallInterval` | 0,8 tetap | **0,8 -> 0,55 bertahap L1–20** | Sedikit ketegangan di akhir, tetap ramah |
+| `weirdShapeLevel` | 12 | **14** | Pengikat baru setelah tuning diameter — lihat KOREKSI 1 |
 
 **Catatan `fallInterval`:** sekarang konstan sepanjang game (tertulis eksplisit di header `Tetris3D.cs`). Tidak ada akselerasi sama sekali, dan hard drop selalu tersedia, jadi **nol tekanan waktu**. Semua kesulitan bersifat spasial. Untuk game yang sengaja mudah ini sebenarnya tidak fatal, tapi ramp ringan sampai 0,55 dtk akan memberi sensasi flow tanpa membuatnya sulit. Kalau ragu, ini item paling aman untuk ditunda.
+
+**Ingat:** semua field di tabel ini `public`, jadi setiap perubahan butuh langkah Inspector — lihat Bagian 0.5.
 
 ---
 
@@ -274,13 +385,17 @@ Hasilnya Bom jadi sekitar 38 baris — masih terasa sebagai pencapaian, tapi bis
 
 Menghancurkan **50% seluruh blok secara acak**. Karena acak per-sel, hasilnya sering **lebih buruk**: papan penuh lubang satu-satuan yang mustahil ditutup. Item ini kadang jadi anti-item.
 
-**Usulan:** ganti jadi bentuk spasial — radius di satu titik, atau pita 3 kolom penuh. Lebih terbaca, lebih memuaskan, lebih bisa di-balance. Gabungkan dengan F10 (jangan pakai `CascadeGravity`).
+**Usulan:** ganti jadi bentuk spasial — radius di satu titik, atau pita 3 kolom penuh. Lebih terbaca, lebih memuaskan, lebih bisa di-balance.
+
+**Catatan:** kalau bentuk Bom diubah jadi spasial dan lubangnya tidak lagi tersebar acak, barulah `ClearedRowGravity()` mungkin masuk akal di `BombBlast`. Selama masih acak per-sel, `CascadeGravity()` wajib dipertahankan (KOREKSI 2, Bagian 0.5).
 
 ### 5.3 Palu sering merugikan
 
 `ApplyHammer()` selalu menghancurkan baris 0 dan 1. Di silinder, baris terbawah justru yang paling penuh dan paling dekat selesai — jadi Palu sering **membuang cincin yang tinggal 1 blok lagi**.
 
 **Usulan:** targetkan 2 baris dengan **lubang terbanyak**, bukan 2 baris terbawah.
+
+**Catatan:** kalau ini dikerjakan, `landBase` tidak lagi selalu 0, sehingga pilihan gravitasi di `HammerBlast` **jadi berarti** dan harus ditinjau ulang.
 
 ### 5.4 Frekuensi iklan terlalu agresif
 
@@ -289,6 +404,8 @@ Gelembung buff tiap 24–40 dtk, gelembung Koin tiap 90 dtk, plus iklan revive, 
 Diperburuk oleh `PickBubbleType()`: selama `BUFF_AD_COOLDOWN` (180 dtk) berjalan, **semua** gelembung dipaksa jadi `IT_GEM` — yang juga butuh iklan. Jadi selama 3 menit pemain hanya disodori prompt iklan tanpa variasi hadiah.
 
 **Usulan:** selama cooldown, jangan spawn gelembung sama sekali, atau spawn hadiah kecil yang **gratis** (tanpa iklan). Naikkan `BUBBLE_MIN_GAP` ke 40 dtk.
+
+**MENDESAK untuk build review.** Selama `KUBIKA_ADMOB` mati, `BubbleTick()` tetap memunculkan gelembung tapi tidak ada iklan yang bisa diputar — reviewer Play Store melihat tawaran "Tonton Iklan" yang tidak bisa diklaim tiap ~30 detik. Butuh flag `adsEnabled` yang diperiksa di `BubbleTick()`, `PetiKoinBtn()`, dan tawaran revive. Lihat `SETUP-TROUBLESHOOTING.md` Masalah 3.
 
 ### 5.5 Gelembung mencuri tap & membekukan game
 
@@ -332,7 +449,7 @@ Diurutkan berdasarkan rasio dampak terhadap usaha.
 
 2. **Combo tidak punya pitch-ladder.** `sfxClear` selalu nada yang sama persis, jadi combo x7 terdengar identik dengan combo x1. Naikkan 1 semitone per tingkat combo — **ini kesempatan paling besar yang terlewat**, dan ongkosnya hampir nol.
 
-3. **Satu `AudioSource` dipakai bersama dengan `pitch` yang dimutasi global.** Lihat F8. `KbSfxAt()` mengubah `sfx.pitch` dan memengaruhi SFX lain yang sedang berbunyi.
+3. **Satu `AudioSource` dipakai bersama dengan `pitch` yang dimutasi global.** Lihat F8. `KbSfxAt()` mengubah `sfx.pitch` dan memengaruhi SFX lain yang sedang berbunyi. F8 hanya menambal gejalanya di `ClearBoard()`, akar masalahnya masih ada.
 
 4. **Penumpukan audio di momen terbaik.** Combo besar = `sfxClear` + `CurPlayChaChingSoft()` hingga 24 kali (masing-masing dua bunyi berjarak 0,07 dtk) + `sfxLevelUp` + tick Perlambat. Hasilnya bubur. Tidak ada ducking, tidak ada batas jumlah suara bersamaan.
 
@@ -360,6 +477,8 @@ Diurutkan berdasarkan rasio dampak terhadap usaha.
 
 7. **Kebocoran resource.** `MakeGradientTex()` bikin `Texture2D` baru tiap `StageUp` tanpa menghapus yang lama. `MakeBlock()` / `MakeGhostBlock()` / `AddGarbageRow()` bikin **Material baru per kubus** — di 24 x 18 itu ratusan material unik, nol batching, plus churn GC tiap clear. **Usulan:** cache satu material per tipe warna (17 + batu + garbage + ghost) dan pakai `sharedMaterial`. Untuk `FlashClear` yang butuh emisi per-blok, pakai `MaterialPropertyBlock`.
 
+**Pratinjau NEXT (baru, dari F3):** kotak NEXT sekarang menggambar balok batu dengan `StoneColor()` (abu-abu) dan chip judulnya ikut abu-abu. Kalau `palette[]` jadi dipakai di poin 1, pastikan warna batu tetap jelas berbeda dari 17 warna blok biasa.
+
 ---
 
 ## 9. PERFORMA (penyebab stutter di Android kelas menengah)
@@ -369,6 +488,8 @@ Stutter merusak "rasa memuaskan" lebih dari apa pun, jadi ini bukan item kosmeti
 1. **`GuiText()` menggambar 9 `GUI.Label` per string** (8 outline + 1 isi) dan mengalokasikan `GUIStyle` baru setiap panggilan. `OnGUI` jalan beberapa kali per frame di **empat** MonoBehaviour terpisah (`Tetris3D`, `KubikaCurrencyHUD`, `KubikaBubbleHUD`, `KubikaTokoHUD`). Ini sampah GC tiap frame plus ratusan draw call. **Usulan:** cache `GUIStyle` sebagai field statis; kurangi outline dari 8 arah jadi 4.
 
 2. **`FindFittingShape()` bisa ~180 ribu operasi per spawn** (17 bentuk x 4 rotasi x 24 kolom x `DropRowFor` 18 baris), dijalankan tepat di tengah `ResolveBoard()`. Hitch persis di momen transisi. **Usulan:** batasi jumlah bentuk yang dicoba (misal 5 pertama setelah shuffle), atau hitung profil ketinggian kolom sekali lalu pakai untuk semua kandidat.
+
+   **Catatan pasca-F2:** biaya ini sekarang **benar-benar terpakai** (dulu hasilnya dibuang oleh rotasi acak), jadi optimasinya jadi lebih berharga, bukan kurang.
 
 3. **`Burst()` membuat GameObject + ParticleSystem baru per sel yang hancur** — di 24 kolom itu 24 particle system per cincin. **Usulan:** satu particle system persisten, panggil `Emit()` dengan posisi berbeda.
 
@@ -382,6 +503,8 @@ Stutter merusak "rasa memuaskan" lebih dari apa pun, jadi ini bukan item kosmeti
 
 1. **Metrik tidak konsisten.** `SubmitScore()` mengirim `score` (run ini), `PushName()` mengirim `highScore`. Kalau leaderboard UGS di-set mode "latest" dan bukan "best", satu run jelek akan **menurunkan** peringkat pemain. **Perbaikan:** selalu kirim `highScore`, dan pastikan mode leaderboard = best score.
 
+   **Catatan pasca-F12:** `highScore` sekarang baru diperbarui saat game over. Urutannya di blok game over perlu dicek — pastikan `SubmitScore()` jalan **sesudah** `highScore` di-commit, bukan sebelum.
+
 2. **`LoadRanks` mengambil `Limit = 50`** tapi label menu berkata "Top 10" / "Top 5". Samakan.
 
 3. **`ParseCountry`** melakukan parsing JSON metadata dengan pencarian indeks string secara naif. Rapuh; pakai parser JSON yang benar.
@@ -392,15 +515,19 @@ Stutter merusak "rasa memuaskan" lebih dari apa pun, jadi ini bukan item kosmeti
 
 ## 11. URUTAN EKSEKUSI YANG DISARANKAN
 
-**Batch 1 — keamanan (di luar kode game)**
-- 1.1 keystore, 1.2 gitignore
+**Batch 1 — keamanan (di luar kode game)** — BELUM
+- 1.1 keystore, 1.2 gitignore. Butuh perintah git lokal.
 
-**Batch 2 — perbaikan cepat (semuanya kecil, risiko rendah)**
-- F1 crash tombol, F2 preview jujur, F3 batu di preview, F4 batas 1 level, F5 tombol keluar profil, F6 timeout revive, F7 `btnSoftDrop`, F8 pitch bocor, F10 gravitasi item, F11 garbage vs balok aktif, F12 highScore live, F13 celah selaras
-- F9 (coroutine reward) sedikit lebih besar — boleh dipisah
+**Batch 2 — perbaikan cepat** — SELESAI kecuali F9
+- F1, F2, F3, F4, F5, F6, F7, F8, F10, F11, F12, F13 sudah didorong. Lihat tabel Bagian 0.5.
+- F9 (coroutine reward) tersisa — paling besar dari ke-13.
 
-**Batch 3 — tuning angka (Bagian 2 + Bagian 4)**
-- Semuanya perubahan nilai field. **Uji dalam satu sesi bermain penuh** karena saling berinteraksi
+**Batch 2b — build review (BARU, mendesak)** — BELUM
+- Flag `adsEnabled` supaya build tanpa AdMob tidak menampilkan tawaran iklan yang tidak bisa diklaim. Lihat 5.4.
+
+**Batch 3 — tuning angka (Bagian 2 + Bagian 4)** — SEBAGIAN
+- `maxColumns`, `columnsPerStage`, `cellPoints` sudah diubah di kode. **Langkah Inspector belum dikonfirmasi** — lihat Bagian 0.5.
+- Sisanya belum. **Uji dalam satu sesi bermain penuh** karena saling berinteraksi.
 
 **Batch 4 — item & ekonomi (Bagian 5)**
 
@@ -438,6 +565,8 @@ Kalau nanti ingin papan bertahan saat diameter membesar, ini yang perlu diketahu
 
 **Bonus kalau papan dipertahankan:** karena `vSpace` dan `blockScale` konstan, radius dan sudut tiap blok bisa di-lerp selama ~0,6 dtk. Secara visual menara pemain **melebar di depan matanya**. `AnimateFall()` sudah punya polanya (kumpulkan movers, lerp, snap di akhir) — cukup versi yang me-lerp posisi penuh, bukan hanya `y`.
 
+**Catatan pasca-F11:** kalau migrasi ini jadi dikerjakan, ingat `pendingGarbage` sekarang bisa berisi antrean baris sampah. Saat ini aman karena `AddGarbageRow` hanya jalan di `columns >= maxColumns` (titik di mana `StageUp` tidak mungkin jalan lagi), tapi asumsi itu ikut runtuh kalau aturan stage-up berubah.
+
 ---
 
 ## LAMPIRAN B — Peta file
@@ -445,19 +574,27 @@ Kalau nanti ingin papan bertahan saat diameter membesar, ini yang perlu diketahu
 | File | Isi utama |
 |---|---|
 | `Tetris3D.cs` | Field & tunable, `Start`, `AllocGrid`, `SetupScene`, `ApplyGeometry`, `ApplyStageColors`, `MakeMat`, `MakeBlock`, `CellLocalPos`, `Wrap`, `shapes`/`boxSize`/`shapeTier`, enum bahasa, field leaderboard |
-| `Tetris3D.Part2.cs` | `SpawnPiece`, `PickNextType`, `AllowedShapes`, `FindFittingShape`, `Valid`, `Rotate`, `LockPiece`, `ResolveBoard`, `FlashClear`, `CascadeGravity`, `ClearedRowGravity`, `TooHigh`, `HardDrop`, `RecalcLevel`, `OnLevelUp`, `StageUp`, `AddGarbageRow`, `ClearBoard`, `Shake`, `Burst` |
-| `Tetris3D.Part3.cs` | `SetupAudio`, `Sfx`, `MakeTone`/`MakeArp`/`MakeMusic`, `Update()`, UGS & leaderboard, lokalisasi |
-| `Tetris3D.Part4.cs` | `GuiText`, `Btn3D`, `DrawStartMenu`, `DrawPauseMenu`, `DrawProfileScreen`, `DrawRanksScreen`, `OnGUI` |
-| `Tetris3D.Extras.cs` | Haptic, revive (`RequestReviveByAd`, `ClearTopRowsForRevive`), `DrawGameOverScore`, `DrawSlider`, `Toast` |
+| `Tetris3D.Part2.cs` | `SpawnPiece`, `PickNextType`, `AllowedShapes`, `FindFittingShape`, `Valid`, `Rotate`, `LockPiece`, `ResolveBoard`, `FlashClear`, `CascadeGravity`, `ClearedRowGravity`, `TooHigh`, `HardDrop`, `RecalcLevel`, `OnLevelUp`, `StageUp`, `AddGarbageRow`, `ClearBoard`, `Shake`, `Burst`; field `nextStone`, `pendingGarbage`, `lastGarbageGaps` |
+| `Tetris3D.Part3.cs` | `SetupAudio`, `Sfx`, `MakeTone`/`MakeArp`/`MakeMusic`, `Update()`, UGS & leaderboard, lokalisasi (`InitLoc`) |
+| `Tetris3D.Part4.cs` | `GuiText`, `Btn3D`, `DrawStartMenu`, `DrawPauseMenu`, `DrawProfileScreen`, `DrawRanksScreen`, `GetHudRow`, `OnGUI` |
+| `Tetris3D.Extras.cs` | Haptic, revive (`RequestReviveByAd`, `TickReviveAdWatchdog`, `ClearTopRowsForRevive`), `DrawGameOverScore`, `DrawSlider`, `Toast` |
 | `Tetris3D.Currency.cs` | Permata/Koin, HUD mata uang, animasi burst permata 3 fase, `KubikaCurrencyHUD` |
 | `Tetris3D.Gelembung.cs` | Konstanta item, `BubbleTick`, `SpawnBubble`, `PickBubbleType`, ikon item |
 | `Tetris3D.Gelembung2.cs` | Panel klaim, `ApplyBuff`, `ResolveClearsNoSpawn`, `ApplyBomb`/`BombBlast`, `ApplyHammer`/`HammerBlast`, `ApplySlow`, `KubikaBubbleHUD` |
 | `Tetris3D.Toko.cs` | `TOKO_PRICE`, `DrawTokoShop`, `DrawBuffInv`, `UseBuffFromInv`, `KubikaTokoHUD` |
 | `Tetris3D.PetiKoin.cs` | Peti koin berbasis iklan, `KubikaAds` |
 | `Tetris3D.UiScale.cs` | `VW`, `VH`, `UiScale`, `ApplyUiScale` |
-| `Tetris3D.RoundedBlock.cs` | `RoundedBlockMesh()` |
-| `Tetris3D.Saldoku.cs` | Integrasi Saldoku (belum diaudit) |
-| `Tetris3D.AdLoading.cs` | Loading iklan (belum diaudit) |
-| `Tetris3D.AdsReviveMrec.cs` | Iklan revive & MREC (belum diaudit) |
+| `Tetris3D.RoundedBlock.cs` | `RoundedBlockMesh()` — satu-satunya file yang belum dibaca |
+| `Tetris3D.Saldoku.cs` | Integrasi Saldoku |
+| `Tetris3D.AdLoading.cs` | Loading iklan, `KubikaAdGate`, `KubikaCoinFlyHUD`, `KubikaPetiWatcher` |
+| `Tetris3D.AdsReviveMrec.cs` | Iklan revive & MREC, `KubikaMrecDriver` |
 
-**Belum diaudit:** `Saldoku.cs`, `AdLoading.cs`, `AdsReviveMrec.cs`. Ketiganya jalur monetisasi, jadi sebaiknya diperiksa sebelum rilis besar berikutnya.
+### Catatan `AdLoading.cs` — bug yang pernah melumpuhkan proyek
+
+File ini pernah berisi **30 error kompilasi** yang membuat seluruh proyek masuk Safe Mode. Penyebabnya bukan migrasi disk dan bukan AdMob yang dimatikan, melainkan **tanda kutip yang ter-escape berlebihan** (`\"teks\"` alih-alih `"teks"`) di 8 lokasi. Backslash ilegal di luar string -> `CS1056`, kutip yang menyusul membuka string tak tertutup -> `CS1010`, dan sisanya efek beruntun (`CS1525`, `CS1003`, `CS1002`, `CS1026`).
+
+Sudah diperbaiki (23.648 -> 23.626 byte). **Ini persis risiko yang muncul tiap kali file ditulis ulang lewat API** — lihat peringatan di akhir Bagian 0.5.
+
+### Status audit
+
+Seluruh file di atas sudah dibaca kecuali **`RoundedBlock.cs`**. `Saldoku.cs`, `AdLoading.cs`, `AdsReviveMrec.cs`, dan `PetiKoin.cs` — yang dulu ditandai belum diaudit — sekarang sudah diperiksa, termasuk perilakunya saat define `KUBIKA_ADMOB` dimatikan. Semua jalur `#else`-nya aman; satu-satunya masalah nyata saat iklan mati adalah UX gelembung di poin 5.4.
