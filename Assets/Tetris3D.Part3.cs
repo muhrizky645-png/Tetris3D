@@ -15,6 +15,18 @@ using Object = UnityEngine.Object;
 public partial class Tetris3D
 {
     // ---------- AUDIO ----------
+    // Adopsi KubikaSfx.cs: satu AudioSource per PERAN, bukan satu untuk semua.
+    // Alasannya: AudioSource.pitch me-retune klip yang masih berbunyi di source itu,
+    // jadi selama semua bunyi menumpuk di satu source, tangga pitch combo akan
+    // menarik nada arpeggio clear yang belum habis.
+    AudioSource sfxLong;      // khusus klip panjang (clear / level up / game over). pitch selalu 1.
+    float muteUntil;          // jendela hening pendek sebelum sting game over
+    bool goStingRunning;
+    float polyTime;           // kompensasi polifoni
+    int polyCount;
+    const float POLY_WINDOW = 0.09f;
+    const int POLY_MAX = 8;
+
     void SetupAudio()
     {
         if (Object.FindFirstObjectByType<AudioListener>() == null && cam != null)
@@ -24,6 +36,14 @@ public partial class Tetris3D
         ag.transform.SetParent(transform);
         sfx = ag.AddComponent<AudioSource>();
         sfx.playOnAwake = false;
+        sfx.pitch = 1f;
+
+        // Source kedua buat klip panjang. Pemanggil boleh mengutak-atik sfx.pitch
+        // sesuka hati; arpeggio clear & sting game over aman di sini.
+        sfxLong = ag.AddComponent<AudioSource>();
+        sfxLong.playOnAwake = false;
+        sfxLong.pitch = 1f;
+
         music = ag.AddComponent<AudioSource>();
         music.playOnAwake = false;
         music.loop = true;
@@ -32,7 +52,7 @@ public partial class Tetris3D
         sfxLock = MakeTone("lock", 200f, 0.12f, 0.62f, 0, 120f);
         sfxDrop = MakeTone("drop", 300f, 0.16f, 0.62f, 1, 90f);
         sfxClear = MakeArp("clr", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f, 1567.98f }, 0.07f, 0.55f);
-        sfxGameOver = MakeArp("go", new float[] { 587.33f, 493.88f, 392.00f, 293.66f, 261.63f }, 0.16f, 0.55f);
+        sfxGameOver = MakeGameOverSting();
         sfxLevelUp = MakeArp("lvl", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f }, 0.10f, 0.55f);
         sfxTick = MakeTone("tick", 950f, 0.05f, 0.5f, 0, 950f);
 
@@ -48,9 +68,68 @@ public partial class Tetris3D
         if (soundOn && musicOn) music.Play();
     }
 
+    // Kompensasi polifoni (KubikaSfx: poly = 1/sqrt(n)).
+    // Kalau banyak bunyi jatuh berdekatan (clear 4 baris + lock + level up),
+    // jumlah amplitudonya melewati 1.0 dan hasilnya clipping kasar. Dikecilkan
+    // pakai akar biar tetap terasa ramai, bukan sekadar diperkecil rata.
+    float PolyGain()
+    {
+        float now = Time.unscaledTime;
+        if (now - polyTime > POLY_WINDOW) polyCount = 0;
+        polyTime = now;
+        polyCount = Mathf.Min(polyCount + 1, POLY_MAX);
+        return 1f / Mathf.Sqrt(polyCount);
+    }
+
     void Sfx(AudioClip c)
     {
-        if (soundOn && sfxOn && sfx != null && c != null) sfx.PlayOneShot(c, sfxVolume);
+        if (c == null || !soundOn || !sfxOn) return;
+
+        // Sting game over membajak jalur normal: pemanggil di Part2 tidak perlu tahu.
+        if (c == sfxGameOver)
+        {
+            if (goStingRunning) return;
+            goStingRunning = true;
+            StartCoroutine(CoGameOverSting());
+            return;
+        }
+
+        if (Time.unscaledTime < muteUntil) return;
+
+        // Router per-peran: klip panjang ke sfxLong (pitch dijaga 1), sisanya ke sfx.
+        AudioSource src = (c == sfxClear || c == sfxLevelUp) ? sfxLong : sfx;
+        if (src == null) return;
+        if (src == sfxLong) src.pitch = 1f;
+        src.PlayOneShot(c, Mathf.Clamp01(sfxVolume * PolyGain()));
+    }
+
+    // KubikaSfx: _muted -> FadeOutAll(0.12) -> hening 0.16 -> sting berbunyi sendirian.
+    // Tanpa ini sting selalu bertabrakan dengan ekor bunyi lock & clear terakhir,
+    // dan momen paling penting di game malah jadi yang paling berantakan.
+    IEnumerator CoGameOverSting()
+    {
+        muteUntil = Time.unscaledTime + 0.45f;
+
+        float v0 = sfx != null ? sfx.volume : 1f;
+        float vl0 = sfxLong != null ? sfxLong.volume : 1f;
+        float t = 0f;
+        const float FADE = 0.12f;
+        while (t < FADE)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = 1f - Mathf.Clamp01(t / FADE);
+            if (sfx != null) sfx.volume = v0 * k;
+            if (sfxLong != null) sfxLong.volume = vl0 * k;
+            yield return null;
+        }
+        if (sfx != null) { sfx.Stop(); sfx.pitch = 1f; sfx.volume = v0; }
+        if (sfxLong != null) { sfxLong.Stop(); sfxLong.pitch = 1f; sfxLong.volume = vl0; }
+
+        yield return new WaitForSecondsRealtime(0.16f);
+
+        if (soundOn && sfxOn && sfxLong != null && sfxGameOver != null)
+            sfxLong.PlayOneShot(sfxGameOver, Mathf.Clamp01(Mathf.Max(sfxVolume, 0.55f)));
+        goStingRunning = false;
     }
 
     AudioClip MakeTone(string name, float freq, float dur, float vol, int wave, float freqEnd)
@@ -108,6 +187,63 @@ public partial class Tetris3D
             }
         }
         AudioClip clip = AudioClip.Create(name, total, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
+
+    // Sting game over ala KubikaSfx: empat nada turun, lalu AKOR C MAYOR yang
+    // menyelesaikan kalimatnya. Sengaja hangat & tidak minor - ini penutup yang
+    // menghormati usaha pemain, bukan bunyi hukuman. Soft-clip tanh di akhir
+    // biar tumpukan harmoniknya tidak pecah.
+    AudioClip MakeGameOverSting()
+    {
+        int rate = 44100;
+        float[] desc = { 659.25f, 523.25f, 440.00f, 349.23f };  // E5 C5 A4 F4
+        float[] chord = { 261.63f, 329.63f, 392.00f, 523.25f }; // C4 E4 G4 C5
+        float noteDur = 0.19f;
+        float chordStart = 0.76f;
+        float chordDur = 1.10f;
+
+        int total = Mathf.Max(1, (int)(rate * (chordStart + chordDur)));
+        float[] data = new float[total];
+
+        for (int k = 0; k < desc.Length; k++)
+        {
+            float f = desc[k];
+            int start = (int)(rate * noteDur * k);
+            int len = (int)(rate * (noteDur + 0.30f));
+            for (int i = 0; i < len && start + i < total; i++)
+            {
+                float t = i / (float)len;
+                float tt = i / (float)rate;
+                float s = Mathf.Sin(2f * Mathf.PI * f * tt) * 0.60f
+                        + Mathf.Sin(2f * Mathf.PI * f * 2.01f * tt) * 0.22f
+                        + Mathf.Sin(2f * Mathf.PI * f * 0.5f * tt) * 0.20f;
+                float env = Mathf.Min(1f, t / 0.006f) * Mathf.Exp(-3.4f * t);
+                data[start + i] += s * env * 0.34f;
+            }
+        }
+
+        int cs = (int)(rate * chordStart);
+        int cl = total - cs;
+        for (int k = 0; k < chord.Length; k++)
+        {
+            float f = chord[k];
+            for (int i = 0; i < cl; i++)
+            {
+                float t = i / (float)cl;
+                float tt = i / (float)rate;
+                float s = Mathf.Sin(2f * Mathf.PI * f * tt) * 0.55f
+                        + Mathf.Sin(2f * Mathf.PI * f * 2f * tt) * 0.16f;
+                float env = Mathf.Min(1f, t / 0.05f) * Mathf.Exp(-1.5f * t);
+                data[cs + i] += s * env * 0.26f;
+            }
+        }
+
+        for (int i = 0; i < total; i++)
+            data[i] = (float)Math.Tanh(data[i] * 1.2f);
+
+        AudioClip clip = AudioClip.Create("go", total, 1, rate, false);
         clip.SetData(data, 0);
         return clip;
     }
@@ -195,12 +331,23 @@ public partial class Tetris3D
         }
         if (vig != null) vig.intensity.value = vignetteAmount;
 
+        // Musik: fade in/out, bukan Pause() mendadak (KubikaSfx FadeOutAll).
+        // Ikut fade keluar saat gameOver supaya sting game over jatuh di ruang hening,
+        // lalu fade masuk sendiri begitu main lagi. musicVolume dari Inspector tetap
+        // dihormati karena dipakai sebagai TARGET fade, bukan ditimpa langsung.
         if (music != null)
         {
-            music.volume = musicVolume;
-            bool wantMusic = soundOn && musicOn;
-            if (wantMusic && !music.isPlaying) music.Play();
-            else if (!wantMusic && music.isPlaying) music.Pause();
+            bool wantMusic = soundOn && musicOn && !gameOver;
+            if (wantMusic)
+            {
+                if (!music.isPlaying) music.Play();
+                music.volume = Mathf.MoveTowards(music.volume, musicVolume, Time.unscaledDeltaTime * 1.5f);
+            }
+            else
+            {
+                music.volume = Mathf.MoveTowards(music.volume, 0f, Time.unscaledDeltaTime / 0.25f);
+                if (music.volume <= 0.001f && music.isPlaying) music.Pause();
+            }
         }
 
         if (spin != null)
