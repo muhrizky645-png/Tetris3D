@@ -332,7 +332,16 @@ public partial class Tetris3D
         FillRect(new Rect(0f, 0f, VW, VH), new Color(0.02f, 0.01f, 0.06f, 0.93f));
         GlowText(new Rect(0f, VH * 0.09f, VW, 80f), T("profileTitle"), 50, new Color(0.5f, 0.9f, 1f), 1f);
 
-        if (editingProfile && Btn3D(new Rect(16f, 16f, 120f, 48f), T("close"), new Color(0.55f, 0.42f, 0.55f), false))
+        // F5: tombol TUTUP sekarang SELALU digambar. Dulu ada syarat editingProfile,
+        // padahal pada alur "Buat Profil" yang muncul OTOMATIS di game over pertama
+        // editingProfile masih false -> pemain terjebak. OnGUI() berhenti di layar ini
+        // (if (showProfile) { DrawProfileScreen(); return; }), jadi satu-satunya jalan
+        // keluar adalah mengisi nama lalu mengirim skor; yang tidak mau bikin profil
+        // tidak punya pintu keluar sama sekali. Menutup dari alur game over hanya
+        // membatalkan pengiriman skor -- layar GAME OVER (Main Lagi / Peringkat) ada
+        // di belakangnya, dan profil masih bisa dibuat kapan saja lewat chip profil
+        // di menu depan.
+        if (Btn3D(new Rect(16f, 16f, 120f, 48f), T("close"), new Color(0.55f, 0.42f, 0.55f), false))
         { editingProfile = false; showProfile = false; countryPicking = false; lbStatus = ""; }
 
         float pw = Mathf.Min(VW * 0.82f, 470f);
@@ -590,9 +599,14 @@ public partial class Tetris3D
             float pvX = VW - pvSize - 14f;
             float pvY = pauseRect.yMax + 14f;
             float boxH = pvSize + 40f;
+
+            // F3: chip judul ikut abu-abu kalau balok berikutnya adalah balok BATU,
+            // biar statusnya kelihatan walau bentuknya kebetulan mirip balok biasa.
+            Color chipCol = nextStone ? new Color(0.55f, 0.56f, 0.62f, 0.95f) : new Color(0.20f, 0.85f, 0.48f, 0.95f);
+
             RoundRect(new Rect(pvX - 11f, pvY - 9f, pvSize + 22f, boxH + 6f), new Color(0.25f, 0.9f, 0.55f, 0.22f), 18f); // glow tepi
             RoundRect(new Rect(pvX - 8f, pvY - 6f, pvSize + 16f, boxH), new Color(0.06f, 0.08f, 0.12f, 0.90f), 16f);       // panel
-            RoundRect(new Rect(pvX - 2f, pvY - 1f, pvSize + 4f, 24f), new Color(0.20f, 0.85f, 0.48f, 0.95f), 10f);         // chip judul
+            RoundRect(new Rect(pvX - 2f, pvY - 1f, pvSize + 4f, 24f), chipCol, 10f);                                       // chip judul
             GuiText(new Rect(pvX - 2f, pvY - 1f, pvSize + 4f, 24f), T("next"), 13, new Color(0.03f, 0.12f, 0.06f), TextAnchor.MiddleCenter);
 
             int[] sp = shapes[nextType];
@@ -610,7 +624,14 @@ public partial class Tetris3D
             float offX = (pvSize - w * cell) / 2f;
             float offY = (pvSize - h * cell) / 2f;
             float inset = cell * 0.10f;
-            Color col = BlockColor(nextType);
+
+            // F3: pratinjau memakai warna BATU kalau balok berikutnya batu, jadi pemain
+            // tahu balok itu TIDAK BISA DIPUTAR sebelum turun dan sempat menyiapkan
+            // celah yang cocok. Dulu selalu BlockColor(nextType), padahal sifat batu
+            // baru diundi di SpawnPiece() -- pratinjaunya berbohong. Undian batu kini
+            // dilakukan di PickNextType() dan disimpan di nextStone (Tetris3D.Part2.cs).
+            Color col = nextStone ? StoneColor() : BlockColor(nextType);
+
             for (int i = 0; i < cnt; i++)
             {
                 int gx = sp[i * 2] - minx, gy = sp[i * 2 + 1] - miny;
