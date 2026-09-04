@@ -468,7 +468,7 @@ MonoBehaviour:
   radius: 4
   vSpace: 1.3
   fallInterval: 0.8
-  cellPoints: 10
+  cellPoints: 12
   baseLevelScore: 600
   levelStep: 250
   comboSeconds: 10
