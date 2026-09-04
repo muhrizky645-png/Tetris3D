@@ -74,12 +74,33 @@ public partial class Tetris3D : MonoBehaviour
         new Color(1.00f, 0.75f, 0.30f),
     };
 
+    // ---------- Adopsi KubikaBlast: palet blok 5 warna ----------
+    // Field ini BARU, jadi belum ter-serialize di SampleScene -> default di bawah langsung dipakai
+    // (beda dengan rainbowColors/palette yang nilainya sudah dikunci scene).
+    // Set false kalau mau balik ke rainbow / palette 12 warna yang lama.
+    public bool kubikaPalette = true;
+    static readonly Color[] kubikaColors = new Color[]
+    {
+        new Color(0.95f, 0.30f, 0.30f), // merah
+        new Color(0.30f, 0.65f, 0.95f), // biru
+        new Color(0.40f, 0.85f, 0.45f), // hijau
+        new Color(0.98f, 0.80f, 0.25f), // kuning
+        new Color(0.70f, 0.45f, 0.90f), // ungu
+    };
+
     [Header("Efek cahaya (atur kalau kesilauan)")]
     public float bloomIntensity = 1f;
     public float bloomThreshold = 0.9f;
     public float bloomScatter = 0.4f;
     public float emissionStrength = 0.75f;
     public float vignetteAmount = 0.28f;
+
+    // ---------- Adopsi KubikaBlast: emisi blok & key light ----------
+    // Field-field BARU, sengaja dipisah dari emissionStrength supaya default di sini yang menang.
+    public float blockEmission = 0.14f;   // emisi blok ala KubikaBlast (0.75 = kesilauan + bloom lebay)
+    public float sunIntensity = 1.25f;    // key light utama
+    public float sunTemperature = 5000f;  // Kelvin, putih hangat netral
+    public float fillIntensity = 0.30f;   // isian sisi belakang tabung (KubikaBlast tidak punya ini)
 
     [Header("Suara")]
     public bool soundOn = true;
@@ -295,21 +316,36 @@ public partial class Tetris3D : MonoBehaviour
         bg.GetComponent<Renderer>().material = bgMat;
         bgTf = bg.transform;
 
+        // Ambient netral (dulu ungu 0.25,0.22,0.35) -> warna blok tampil apa adanya, ala KubikaBlast
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.25f, 0.22f, 0.35f);
+        RenderSettings.ambientLight = new Color(0.30f, 0.30f, 0.34f);
+
+        // KubikaLight.cs: matikan directional light bawaan scene dulu.
+        // Tanpa ini cahaya dobel (Directional Light sisa SampleScene + Sun + Fill) dan warna blok keruh.
+        Light[] oldLights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+        for (int i = 0; i < oldLights.Length; i++)
+        {
+            if (oldLights[i] != null && oldLights[i].type == LightType.Directional)
+                oldLights[i].enabled = false;
+        }
 
         GameObject sun = new GameObject("Sun");
         Light lt = sun.AddComponent<Light>();
         lt.type = LightType.Directional;
-        lt.intensity = 0.9f;
-        lt.color = new Color(1f, 0.96f, 0.9f);
-        sun.transform.rotation = Quaternion.Euler(35f, 20f, 0f);
+        lt.intensity = sunIntensity;
+        lt.color = Color.white;
+        lt.useColorTemperature = true;
+        lt.colorTemperature = sunTemperature;
+        lt.shadows = LightShadows.None;
+        sun.transform.position = new Vector3(0f, 3f, 0f);
+        sun.transform.rotation = Quaternion.Euler(40.277f, -12.448f, 6.663f);
 
         GameObject fill = new GameObject("Fill");
         Light fl = fill.AddComponent<Light>();
         fl.type = LightType.Directional;
-        fl.intensity = 0.5f;
-        fl.color = new Color(0.4f, 0.5f, 1f);
+        fl.intensity = fillIntensity;
+        fl.color = new Color(0.88f, 0.91f, 1f);
+        fl.shadows = LightShadows.None;
         fill.transform.rotation = Quaternion.Euler(-10f, 210f, 0f);
 
         GameObject core = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -461,12 +497,13 @@ public partial class Tetris3D : MonoBehaviour
         Material m = new Material(sh);
         m.color = c;
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
-        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.35f);
-        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.35f);
-        if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.35f);
+        // KubikaBlast: smoothness 0.42, metallic 0 (metallic tinggi bikin warna kusam/gelap)
+        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.42f);
+        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.42f);
+        if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
         m.EnableKeyword("_EMISSION");
         m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-        if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", c * emissionStrength);
+        if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", c * blockEmission);
         return m;
     }
 
@@ -504,6 +541,7 @@ public partial class Tetris3D : MonoBehaviour
 
     Color BlockColor(int type)
     {
+        if (kubikaPalette) return kubikaColors[type % kubikaColors.Length];
         if (rainbowColors) return Color.HSVToRGB((type * 0.11f) % 1f, 0.85f, 1f);
         return palette[type % palette.Length];
     }
