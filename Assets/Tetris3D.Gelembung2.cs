@@ -289,7 +289,13 @@ public partial class Tetris3D
             score += pts;
             lines += full.Count;
 
-            yield return StartCoroutine(CascadeGravity());
+            // F10: pakai ClearedRowGravity, SAMA seperti jalur clear normal di
+            // ResolveBoard(). Dulu di sini CascadeGravity() merapatkan SELURUH papan
+            // tiap iterasi, sehingga semua celah kejebak hilang, memicu reaksi
+            // berantai, dan bisa menghabiskan 3-4 baris sekaligus otomatis. Item jadi
+            // lebih kuat daripada mekanik intinya sendiri. Gravitasi bertahap itu
+            // DISENGAJA, jadi item sekarang ikut aturan yang sama.
+            yield return StartCoroutine(ClearedRowGravity(full));
         }
         RecalcLevel();
         // Kalau item memicu naik babak (StageUp), papan di-reset & balok aktif
@@ -402,6 +408,10 @@ public partial class Tetris3D
             }
         }
 
+        // CascadeGravity WAJIB di sini (bukan ClearedRowGravity): Bom menghancurkan
+        // separuh kotak ACAK, jadi lubangnya tersebar di seluruh papan dan harus
+        // dirapatkan per kolom. ClearedRowGravity hanya paham batas satu baris dan
+        // akan meninggalkan blok menggantung di udara.
         yield return StartCoroutine(CascadeGravity());
         yield return StartCoroutine(ResolveClearsNoSpawn());
     }
@@ -500,6 +510,9 @@ public partial class Tetris3D
             cells[c, 0] = null; grid[c, 0] = -1;
         }
 
+        // Palu menghabisi baris 0 dan 1, jadi landBase selalu 0 dan hasil
+        // ClearedRowGravity identik dengan CascadeGravity di sini. Dibiarkan
+        // CascadeGravity karena lebih lugas untuk kasus "kosongkan dari dasar".
         yield return StartCoroutine(CascadeGravity());
         yield return StartCoroutine(ResolveClearsNoSpawn());
     }
