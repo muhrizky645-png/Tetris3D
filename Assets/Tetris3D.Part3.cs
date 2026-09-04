@@ -36,6 +36,12 @@ public partial class Tetris3D
         sfxLevelUp = MakeArp("lvl", new float[] { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f }, 0.10f, 0.55f);
         sfxTick = MakeTone("tick", 950f, 0.05f, 0.5f, 0, 950f);
 
+        // Bunyi "tidak bisa" untuk rotasi yang buntu (lihat Part2.Rotate()).
+        // Sengaja dibalik dari sfxRotate: rotasi berhasil naik 720 -> 1010 Hz,
+        // yang gagal turun 190 -> 130 Hz. Pendek, pelan, gelombang kotak (wave 1)
+        // biar terbaca sebagai penolakan dan tidak ikut bikin ramai.
+        sfxDeny = MakeTone("deny", 190f, 0.06f, 0.30f, 1, 130f);
+
         musicClip = MakeMusic();
         music.clip = musicClip;
         music.volume = musicVolume;
@@ -316,11 +322,46 @@ public partial class Tetris3D
 
         bool softDrop = (Keyboard.current != null && Keyboard.current.downArrowKey.isPressed) || softDropHeld;
         float interval = softDrop ? 0.05f : fallInterval;
-        fallTimer += Time.deltaTime;
-        if (fallTimer >= interval)
+
+        // LOCK DELAY (konstanta & helper-nya di Part2.cs: LOCK_DELAY, TouchLockDelay).
+        //
+        // Dulu satu baris: if (!Move(0, -1)) LockPiece(); -> begitu tick jatuh
+        // berikutnya gagal turun, balok LANGSUNG mati di frame itu juga. Tidak ada
+        // jendela penyesuaian sama sekali, padahal kontrol utama game ini adalah
+        // geser layar yang analog dan sering meleset satu kolom di detik terakhir.
+        //
+        // Sekarang jalurnya bercabang pada kondisi 'grounded':
+        //   - grounded: gravitasi DIBEKUKAN (fallTimer ditahan 0) dan lockTimer
+        //     berjalan. Balok baru terkunci setelah LOCK_DELAY detik, atau lebih
+        //     cepat kalau pemain menekan JATUH (HardDrop mengunci seketika).
+        //   - melayang: lockTimer dinolkan, gravitasi jalan seperti biasa.
+        //
+        // Move(0,-1) TIDAK lagi memicu LockPiece(): satu-satunya jalan menuju kunci
+        // adalah lock delay di sini atau HardDrop(). Kalau tidak, balok bisa
+        // terkunci lewat dua jalur berbeda dan lock delay-nya jadi bocor.
+        //
+        // Guard active/curBox != null itu baru. Kode lama memanggil Move() lalu
+        // LockPiece() tanpa memeriksa apa pun, padahal keduanya membaca
+        // active.Length - kalau active sempat null di titik ini, NullReference.
+        if (active != null && curBox != null)
         {
-            fallTimer = 0f;
-            if (!Move(0, -1)) LockPiece();
+            bool grounded = !Valid(curBox, curCol, curRow - 1);
+            if (grounded)
+            {
+                fallTimer = 0f;
+                lockTimer += Time.deltaTime;
+                if (lockTimer >= LOCK_DELAY) LockPiece();
+            }
+            else
+            {
+                lockTimer = 0f;
+                fallTimer += Time.deltaTime;
+                if (fallTimer >= interval)
+                {
+                    fallTimer = 0f;
+                    Move(0, -1);
+                }
+            }
         }
 
         // Tabung selalu ikut memusatkan balok aktif (termasuk SETELAH ROTATE), biar tetap fokus di tengah.
