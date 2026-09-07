@@ -36,6 +36,12 @@ public partial class Tetris3D
     [Range(0f, 1f)] public float kubikaComboStep = 0.35f;      // BlastCore.COMBO_STEP
     public int kubikaLinesPerLevel = 12;                       // BlastCore.LINES_PER_LEVEL
 
+    // ---------------- BATCH J: JENDELA COMBO (field public BARU) ----------------
+    // Jeda (detik) antar penghancuran cincin/baris yang membuat rentetan kata
+    // pujian GOOD! -> LEGENDARY!! terus menyambung. Ditimpa ke comboSeconds saat
+    // runtime (lihat TickKubikaBalance: kenapa harus ditimpa, bukan ganti default).
+    [Range(1f, 60f)] public float kubikaComboWindow = 20f;
+
     // ---------------- BATCH I: TOMBOL PENGATUR ----------------
     public bool kubikaPerf = true;
     public int kubikaFps = 60;
@@ -51,6 +57,14 @@ public partial class Tetris3D
     public void TickKubikaBalance()
     {
         KeqTickPerf();
+
+        // ---- JENDELA COMBO (jarak kata pujian) ----
+        // comboSeconds adalah field LAMA yang sudah ter-serialize di SampleScene
+        // (nilai scene = 10 detik). Mengganti default-nya di Tetris3D.cs TIDAK
+        // berpengaruh - nilai scene selalu menang. Jadi ditimpa dari sini supaya
+        // nilai yang diminta (kubikaComboWindow) benar-benar berlaku di game.
+        if (kubikaComboWindow > 0f && comboSeconds != kubikaComboWindow)
+            comboSeconds = kubikaComboWindow;
 
         if (!keqSeeded)
         {

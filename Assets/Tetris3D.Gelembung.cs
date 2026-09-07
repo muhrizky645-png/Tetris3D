@@ -26,7 +26,7 @@ public partial class Tetris3D
     const float SLOW_SECONDS   = 8f;
     const float SLOW_MULT      = 2.5f;
     const float COIN_GAP       = 90f;   // koin muncul ~tiap 1,5 menit (jadwal khusus, buat marketing)
-    const float BUFF_AD_COOLDOWN = 20f; // jeda 20 detik antar iklan BUFF (anti-spam AdMob, diminta user), tanpa batas harian
+    const float BUFF_AD_COOLDOWN = 180f; // jeda 3 menit antar iklan BUFF (anti-spam AdMob), tanpa batas harian
 
     // ---- state gelembung ----
     class KBubble { public float x, y, vy, drift, phase; public int type; }
@@ -201,7 +201,7 @@ public partial class Tetris3D
     int PickBubbleType()
     {
         // Koin TIDAK di sini - koin punya jadwal sendiri (SpawnCoinBubble).
-        // Saat cooldown iklan buff aktif (20 detik sesudah nonton iklan buff),
+        // Saat cooldown iklan buff aktif (3 menit sesudah nonton iklan buff),
         // gelembung buff (Bom/Palu/Perlambat) BERHENTI muncul; hanya Permata
         // yang keluar dari jalur ini. Sesudah cooldown habis, buff muncul lagi.
         if (BuffAdCooldownLeft() > 0f) return IT_GEM;
