@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 // =====================================================================
@@ -8,6 +7,14 @@ using UnityEngine;
 //
 //  File TERPISAH (partial) - ADDITIF. Tidak ada satu baris pun di
 //  Tetris3D.cs / Part2 / Part3 / Part4 yang diubah.
+//
+//  CATATAN 'using System;' - JANGAN DITAMBAHKAN LAGI DI FILE INI.
+//  Versi pertama file ini mengimpor System untuk Func<>, dan itu membuat
+//  nama pendek 'Object' jadi ambigu antara UnityEngine.Object dan
+//  System.Object -> error CS0104 di KubikaMusicDriver. Sekarang Func
+//  ditulis lengkap sebagai System.Func<> dan pemanggilan statisnya
+//  ditulis UnityEngine.Object.FindFirstObjectByType, jadi aman dari dua
+//  arah sekaligus.
 //
 //  == KENAPA MUSIK LAMA TERASA KOSONG ==
 //  Part3.MakeMusic() memutar 16 nada dari tangga 6-nada dengan satu sinus
@@ -196,8 +203,9 @@ public partial class Tetris3D
         return clip;
     }
 
+    // System.Func ditulis lengkap: lihat catatan di kepala file soal CS0104.
     static void KmuAddNote(float[] buf, float startSec, float durSec, float freq, float amp,
-                           Func<float, float, float, float> voice)
+                           System.Func<float, float, float, float> voice)
     {
         int start = Mathf.RoundToInt(startSec * KMU_RATE);
         int len = Mathf.RoundToInt(durSec * KMU_RATE);
@@ -253,7 +261,7 @@ public class KubikaMusicDriver : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
-        if (Object.FindFirstObjectByType<KubikaMusicDriver>() != null) return;
+        if (UnityEngine.Object.FindFirstObjectByType<KubikaMusicDriver>() != null) return;
         var go = new GameObject("KubikaMusicDriver");
         DontDestroyOnLoad(go);
         go.AddComponent<KubikaMusicDriver>();
@@ -261,7 +269,7 @@ public class KubikaMusicDriver : MonoBehaviour
 
     void LateUpdate()
     {
-        if (game == null) game = Object.FindFirstObjectByType<Tetris3D>();
+        if (game == null) game = UnityEngine.Object.FindFirstObjectByType<Tetris3D>();
         if (game == null) return;
         game.TickKubikaMusic();
     }
