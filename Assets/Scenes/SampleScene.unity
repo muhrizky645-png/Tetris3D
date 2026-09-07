@@ -461,6 +461,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d13b802cf7d2b594d8674ee4304f4bba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  kubikaAudioReport: 1
+  kubikaBackground: 1
+  kubikaBgBubbles: 1
+  kubikaBgPreset: -1
+  kubikaBubbleRate: 9
+  kubikaBgFlash: 0.55
+  kubikaBgReactToClears: 1
+  kubikaEconomy: 1
+  kubikaComboCap: 8
+  kubikaComboStep: 0.35
+  kubikaLinesPerLevel: 12
+  kubikaComboWindow: 20
+  kubikaPerf: 1
+  kubikaFps: 60
+  kubikaLightRetune: 1
+  kubikaSunIntensity: 1.25
+  kubikaSunBounce: 0.7
+  kubikaFillLight: 0.18
+  kubikaAmbient: {r: 0.22, g: 0.22, b: 0.25, a: 1}
+  kubikaBloomThreshold: 1.05
+  kubikaVignette: 0.18
+  kubikaVignetteColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
+  kubikaShockwave: 1
+  kubikaComboShake: 1
+  kubikaHitStop: 1
+  kubikaShakeStrength: 1
+  kubikaMusic: 1
+  kubikaMusicBpm: 96
+  kubikaAudioHeal: 1
+  kubikaPraise: 1
+  kubikaPraiseVoice: 1
+  kubikaVoiceVolume: 1.5
   startColumns: 15
   maxColumns: 24
   columnsPerStage: 2
@@ -496,11 +528,16 @@ MonoBehaviour:
   - {r: 0.9, g: 0.2, b: 0.2, a: 1}
   - {r: 0.2, g: 0.4, b: 0.95, a: 1}
   - {r: 0.95, g: 0.55, b: 0.1, a: 1}
+  kubikaPalette: 1
   bloomIntensity: 1
   bloomThreshold: 0.9
   bloomScatter: 0.4
   emissionStrength: 0.6
   vignetteAmount: 0.28
+  blockEmission: 0.14
+  sunIntensity: 1.25
+  sunTemperature: 5000
+  fillIntensity: 0.3
   soundOn: 1
   sfxOn: 1
   musicOn: 1
