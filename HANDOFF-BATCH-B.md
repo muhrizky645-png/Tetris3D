@@ -2,9 +2,25 @@
 
 **Dibuat:** 6 September 2026  
 **Dieksekusi:** 7 September 2026  
+**Diperbarui:** 8 September 2026 — beberapa bagian dokumen ini sudah kedaluwarsa dan dibetulkan; lihat kotak **PEMBARUAN** di bawah.  
 **Status:** **SELESAI** — commit `dc01bd29` (`Assets/Tetris3D.Background.cs`). Catatan eksekusi & penyimpangan dari rencana ada di **Bagian 9**.  
 **Sumber:** `muhrizky645-png/KubikaBlast` → `Assets/Scripts/BlastBackground.cs`  
 **Dokumen induk:** `HANDOFF.md`. Dokumen ini pelengkapnya, sama seperti `SETUP-TROUBLESHOOTING.md`. Sekarang Batch B sudah dikerjakan, isinya bisa dilebur ke `HANDOFF.md`.
+
+---
+
+## PEMBARUAN 8 September 2026 — apa yang sudah tidak berlaku lagi
+
+Dokumen ini ditulis saat Batch B baru mendarat, jadi beberapa "sisa pekerjaan" di dalamnya **sudah dikerjakan batch berikutnya**. Ringkasannya:
+
+| Klaim lama di dokumen ini | Keadaan sebenarnya |
+|---|---|
+| Bagian 6: retune cahaya "MASIH TERBUKA" | **Sudah dikerjakan Batch E** (`375e2dd6`). Yang benar-benar sisa hanya `blockEmission`. |
+| Bagian 8: Batch D "belum diminta" | **Selesai** — `6c320ef2`, diperbaiki `be242db5` (CS0104). |
+| Bagian 8: `HitStop`, shake MAX, shockwave rings "bisa dicuri nanti" | **Sudah semua di Batch F** (`375e2dd6`). |
+| Bagian 8: `AnimateFx` 1.22×→1.85×, `_fxRoot` terpisah | **Sengaja tidak dikerjakan** — lihat `HANDOFF-BATCH-EF.md` bagian 5. |
+
+Yang **masih benar** dan tetap berlaku: seluruh Bagian 0–5 dan 9 (alasan desain, jebakan Inspector, catatan eksekusi), serta daftar uji main di Bagian 7 yang belum pernah dijalankan.
 
 ---
 
@@ -17,9 +33,9 @@ Owner minta memindahkan **background + SFX + pencahayaan + warna blok** dari Kub
 | A | Pencahayaan (Sun/Fill, 5000K, matikan directional bawaan scene) + warna & emisi blok (palet 5 warna) | **SELESAI** | `198f2432` (`Tetris3D.cs`) |
 | B | Background gradien + partikel gelembung | **SELESAI** | `dc01bd29` (`Tetris3D.Background.cs`) |
 | C | Arsitektur SFX (source per-peran, sting game over, kompensasi polifoni `1/√n`, musik fade) | **SELESAI** | `b3f8c678` (`Part3.cs`) |
-| D | Loop musik 96 BPM (`BuildMusic`) | Belum diminta owner | — |
+| D | Loop musik 96 BPM (`BuildMusic`) + watchdog audio | **SELESAI** | `6c320ef2`, diperbaiki `be242db5` — dok: `HANDOFF-BATCH-DJ.md` |
 
-A, B, dan C sudah mendarat. Batch D belum diminta.
+Keempatnya sudah mendarat. Batch lanjutan (E–J) punya dokumennya sendiri: `HANDOFF-BATCH-EF.md`, `HANDOFF-BATCH-GHI.md`, `HANDOFF-BATCH-DJ.md`.
 
 ---
 
@@ -56,6 +72,8 @@ Port Batch B **harus ikut pola polling itu**, bukan event:
 Taruh polling ini di `Part3.Update()` bareng polling yang sudah ada, atau di komponen HUD latar terpisah yang meng-cache referensi `Tetris3D` sekali (jangan `FindFirstObjectByType` tiap frame — lihat Bagian 9 `HANDOFF.md`).
 
 > **CARA EKSEKUSI:** dipakai penghitung tepi **sendiri** (`kbgPrevLines`), **bukan** menumpang `prevLines` milik `Extras.cs`. Alasannya `prevLines` sudah dikonsumsi haptic di `Part3.Update()` (`if (lines > prevLines) Haptic(30); prevLines = lines;`) — kalau ikut dipakai, siapa pun yang jalan lebih dulu akan menelan tepi itu dan yang belakangan tidak pernah kebagian. Dua penghitung terpisah = dua reaksi independen, tidak saling makan.
+>
+> Pola ini kemudian diikuti semua batch berikutnya: `kfxPrevLines` (Batch F), `keqPrevLines` / `keqPrevComboTime` (Batch G), `kprPrevComboTime` (Batch H). Tidak ada satu pun yang berbagi pencacah.
 
 ---
 
@@ -89,7 +107,7 @@ Taruh polling ini di `Part3.Update()` bareng polling yang sudah ada, atau di kom
 
 > **CARA EKSEKUSI:** preset **ikut `level`** (`(level - 1) % 6`), sama seperti KubikaBlast, bukan acak per sesi. Penempatan quad lama (`zBg = dist + 120f`) dipertahankan utuh. Bisa dikunci ke satu preset lewat `kubikaBgPreset = 0..5`; `-1` = ikut level.
 
-> **CATATAN:** preset KubikaBlast ini TERANG. Latar Tetris3D sekarang gelap (ungu). Perubahan ini mengubah nuansa total game — memang itu tujuannya (mengejar look KubikaBlast), tapi lihat Bagian 6: pencahayaan Batch A perlu ditinjau ulang setelah latar jadi terang.
+> **CATATAN:** preset KubikaBlast ini TERANG. Latar Tetris3D sebelumnya gelap (ungu). Perubahan ini mengubah nuansa total game — memang itu tujuannya (mengejar look KubikaBlast). Konsekuensi pencahayaannya sudah ditangani Batch E; lihat Bagian 6.
 
 ---
 
@@ -137,6 +155,8 @@ Tetris3D sudah punya `Global Volume` dengan Bloom (lihat Batch A: tint `(1,0.92,
 **Di mana:** paling bersih sebagai bagian dari `SetupScene()` (ganti `BgGradient`) + polling di `Part3.Update()`. Kalau mau terisolasi, buat partial baru `Tetris3D.Background.cs` (pola sama seperti `Extras`, `Gelembung2`) supaya tidak perlu menulis ulang `Tetris3D.cs` penuh.
 
 > **CARA EKSEKUSI: dipilih jalur TERISOLASI.** Seluruh Batch B ada di satu file baru `Assets/Tetris3D.Background.cs`. **Nol baris** di `Tetris3D.cs`, `Part2.cs`, `Part3.cs`, `Part4.cs` yang diubah — jadi tidak ada risiko merusak 58 KB kode yang sudah jalan. Caranya: driver kecil `KubikaBgDriver` (pola **sama persis** dengan `KubikaBubbleHUD` di `Gelembung2.cs`) melakukan bootstrap sendiri lewat `[RuntimeInitializeOnLoadMethod]`, meng-cache referensi `Tetris3D` sekali, lalu memanggil `TickKubikaBackground()`. Init-nya lazy sehingga `SetupScene()` tidak perlu memasang apa pun.
+>
+> Jalur terisolasi ini terbukti dan jadi pola baku untuk seluruh batch sesudahnya (E, F, G, H, I, J). Sampai Batch J, **`Tetris3D.cs`, `Part2`, `Part3`, `Part4` tetap tidak tersentuh** kecuali Batch C yang memang harus masuk ke `Part3.cs`.
 
 **JEBAKAN SERIALISASI INSPECTOR (kritis).** Semua field `public` pada `Tetris3D` **diserialisasi ke `SampleScene`** pada GameObject `Game`, dan **nilai scene menang atas default C#**. Artinya:
 
@@ -159,47 +179,58 @@ Tetris3D sudah punya `Global Volume` dengan Bloom (lihat Batch A: tint `(1,0.92,
 >
 > Nama sengaja diberi awalan `kubika`/`kbg` supaya tidak bentrok dengan `kb*` / `BUBBLE_*` milik `Gelembung.cs` (gelembung ITEM — sistem yang sama sekali berbeda) yang berada di partial `Tetris3D` yang sama.
 
+> **CATATAN TAMBAHAN 8 September 2026 — batas trik field baru.** Trik ini hanya bekerja selama field-nya **belum pernah ikut tersimpan** ke scene. Begitu `SampleScene` disimpan sesudah field baru itu hidup, nilainya ikut ter-serialize dan default C# kalah — persis seperti field lama. Contoh nyatanya: `kubikaAudioReport` (default `true` sejak `0e4e8dea`) yang di Batch K diubah jadi `false`; kalau scene sudah pernah disimpan, centangnya harus dihilangkan manual sekali. Untuk field **lama** yang memang harus diubah nilainya, satu-satunya cara andal adalah **menimpanya saat runtime** dari partial baru — lihat `kubikaComboWindow` → `comboSeconds` di `HANDOFF-BATCH-DJ.md` bagian 1.
+
 ---
 
-## 6. Interaksi dengan Batch A (WAJIB dibaca sebelum eksekusi)
+## 6. Interaksi dengan Batch A
 
-Angka cahaya KubikaBlast di Batch A **sengaja diturunkan** (`sunIntensity = 1.25`, `fillIntensity = 0.30`) karena di KubikaBlast latarnya **terang**. Saat ini di Tetris3D latarnya masih gelap, jadi cahaya itu terbaca lebih terang dari seharusnya.
+Angka cahaya KubikaBlast di Batch A **sengaja diturunkan** (`sunIntensity = 1.25`, `fillIntensity = 0.30`) karena di KubikaBlast latarnya **terang**. Saat dokumen ini pertama ditulis, latar Tetris3D masih gelap, jadi cahaya itu terbaca lebih terang dari seharusnya.
 
-**Begitu Batch B mendaratkan latar terang, keseimbangan cahaya berubah lagi.** Sesudah Batch B:
-- Cek ulang `sunIntensity` — mungkin sudah pas, atau malah perlu naik sedikit karena latar terang "memakan" kontras blok.
-- Cek `blockEmission` (0.14) — di latar terang, emisi rendah bisa jadi kurang "pop".
-- Cek keterbacaan HUD putih di atas latar terang (aturan "atas lebih gelap" di Bagian 2 sudah dirancang untuk ini).
+**Begitu Batch B mendaratkan latar terang, keseimbangan cahaya berubah lagi.** Yang perlu ditinjau ulang:
+- `sunIntensity` — mungkin sudah pas, atau malah perlu naik sedikit karena latar terang "memakan" kontras blok.
+- `blockEmission` (0.14) — di latar terang, emisi rendah bisa jadi kurang "pop".
+- Keterbacaan HUD putih di atas latar terang (aturan "atas lebih gelap" di Bagian 2 sudah dirancang untuk ini).
 
-Urutan uji yang benar: pull Batch B → main → baru sentuh angka cahaya kalau perlu.
-
-> **STATUS: MASIH TERBUKA.** Batch B sudah mendarat, jadi langkah retune cahaya ini **sekarang giliran berikutnya**. Ketiga angka (`sunIntensity`, `blockEmission`, keterbacaan HUD) belum ditinjau ulang di atas latar terang.
+> **STATUS 8 September 2026: SEBAGIAN BESAR SUDAH SELESAI.** Retune ini dikerjakan **Batch E** (`375e2dd6`, dok `HANDOFF-BATCH-EF.md`), dan temuannya lebih dalam dari dugaan dokumen ini: penyebab silau yang tersisa bukan `sunIntensity` (itu sudah 1.25 sejak Batch A) melainkan **`bounceIntensity` yang belum pernah disetel sama sekali** — masih default Unity `1.0`, sekarang `0.7`. Ikut disetel juga: fill `0.30 → 0.18`, ambient `0.30,0.30,0.34 → 0.22,0.22,0.25`, bloom threshold `0.9 → 1.05` (latar pastel mulai nge-bloom sendiri), vignette `0.28 ungu → 0.18 slate netral` (sudut layar terbaca "kotor" di atas pastel).
+>
+> **Yang MASIH terbuka: `blockEmission` (0.14).** Batch E menyetel cahaya, bloom, dan vignette, tapi **tidak menyentuh emisi blok**. Ini satu-satunya angka Batch A yang belum pernah ditinjau di atas latar pastel. Keterbacaan HUD juga belum pernah dikonfirmasi lewat uji main.
 
 ---
 
 ## 7. Pengujian sesudah eksekusi
 
+> **STATUS: BELUM DIJALANKAN.** Delapan poin di bawah belum pernah dilaporkan hasilnya. Yang paling berharga: **poin 7** (kedip ungu saat naik babak) dan **poin 8** (latar saat `timeScale = 0`).
+
 1. **Hanya ada SATU latar** — tidak ada z-fighting / kedip antara dua quad (peringatan Bagian 0).
 2. **Gelembung di belakang papan** (`sortingOrder = -10`), tidak menutupi menara, tidak menyerap tap.
 3. **Boost combo** — main sampai combo tinggi, pastikan emisi gelembung naik (bukti polling `comboCount` jalan).
 4. **Flash sesudah clear** — clear baris, pastikan latar berkilat lalu meluruh mulus (bukti polling tepi `lines` jalan).
-5. **Keterbacaan** — HUD putih + blok masih jelas di atas latar terang; kalau silau, turunkan `sunIntensity` / sesuaikan preset (Bagian 6).
-6. **Console 0 error** sesudah pull (Batch A + C terakhir tercatat 0/0/0).
-
-Tambahan sesudah eksekusi:
-
+5. **Keterbacaan** — HUD putih + blok masih jelas di atas latar terang; kalau silau, turunkan `kubikaSunIntensity` / sesuaikan preset (Bagian 6).
+6. **Console 0 error** sesudah pull.
 7. **Naik babak tidak mengembalikan latar ungu.** `ApplyStageColors()` masih hidup dan masih menulis `bgMat` saat naik babak; latar Kubika merebutnya balik di frame yang sama (Bagian 9). Kalau sempat terlihat kedip ungu satu frame saat naik babak, itu titik yang harus diperiksa.
 8. **Latar tetap hidup saat dialog klaim item terbuka** — dialog itu menyetel `Time.timeScale = 0` (Bagian 9).
 
 ---
 
-## 8. Ringkas: yang tersisa sesudah Batch B
+## 8. Ringkas: yang tersisa (diperbarui 8 September 2026)
 
-- **Retune cahaya Batch A di atas latar terang** — Bagian 6, sekarang jadi giliran berikutnya.
-- **Batch D** (musik 96 BPM `BuildMusic`) — belum diminta.
-- **F9** — satu-satunya perbaikan cepat yang tersisa.
-- FX KubikaBlast lain yang bisa dicuri nanti (dari `BlastGame.cs`): `HitStop`, camera shake MAX-bukan-jumlah, shockwave rings, `AnimateFx` 1.22×→1.85×, `_fxRoot` terpisah.
+Daftar lama di bagian ini sudah habis dikerjakan. Yang benar-benar tersisa sekarang:
 
-> Baris **`Columns Per Stage` → 2** dihapus dari daftar ini: owner mengonfirmasi langkah Inspector tuning diameter (`Cell Points = 12`, `Max Columns = 24`, `Columns Per Stage = 2`) **sudah dikerjakan**. Tidak ada lagi langkah Inspector yang menggantung.
+- **`blockEmission` masih 0.14** — satu-satunya angka Batch A yang belum ditinjau di atas latar pastel (Bagian 6).
+- **Audit `targetFrameRate` belum tuntas.** Batch I baru mengaudit `Tetris3D.cs`, `Part2`, `Part4`, `Toko`, `UiScale`. Belum diaudit: `Extras`, `Currency`, `Gelembung`, `Gelembung2`, `AdLoading`, `AdsReviveMrec`, `PetiKoin`, `Saldoku`, `Part3`.
+- **Cincin kejut saat clear lewat item (Bom/Palu) belum diverifikasi** — jalur `ResolveClearsNoSpawn()` diduga tidak menyetel `clearing`, sedangkan pemindai cincin Batch F hanya jalan saat `clearing == true`.
+- **F9** — perbaikan cepat terakhir, isinya masih belum ditentukan.
+- **Uji main** yang belum pernah dilaporkan: Bagian 7 dokumen ini (8 poin), `HANDOFF-BATCH-EF.md` (13 poin), `HANDOFF-BATCH-GHI.md` (18 poin), `HANDOFF-BATCH-DJ.md` (9 poin).
+
+Sudah **tidak** lagi jadi sisa pekerjaan:
+
+- ~~Retune cahaya Batch A~~ → Batch E (`375e2dd6`), kecuali `blockEmission`.
+- ~~Batch D (musik 96 BPM)~~ → `6c320ef2` + `be242db5`, dok `HANDOFF-BATCH-DJ.md`.
+- ~~`HitStop`, camera shake MAX-bukan-jumlah, shockwave rings~~ → Batch F (`375e2dd6`).
+- ~~Keputusan `LB_ID`~~ → diputuskan 8 September 2026: **tetap `tetris3d_global`**, tidak reset ke `tetris3d_v2`. Konsekuensinya rekor lama (dibuat dengan pengali combo tanpa batas) jadi tembok yang hampir mustahil dilewati — ini diterima owner.
+- ~~Langkah Inspector `Cell Points` / `Max Columns` / `Columns Per Stage`~~ → sudah dikerjakan owner. **Tidak ada langkah Inspector yang menggantung** untuk seluruh batch A–J.
+- `AnimateFx` 1.22×→1.85× dan `_fxRoot` terpisah → **sengaja tidak diambil**, lihat `HANDOFF-BATCH-EF.md` bagian 5 (Tetris3D sudah punya `Burst()` 16 partikel di `Part2.FlashClear`).
 
 ---
 
