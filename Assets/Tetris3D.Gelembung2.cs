@@ -354,6 +354,7 @@ public partial class Tetris3D
         GatherCells(targets, out objs, out baseScales, out mats, out centers);
         int n = objs.Count;
         if (n == 0) yield break;
+        KbtItemBegin();   // BATCH M: perisai item ON. WAJIB setelah guard di atas, kalau tidak penanda akhir bisa terlewat.
 
         float totalLightDur = Mathf.Clamp(n * 0.045f, 0.25f, 0.90f);
         float perStep = totalLightDur / n;
@@ -414,6 +415,7 @@ public partial class Tetris3D
         // akan meninggalkan blok menggantung di udara.
         yield return StartCoroutine(CascadeGravity());
         yield return StartCoroutine(ResolveClearsNoSpawn());
+        KbtItemEnd();   // BATCH M: perisai item OFF (ada juga watchdog 6 detik di Beat.cs).
     }
 
     // ========================= PALU (2 baris terbawah) =========================
@@ -452,6 +454,7 @@ public partial class Tetris3D
     {
         KbToast(SalID ? "Palu menghantam!" : "Hammer smash!");
         KbEnsureItemSfx();
+        KbtItemBegin();   // BATCH M: perisai item ON (tidak ada early return di coroutine ini).
 
         List<Transform> topT, botT;
         List<Vector3> topS, botS, topC, botC;
@@ -515,6 +518,7 @@ public partial class Tetris3D
         // CascadeGravity karena lebih lugas untuk kasus "kosongkan dari dasar".
         yield return StartCoroutine(CascadeGravity());
         yield return StartCoroutine(ResolveClearsNoSpawn());
+        KbtItemEnd();   // BATCH M: perisai item OFF (ada juga watchdog 6 detik di Beat.cs).
     }
 
     void ApplySlow()
