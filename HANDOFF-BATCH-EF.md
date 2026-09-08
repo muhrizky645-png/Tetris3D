@@ -9,6 +9,23 @@ jadi angka-angkanya dipinjam langsung, bukan dikira-kira.
 Semua kode ada di **satu file baru**: `Assets/Tetris3D.Impact.cs`.
 `Tetris3D.cs`, `Part2`, `Part3`, `Part4`, dan `Background` **tidak diubah satu baris pun**.
 
+**Dieksekusi:** 7 September 2026, commit `375e2dd6`.
+**Diperbarui:** 8 September 2026 - lihat kotak PEMBARUAN di bawah.
+
+---
+
+## PEMBARUAN 8 September 2026
+
+| Klaim lama di dokumen ini | Keadaan sebenarnya |
+|---|---|
+| Bagian 5: "Kata pujian = Batch H, belum dikerjakan" | **Selesai** - `bcd0f5b6`, `Assets/Tetris3D.Praise.cs` |
+| Bagian 5: "Ekonomi = Batch G" | **Selesai** - `bcd0f5b6`, `Assets/Tetris3D.Balance.cs`. Ternyata `Part2.cs` **tidak perlu** disentuh sama sekali (koreksi skor dari luar) |
+| Bagian 5: "KubikaPerf = Batch I" | **Selesai** - `bcd0f5b6`, ikut di `Balance.cs`. Audit `targetFrameRate` **belum tuntas** (9 file belum diperiksa) |
+| Bagian 1: retune cahaya selesai | Benar, **kecuali `blockEmission`** yang tidak ikut disetel |
+
+Dokumen batch lanjutannya: `HANDOFF-BATCH-GHI.md` (G, H, I) dan
+`HANDOFF-BATCH-DJ.md` (D, J, alat ukur audio).
+
 ---
 
 ## 1. Batch E - retune cahaya untuk latar TERANG
@@ -31,14 +48,22 @@ yang tersisa.
 | Ambient (flat) | tidak disentuh | 0.30, 0.30, 0.34 | **0.22, 0.22, 0.25** |
 | Bloom threshold | tidak ada bloom | 0.9 | **1.05** |
 | Vignette | tidak ada | 0.28, ungu gelap | **0.18, slate netral** |
+| Emisi blok | - | 0.14 | **0.14 (TIDAK disetel)** |
 
-Alasan dua angka terakhir (temuan baru, bukan dari KubikaBlast):
+Alasan dua angka bloom/vignette (temuan baru, bukan dari KubikaBlast):
 
 - **Threshold 0.9 terlalu rendah.** Preset bawah Batch B luminance-nya sekitar
   0.86, dan kilatan sesudah clear menariknya ke ~0.92. Artinya **latar itu
   sendiri** yang mulai nge-bloom, bukan bloknya. 1.05 menyisakan ruang.
 - **Vignette ungu gelap** `(0.04, 0.02, 0.10)` dulu cocok karena latarnya ungu.
   Di atas pastel, sudut layar terbaca seperti **kotor**, bukan seperti bayangan.
+
+> **SISA YANG BELUM DIKERJAKAN: `blockEmission` (0.14).** `HANDOFF-BATCH-B.md`
+> bagian 6 meminta tiga hal ditinjau di atas latar terang: `sunIntensity`,
+> `blockEmission`, dan keterbacaan HUD. Batch E menyelesaikan yang pertama
+> (lewat `bounceIntensity`, yang ternyata biang keroknya) tapi **tidak menyentuh
+> emisi blok**. Di latar pastel, emisi rendah bisa membuat blok kurang "pop".
+> Ini satu-satunya angka Batch A yang masih menunggu.
 
 ### Cara penerapan (penting)
 
@@ -55,6 +80,14 @@ Penerapan dijalankan **3 sapuan** lalu berhenti total (0.05 s dan 0.5 s), meniru
 `KubikaLight.Apply()` yang dipanggil di `Awake`, `Start`, dan satu frame
 sesudahnya. Tiap sapuan sekalian mematikan directional light lain (cahaya dobel
 = warna blok keruh).
+
+> **CATATAN 8 September 2026.** Pola "timpa field lama dari field baru" ini
+> kemudian dipakai lagi di Batch J untuk `comboSeconds` (field lama, nilai scene
+> 10 dtk) yang ditimpa `kubikaComboWindow` (field baru, 20 dtk). Bedanya: di
+> sini cukup **sekali** karena `Part3` membaca ulang field-nya tiap frame,
+> sedangkan `comboSeconds` dibaca hanya saat clear, jadi di sana timpanya
+> dipasang sebagai pemeriksaan `!=` yang menyembuhkan diri sendiri. Lihat
+> `HANDOFF-BATCH-DJ.md` bagian 1.
 
 ---
 
@@ -80,6 +113,15 @@ Daftar baris yang sudah diberi cincin dikosongkan setiap `lines` berubah, supaya
 cincin **cascade kedua** tidak hilang hanya karena indeks barisnya kebetulan
 sama dengan yang sudah tercatat.
 
+> **RISIKO YANG BELUM DIVERIFIKASI (dicatat 8 September 2026).** Ketergantungan
+> pada `clearing == true` punya satu titik lemah: clear yang dipicu **item**
+> (Bom dan Palu) berjalan lewat `ResolveClearsNoSpawn()` di `Gelembung2.cs`,
+> bukan lewat `FlashClear()`. Kalau jalur itu tidak menyetel `clearing`, maka
+> pemindai cincin tidak pernah jalan dan **Bom/Palu tidak mengeluarkan cincin
+> sama sekali**. Belum diuji. Kalau terbukti, perbaikannya bukan memaksa
+> `clearing = true` dari luar (itu akan mengacaukan penjaga di `Part3`),
+> melainkan memberi pemindai pemicu keduanya sendiri.
+
 ### 2.2 Guncang sadar-combo
 
 `Shake(dur, mag)` yang lama **menimpa** nilai lama dan **mengabaikan combo
@@ -98,6 +140,11 @@ guncang dobel.
 `comboCount` baru dinaikkan `ResolveBoard()` **sesudah** `FlashClear()` selesai,
 jadi saat kilatan combo yang dipakai = `comboExpire > 0 ? comboCount + 1 : 1`.
 Tanpa koreksi ini, warna cincin & kekuatan guncang selalu terlambat satu clear.
+
+> **CATATAN:** rumus `comboExpire > 0 ? comboCount + 1 : 1` itu kini bergantung
+> pada jendela combo yang **20 detik** (Batch J), bukan 10 detik lagi. Efeknya
+> hanya menguntungkan: `comboExpire` lebih lama positif, jadi warna cincin dan
+> kekuatan guncang lebih sering terbaca sebagai combo lanjutan.
 
 Babak baru (`stage` naik) juga dapat guncang 0.62 + hit-stop 0.12 s.
 
@@ -121,6 +168,15 @@ tabel kepemilikan):
 Hit-stop hanya dipicu saat `rows >= 2` **atau** `combo >= 3`. Kalau setiap clear
 tunggal ikut membekukan waktu, yang terasa bukan "mantap" tapi "nyendat".
 Durasi 0.05 + rows*0.02 + boost, dibatasi keras 0.20 s, scale 0.08.
+
+> **POLA YANG TERULANG.** Bahaya nomor 4 di atas - koroutin mati kena
+> `StopAllCoroutines()` lalu meninggalkan state global rusak - **benar-benar
+> terjadi** di tempat lain: `CoGameOverSting()` di `Part3.cs` bisa meninggalkan
+> volume AudioSource di 0 alias game bisu permanen. Itulah yang kemudian
+> memaksa lahirnya `KmuTickAudioWatchdog()` di Batch D. Jadi aturannya bukan
+> cuma untuk hit-stop: **apa pun yang mengubah state global dari dalam koroutin
+> wajib punya jalur pemulihan berbasis timer atau watchdog**, karena
+> `ClearBoard()` bisa memotongnya kapan saja.
 
 ---
 
@@ -155,26 +211,50 @@ Keduanya `LateUpdate` dan bootstrap sendiri (`AfterSceneLoad` +
 `KubikaFxDriver` sengaja **sesudah** driver latar: tick ini yang menulis posisi
 kamera terakhir, sehingga tidak bisa ditimpa lagi lapisan guncang lama.
 
+Urutan lengkap sesudah Batch J ada di `HANDOFF-BATCH-DJ.md` bagian 5
+(delapan driver, dari `KubikaTokoHUD` -26000 sampai `KubikaAudioDebugDriver` 25300).
+
 ---
 
-## 5. Yang SENGAJA tidak dikerjakan
+## 5. Yang SENGAJA tidak dikerjakan di batch ini
 
 - Batch F versi KubikaBlast juga punya `SpawnColumnShock` dan `AnimateFx`
   (kubus mati yang berpencar). Tetris3D sudah punya `Burst()` 16 partikel di
   `Part2.FlashClear`, jadi menambah keduanya cuma bikin ramai.
-- Kata pujian GOOD! -> LEGENDARY!! = **Batch H**, belum dikerjakan.
-  `KubikaHud.cs` **tidak bisa dicopot mentah**: dia mencari field privat
-  `BlastUI` lewat *reflection* dan membangun `Canvas`/`Text`, sedangkan Tetris3D
-  pakai IMGUI (`GUI.*`). Harus ditulis ulang.
-- Ekonomi (level dari baris, cap combo 8) = **Batch G**. Ini satu-satunya batch
-  yang **wajib** menyentuh `Part2.cs`, dan akan menggeser skor leaderboard
-  `tetris3d_global` sehingga skor lama & baru tidak lagi sebanding.
-- `KubikaPerf` (FPS/vSync) = **Batch I**. Harus baca `Part4.cs`, `Toko.cs`,
-  `UiScale.cs` dulu untuk memastikan belum ada yang menyetel `targetFrameRate`.
+  **Status: tetap tidak diambil**, dan ini keputusan desain, bukan pekerjaan tertunda.
+
+Tiga item di bawah dulu tercatat "belum dikerjakan" - **ketiganya sudah selesai**
+di commit `bcd0f5b6`, dok `HANDOFF-BATCH-GHI.md`:
+
+- ~~Kata pujian GOOD! -> LEGENDARY!! = **Batch H**~~ -> selesai,
+  `Assets/Tetris3D.Praise.cs`. Dugaan di dokumen ini benar: `KubikaHud.cs`
+  memang **tidak bisa dicopot mentah** karena mencari field privat `BlastUI`
+  lewat *reflection* dan membangun `Canvas`/`Text`, sedangkan Tetris3D pakai
+  IMGUI. Yang diambil hanya datanya (7 kata, 7 warna, kurva animasi);
+  penggambarannya ditulis ulang memakai `GlowText` milik `Part4`.
+- ~~Ekonomi (level dari baris, cap combo 8) = **Batch G**~~ -> selesai,
+  `Assets/Tetris3D.Balance.cs`. **Dugaan di dokumen ini SALAH:** ternyata
+  `Part2.cs` **tidak perlu disentuh sama sekali**. Rumus skor lamanya bisa
+  dihitung ulang dari luar (jumlah baris = pertambahan `lines`, `comboCount`
+  terlihat apa adanya), jadi cukup **selisihnya** yang dikoreksi ke `score`.
+  Peringatan soal leaderboard tetap berlaku, dan keputusannya sudah diambil:
+  `LB_ID` **tetap `tetris3d_global`**.
+- ~~`KubikaPerf` (FPS/vSync) = **Batch I**~~ -> selesai, ikut di `Balance.cs`.
+  Audit yang diminta dokumen ini baru **sebagian**: `Tetris3D.cs`, `Part2`,
+  `Part4`, `Toko`, `UiScale` sudah bersih. **Belum diaudit:** `Extras`,
+  `Currency`, `Gelembung`, `Gelembung2`, `AdLoading`, `AdsReviveMrec`,
+  `PetiKoin`, `Saldoku`, `Part3`. Karena itu penerapannya dibuat 3 sapuan lalu
+  berhenti - kalau ada file lain yang memiliki `targetFrameRate`, file itu yang
+  menang.
 
 ---
 
 ## 6. Cek saat main (Batch E + F)
+
+> **STATUS: BELUM DIJALANKAN.** Tiga belas poin di bawah belum pernah
+> dilaporkan hasilnya. Yang paling berharga: **poin 10 dan 11** (kedua-duanya
+> menguji apakah `timeScale` bisa tertinggal rusak), lalu **poin 6** yang
+> sekaligus menjawab risiko cincin-lewat-item di bagian 2.1.
 
 1. Warna blok terasa lebih **pekat**, bukan pucat - itu efek indirect 1.0 -> 0.7.
 2. Latar pastel **tidak** ikut bercahaya sendiri; yang nge-bloom cuma blok & kilatan.
@@ -182,7 +262,8 @@ kamera terakhir, sehingga tidak bisa ditimpa lagi lapisan guncang lama.
 4. Clear 1 baris tanpa combo: guncangnya **sama seperti sebelumnya** (bukti MAX bekerja).
 5. Combo panjang: guncang jelas lebih keras, tapi kamera tidak terbang (cap 0.85).
 6. Cincin muncul **tepat di ketinggian baris** yang hancur, dan ada satu cincin
-   per baris saat clear ganda.
+   per baris saat clear ganda. **Sekalian uji pakai Bom dan Palu** - kalau di
+   situ tidak ada cincin sama sekali, dugaan di bagian 2.1 terbukti.
 7. Warna cincin berubah di combo 5 dan 7 (kuning -> jingga -> pink).
 8. Cascade (clear berantai) tetap mengeluarkan cincin di langkah kedua & ketiga.
 9. Clear ganda / combo 3+ terasa "nyendat" sepersekian detik, lalu normal lagi.
