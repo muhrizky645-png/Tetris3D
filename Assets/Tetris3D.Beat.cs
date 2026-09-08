@@ -1,61 +1,90 @@
 using UnityEngine;
 
 // =====================================================================
-//  KUBIKA TOWER - BATCH M : IRAMA COMBO & TAMENG ITEM
+//  KUBIKA TOWER - BATCH N : JEDA NYATA ANTAR CINCIN & TAMENG ITEM
 // ---------------------------------------------------------------------
-//  File TERPISAH (partial) - ADDITIF. TIDAK mengubah Tetris3D.cs, Part2,
-//  Part3, Part4, Currency, Praise, maupun Sfx. Satu-satunya file lain yang
-//  disentuh Batch M adalah Gelembung2.cs, dan hanya 2 baris penanda per
-//  coroutine item (KbtItemBegin / KbtItemEnd) -- tanpa mengubah logika
-//  apa pun di dalamnya.
+//  File TERPISAH (partial) - ADDITIF. TIDAK mengubah Tetris3D.cs, Part3,
+//  Part4, Currency, Praise, maupun Sfx. File lain yang disentuh hanya:
+//      * Part2.cs      -> 1 baris yield di dalam loop ResolveBoard()
+//      * Gelembung2.cs -> 1 baris yield di ResolveClearsNoSpawn()
+//                         + 2 baris penanda per coroutine item (Batch M)
 //
-//  DUA KELUHAN YANG DIKERJAKAN DI SINI
+//  RIWAYAT
 //  ---------------------------------------------------------------------
-//  (B) "kalau combonya berurutan cepat, suaranya seperti susul-susulan"
-//  (C) "efek visual item ada durasinya, tapi balok masih jalan, keburu
-//      game over duluan" (terutama Bom & Palu, yang dipakai justru saat
-//      keadaan darurat)
+//  Batch M (versi lama): memperlambat Time.timeScale ke 0,35x maksimal
+//      1,10 detik di antara clear, DAN menyaring kata pujian supaya rantai
+//      panjang tidak jadi monolog.
+//  Batch N (file ini) : kedua-duanya DIBONGKAR. Lihat alasannya di bawah.
 //
-//  ANGKA YANG MENJELASKAN (B)
+//  KENAPA PENDEKATAN BATCH M SALAH
 //  ---------------------------------------------------------------------
-//  Satu mata rantai cascade di ResolveBoard() = 0,56 detik:
-//      FlashClear 0,40 s  +  AnimateFall 0,16 s
-//  lalu loop langsung balik ke FindFullRows() untuk baris penuh berikutnya.
+//  1. Penyaring tier bikin suara terasa RUSAK, bukan rapi. Aturannya
+//     "tier harus melompat minimal 2 tingkat", dan karena combo naik satu
+//     per satu hasilnya selang-seling: GOOD bunyi, AWESOME senyap,
+//     AMAZING bunyi, FANTASTIC senyap... Padahal TEKS-nya tetap muncul
+//     ketujuh-tujuhnya, jadi mata dan telinga tidak sinkron. Laporan
+//     pemain: "kadang bunyi kadang engga, itu kenapa?"
 //
-//  Durasi kata pujiannya (hasil ukur file mp3 di Resources/KubikaVoice):
+//  2. Pelambatan timeScale tidak pernah bisa memberi "jeda". FlashClear
+//     (0,40 s), AnimateFall (0,16 s), ClearedRowGravity, CascadeGravity,
+//     dan SEMUA WaitForSeconds di BombBlast/HammerBlast memakai waktu
+//     TERSKALA. Memperlambat waktu = membuat animasi hancurnya ikut
+//     LELET, bukan menjeda SESUDAH animasi selesai. Dan timeScale = 0
+//     jauh lebih parah: coroutine itu tidak akan pernah maju, papan tidak
+//     pernah selesai membersihkan diri -> GAME MENGGANTUNG PERMANEN.
+//
+//  YANG DIMINTA PEMAIN (kutipan)
+//  ---------------------------------------------------------------------
+//  "biarkan ketika satu cincin hancur, game seperti terjeda, sampai efek
+//   suara pujian + visualnya selesai, trus lanjut ke combo selanjutnya.
+//   itu kasus ketika cincin hancur 1-1, soalnya kadang ketika 1 cincin
+//   penuh, yg atasnya kan turun, trus bisa hancurin 1 cincin lagi, kadang
+//   bisa beruntun sampe 3x"
+//
+//  CARA BATCH N: JEDA DI DALAM LOOP, BUKAN PELAMBATAN WAKTU
+//  ---------------------------------------------------------------------
+//  ResolveBoard() itu sebuah loop:
+//      cari baris penuh -> FlashClear -> skor -> ClearedRowGravity -> ulangi
+//  Tempat jeda yang benar ada di UJUNG tiap putaran, dan itu cuma bisa
+//  dicapai dengan menyisipkan satu yield di sana:
+//
+//      yield return StartCoroutine(KbtWaitPraise());
+//
+//  Keunggulannya, dan ini yang membuat seluruh gate timeScale dibuang:
+//    * Time.timeScale TIDAK PERNAH disentuh -> nol risiko menggantung.
+//    * Selagi menunggu, clearing masih true, dan Part3.Update() sudah punya
+//      "if (clearing) return;" di awal. Jadi balok yang jatuh, lock delay,
+//      input, dan hitung mundur combo SEMUA berhenti sendiri. Itu jeda
+//      sungguhan, bukan gerak lambat.
+//    * Animasi hancurnya cincin tetap kecepatan normal (tidak lelet).
+//    * Karena tiap kata dijamin selesai sebelum cincin berikutnya hancur,
+//      penyaring kata jadi TIDAK PERLU -> ketujuh kata dibunyikan lagi.
+//    * Efek yang harus tetap lincah memang sudah memakai waktu TAK
+//      TERSKALA (teks pujian, guncangan, cincin gelombang, animasi permata,
+//      bel permata), jadi selama jeda semuanya tetap berjalan mulus.
+//
+//  Panjang jeda = panjang klip suaranya (minimal 0,95 s = durasi animasi
+//  teks KPR_DUR) + 0,10 s napas, dibatasi kubikaPauseCap. Default cap 3,0 s
+//  sengaja lebih besar dari kata terpanjang (LEGENDARY 2,56 s) supaya
+//  "penuh sampai kata habis" benar-benar terpenuhi.
+//
+//  DURASI KATA (hasil ukur mp3 di Resources/KubikaVoice)
 //      good 0,76 | awesome 1,36 | amazing 1,62 | fantastic 1,96
 //      incredible 1,93 | unstoppable 1,36 | LEGENDARY 2,56
+//  Rantai 3x (kasus yang disebut pemain) = sekitar 3-4 detik jeda total.
 //
-//  Jadi mata rantai berikutnya datang di detik 0,56 sementara katanya masih
-//  butuh 1,4-2,6 detik lagi. Dan KprPlayVoice() di Praise.cs hanya punya
-//  SATU AudioSource, sehingga kprVoice.Play() MEMOTONG kata sebelumnya di
-//  tengah suku kata. Jadi biang keroknya adalah JARAKNYA, bukan bunyinya.
-//
-//  TEMUAN PENTING: di jalur combo normal TIDAK ADA balok yang sedang jatuh.
-//  LockPiece() menyetel active = null lalu memulai ResolveBoard(), dan
-//  SpawnPiece() baru dipanggil di baris terakhir. Ditambah Update() punya
-//  "if (clearing) return;". Artinya membekukan papan di antara clear TIDAK
-//  merugikan pemain sama sekali -- tidak ada input atau balok yang hilang.
-//
-//  KENAPA BUKAN Time.timeScale = 0 (ini jebakan paling gampang dimasuki)
+//  KENAPA SUARANYA DIAMBIL ALIH DARI Praise.cs
 //  ---------------------------------------------------------------------
-//  FlashClear, AnimateFall, ClearedRowGravity, CascadeGravity, dan SEMUA
-//  WaitForSeconds di BombBlast/HammerBlast memakai waktu TERSKALA. Kalau
-//  timeScale dinolkan, coroutine itu tidak pernah maju -> papan tidak
-//  pernah selesai membersihkan diri -> GAME MENGGANTUNG PERMANEN.
-//  Maka "freeze" di sini = PELAMBATAN (0,35x), bukan penghentian.
-//
-//  Yang enaknya: hampir semua efek yang ingin tetap lincah sudah memakai
-//  waktu TAK TERSKALA -> teks pujian (TickKubikaPraise), guncangan &
-//  cincin gelombang (KfxTickShake/KfxAnimateRing), animasi permata
-//  (CurTickGems), dan bel permata (KsfPlayGemTick). Jadi pelambatan ini
-//  hanya menyentuh PAPAN, bukan tampilan efeknya.
+//  KprPlayVoice() hanya punya SATU AudioSource, dan satu source berarti
+//  Play() selalu MEMOTONG klip yang sedang berbunyi. Di sini dipakai DUA
+//  source bergilir, jadi ekor kata lama dibiarkan berdering. Teks pujian,
+//  warna, skala, dan animasinya TETAP milik Praise.cs.
 //
 //  CARA MEMBATALKAN (per bagian, tanpa menyentuh kode)
 //  ---------------------------------------------------------------------
-//      Kubika Combo Gate  = OFF -> papan tidak pernah diperlambat
+//      Kubika Combo Gate  = OFF -> jeda antar cincin mati (papan lanjut terus)
 //      Kubika Item Shield = OFF -> balok jalan lagi selama animasi item
-//      Kubika Voice Queue = OFF -> penyaring tier mati (semua kata dibunyikan)
+//      Kubika Pause Cap         -> batas atas jeda, detik
 //  Kalau Combo Gate DAN Voice Queue dua-duanya OFF, kepemilikan suara
 //  dikembalikan ke Praise.cs seperti sebelum Batch M.
 // =====================================================================
@@ -64,17 +93,18 @@ public partial class Tetris3D
 {
     // ---------- sakelar (SEMUA field BARU -> default kode ini berlaku sampai
     //            SampleScene disimpan ulang; lihat catatan serialisasi di doc) ----------
-    public bool kubikaComboGate  = true;   // perlambat papan di antara clear
+    public bool kubikaComboGate  = true;   // jeda papan di antara clear
     public bool kubikaItemShield = true;   // tahan balok selama animasi item
-    public bool kubikaVoiceQueue = true;   // saring kata pujian (anti monolog)
-    [Range(0.15f, 1f)]   public float kubikaGateSlow    = 0.35f;  // 1 = tanpa efek
-    [Range(0.20f, 2.5f)] public float kubikaGateMaxHold = 1.10f;  // detik (tak terskala)
+    public bool kubikaVoiceQueue = true;   // pemutar suara dipegang file ini
+    // Batas atas jeda. 3,0 s > LEGENDARY (2,56 s) -> kata terpanjang lolos utuh.
+    // Turunkan ke 1,8 atau 1,3 kalau jedanya terasa kelamaan.
+    [Range(0.20f, 4f)] public float kubikaPauseCap = 3.00f;
 
     // ---------- konstanta ----------
-    const float KBT_MIN_GAP    = 0.30f;   // jarak minimum antar kata pujian
-    const float KBT_ITEM_MAX   = 6.00f;   // batas keras tameng item (watchdog)
-    const float KBT_RESTORE_TO = 1.50f;   // batas sabar sebelum paksa timeScale = 1
-    const float KBT_WORD_FALLBACK = 0.95f; // dipakai kalau panjang klip tak diketahui
+    const float KBT_ITEM_MAX = 6.00f;   // batas keras tameng item (watchdog)
+    const float KBT_BREATH   = 0.10f;   // napas sesudah kata habis
+    const float KBT_WAIT_MAX = 4.00f;   // jaring terakhir: jeda tak boleh lewat ini
+    const float KBT_WORD_FALLBACK = 0.95f; // = KPR_DUR, durasi animasi teks pujian
 
     const string KBT_VOICE_DIR = "KubikaVoice/";
     // Urutan WAJIB sama dengan KPR_FILES di Praise.cs (tier 1..7).
@@ -85,9 +115,8 @@ public partial class Tetris3D
 
     // ---------- state ----------
     float kbtPrevComboTime;      // pendeteksi tepi naik comboTime (pola prev* biasa)
-    float kbtHoldLeft;           // sisa tahanan papan, detik TAK TERSKALA
-    bool  kbtOwnsTime;           // true = timeScale sedang dipegang file ini
-    float kbtRestoreWait;        // berapa lama gagal mengembalikan timeScale
+    float kbtWordAt;             // kapan kata terakhir mulai, waktu TAK TERSKALA
+    float kbtWordLen;            // berapa lama papan harus menunggu kata itu
     bool  kbtItemOpen;           // penanda dari BombBlast/HammerBlast
     float kbtItemLeft;           // watchdog tameng item
     bool  kbtItemSawClearing;    // sudah melihat clearing == true sesudah item?
@@ -99,8 +128,61 @@ public partial class Tetris3D
     AudioClip[] kbtClips;
     bool[] kbtTried;
     int   kbtSpokenTier;
-    float kbtSpokenAt;
     float kbtVoiceLen;
+
+    // =================================================================
+    //  JEDA ANTAR CINCIN (bagian B) - di-yield dari loop cascade
+    // =================================================================
+    // Disisipkan di DUA tempat, masing-masing satu baris:
+    //   Part2.ResolveBoard()               -> combo normal
+    //   Gelembung2.ResolveClearsNoSpawn()  -> cascade Bom/Palu/Garis
+    //
+    // Ditaruh di ATAS loop (sesudah "kalau tidak ada baris penuh, keluar"),
+    // BUKAN di bawah. Dua alasan:
+    //   * pada cincin PERTAMA belum ada kata untuk ditunggu, jadi fungsi ini
+    //     langsung selesai -> hancurnya cincin pertama tetap instan;
+    //   * sesudah cincin TERAKHIR loop sudah keluar lewat break, jadi
+    //     SpawnPiece() tidak pernah tertunda oleh jeda.
+    //
+    // Aman terhadap semua kondisi tepi:
+    //   * pakai waktu TAK TERSKALA -> tidak peduli hit-stop / item Perlambat;
+    //   * kalau pemain menekan Pause atau membuka klaim gelembung
+    //     (timeScale = 0), hitungan jedanya DIBEKUKAN, tidak habis diam-diam;
+    //   * ClearBoard() memanggil StopAllCoroutines() -> coroutine ini mati
+    //     bersama ResolveBoard, tidak ada yang nyangkut;
+    //   * ada batas keras KBT_WAIT_MAX.
+    //
+    // Sengaja mengembalikan System.Collections.IEnumerator dengan nama penuh
+    // supaya file ini tidak perlu "using System.Collections;".
+    public System.Collections.IEnumerator KbtWaitPraise()
+    {
+        if (!kubikaComboGate) yield break;
+        if (!started || gameOver) yield break;
+        if (kbtWordAt <= 0f || kbtWordLen <= 0f) yield break;
+
+        float cap = Mathf.Max(0.20f, kubikaPauseCap);
+        float end = kbtWordAt + Mathf.Min(kbtWordLen, cap);
+        float guard = Time.unscaledTime + KBT_WAIT_MAX;
+
+        while (true)
+        {
+            if (!started || gameOver) yield break;
+            if (Time.unscaledTime >= guard) yield break;
+
+            // Papan sedang dibekukan orang lain -> tunda hitungan, jangan
+            // biarkan jedanya habis selagi pemain menatap menu.
+            if (paused || BubbleClaimOpen)
+            {
+                end += Time.unscaledDeltaTime;
+                guard += Time.unscaledDeltaTime;
+                yield return null;
+                continue;
+            }
+
+            if (Time.unscaledTime >= end) yield break;
+            yield return null;
+        }
+    }
 
     // =================================================================
     //  PENANDA ITEM (dipanggil dari Gelembung2.cs, 2 baris per coroutine)
@@ -125,14 +207,6 @@ public partial class Tetris3D
     // =================================================================
     //  SUARA PUJIAN (diambil alih dari Praise.cs)
     // =================================================================
-    // Kenapa diambil alih, bukan mengedit Praise.cs: KprPlayVoice() hanya
-    // punya satu AudioSource, dan satu source berarti Play() SELALU memotong
-    // klip yang sedang berbunyi. Yang dibutuhkan justru sebaliknya -- ekor
-    // kata lama dibiarkan berdering menimpa kata baru. Itu mustahil dengan
-    // satu source, jadi di sini dipakai DUA yang dipakai bergilir.
-    //
-    // Teks pujian, warna, skala, dan animasinya TETAP milik Praise.cs. Yang
-    // dipindah cuma pemutar suaranya.
     void KbtEnsureVoice()
     {
         if (kbtClips == null)
@@ -157,29 +231,22 @@ public partial class Tetris3D
         }
     }
 
-    // Penyaring tier. Tanpa ini, rantai combo panjang membunyikan KETUJUH kata
-    // berurutan; dengan jarak sekitar 1,2 detik itu jadi monolog 8 detik yang
-    // menutupi seluruh permainan.
+    // TIDAK ADA LAGI PENYARING TIER.
     //
-    // Aturannya: kata pertama rantai selalu dibunyikan, sesudah itu hanya kalau
-    // tier melompat minimal 2 tingkat, dan LEGENDARY selalu dibunyikan. Hasil
-    // untuk rantai penuh: GOOD -> AMAZING -> INCREDIBLE -> LEGENDARY (4 kata,
-    // bukan 7), jadi tiap kata punya ruang bernapas dan tingkatannya tetap
-    // terasa menanjak.
-    bool KbtShouldSpeak(int tier)
+    // Batch M punya KbtShouldSpeak() yang mensyaratkan tier melompat >= 2
+    // tingkat. Itu dibuat waktu papan masih jalan terus dan kata-kata saling
+    // menimpa. Sekarang papan benar-benar menunggu tiap kata habis, jadi
+    // penyaringnya bukan cuma tidak perlu -- dia justru merusak, karena teks
+    // muncul tanpa suara. Fungsi itu dihapus, bukan dimatikan lewat sakelar,
+    // supaya nilai lama yang mungkin sudah tersimpan di scene tidak bisa
+    // menghidupkannya kembali.
+    //
+    // Mengembalikan true kalau klipnya benar-benar diputar -> pemanggil pakai
+    // itu untuk menentukan panjang jeda.
+    bool KbtSpeak(int tier)
     {
-        if (!kubikaVoiceQueue) return true;
-        if (Time.unscaledTime - kbtSpokenAt < KBT_MIN_GAP) return false;  // anti senapan mesin
-        if (kbtSpokenTier <= 0) return true;                              // kata pembuka rantai
-        if (tier >= KBT_FILES.Length) return true;                        // LEGENDARY selalu
-        if (tier >= kbtSpokenTier + 2) return true;                       // lompat >= 2 tingkat
-        return false;
-    }
-
-    void KbtSpeak(int tier)
-    {
-        if (!(soundOn && sfxOn)) return;
-        if (Time.unscaledTime < muteUntil) return;   // hormati jeda sting game over
+        if (!(soundOn && sfxOn)) return false;
+        if (Time.unscaledTime < muteUntil) return false;   // hormati jeda sting game over
 
         KbtEnsureVoice();
 
@@ -190,11 +257,11 @@ public partial class Tetris3D
             kbtClips[i] = Resources.Load<AudioClip>(KBT_VOICE_DIR + KBT_FILES[i]);
         }
         AudioClip c = kbtClips[i];
-        if (c == null) return;
+        if (c == null) return false;
 
         kbtSrcIdx = 1 - kbtSrcIdx;                  // GILIR -> kata lama tidak dipotong
         AudioSource a = kbtSrc[kbtSrcIdx];
-        if (a == null) return;
+        if (a == null) return false;
 
         a.mute   = false;
         a.volume = Mathf.Clamp01(sfxVolume * Mathf.Clamp(kubikaVoiceVolume, 0f, 1.5f));
@@ -202,8 +269,8 @@ public partial class Tetris3D
         a.Play();
 
         kbtSpokenTier = tier;
-        kbtSpokenAt   = Time.unscaledTime;
         kbtVoiceLen   = c.length;
+        return true;
     }
 
     void KbtStopVoice()
@@ -240,50 +307,54 @@ public partial class Tetris3D
         bool alive = started && !paused && !gameOver;
         bool own = kubikaComboGate || kubikaVoiceQueue;
 
-        // ---------- 1. rantai combo putus -> lupakan tier ----------
+        // ---------- 1. rantai combo putus -> lupakan tier & kata ----------
         // comboCount = 0 saat jendela combo habis, dan = 1 pada clear pertama.
-        if (comboCount <= 1) kbtSpokenTier = 0;
+        // kbtWordAt dinolkan juga supaya cincin pertama rantai baru tidak
+        // menunggu sisa kata dari rantai sebelumnya.
+        if (comboCount <= 1)
+        {
+            kbtSpokenTier = 0;
+            kbtWordAt = 0f;
+            kbtWordLen = 0f;
+        }
 
         // ---------- 2. tepi naik comboTime = ADA kata pujian baru ----------
         // Pola yang sama dipakai TickKubikaPraise (kprPrevComboTime). Kedua
         // pendeteksi berdiri sendiri, jadi teks tetap muncul walau suaranya
-        // disaring di sini.
+        // dimatikan lewat sakelar.
         float ct = comboTime;
         if (alive && ct > kbtPrevComboTime + 0.0001f)
         {
             int tier = Mathf.Clamp(comboShow - 1, 1, KBT_FILES.Length);
-            if (own && KbtShouldSpeak(tier)) KbtSpeak(tier);
+            bool played = own && KbtSpeak(tier);
 
-            if (kubikaComboGate)
-            {
-                // Tahan papan selama sisa kata yang masih berbunyi, DIBATASI
-                // kubikaGateMaxHold. Batas ini penting: LEGENDARY 2,56 detik
-                // kalau ditahan penuh akan terasa seperti game-nya nge-hang.
-                // Dengan batas 1,1 detik, ekor katanya dibiarkan berdering
-                // menimpa mata rantai berikutnya -- dan itu tidak lagi jadi
-                // masalah karena sekarang ada dua source bergilir.
-                float len  = kbtVoiceLen > 0f ? kbtVoiceLen : KBT_WORD_FALLBACK;
-                float left = Mathf.Max(0f, (kbtSpokenAt + len) - Time.unscaledTime);
-                float cap  = Mathf.Max(0.20f, kubikaGateMaxHold);
-                kbtHoldLeft = Mathf.Min(Mathf.Max(kbtHoldLeft, left), cap);
-            }
+            // Panjang jeda: klip suaranya kalau memang berbunyi, kalau tidak
+            // (suara dimatikan / file hilang) tetap pakai 0,95 s supaya animasi
+            // TEKS pujian juga kebagian ruang -- pemain minta "suara + visual".
+            float len = (played && kbtVoiceLen > 0f) ? kbtVoiceLen : KBT_WORD_FALLBACK;
+            kbtWordAt  = Time.unscaledTime;
+            kbtWordLen = Mathf.Max(len, KBT_WORD_FALLBACK) + KBT_BREATH;
         }
         kbtPrevComboTime = ct;
 
         // ---------- 3. game over -> senyap & lepas ----------
         // Aturan lama dipertahankan: game over langsung membungkam pujian.
-        if (gameOver && !kbtPrevOver) { KbtStopVoice(); kbtHoldLeft = 0f; }
+        if (gameOver && !kbtPrevOver)
+        {
+            KbtStopVoice();
+            kbtWordAt = 0f;
+            kbtWordLen = 0f;
+        }
         kbtPrevOver = gameOver;
-        if (!alive) kbtHoldLeft = 0f;
 
-        // ---------- 4. TAMENG ITEM (bagian C) ----------
-        // Pelepasan punya DUA jalur supaya tidak pernah nyangkut:
+        // ---------- 4. TAMENG ITEM (bagian C, TIDAK diubah dari Batch M) ----------
+        // Pelepasan punya TIGA jalur supaya tidak pernah nyangkut:
         //   * penanda KbtItemEnd() dari akhir coroutine (jalur normal)
         //   * begitu clearing sempat true lalu kembali false -> cascade item
         //     sudah selesai (ResolveClearsNoSpawn menyetel clearing di ujung
         //     BombBlast/HammerBlast). Jalur ini tetap bekerja walau coroutine
         //     dibunuh StopAllCoroutines() oleh ClearBoard().
-        //   * ditambah watchdog KBT_ITEM_MAX sebagai jaring terakhir.
+        //   * watchdog KBT_ITEM_MAX sebagai jaring terakhir.
         if (kbtItemLeft > 0f)
         {
             kbtItemLeft -= dt;
@@ -315,64 +386,17 @@ public partial class Tetris3D
             btnSoftDrop = false;
         }
 
-        // ---------- 5. GATE WAKTU (bagian B) ----------
-        if (kbtHoldLeft > 0f) kbtHoldLeft -= dt;
-
-        float slow = Mathf.Clamp(kubikaGateSlow, 0.15f, 1f);
-
-        // Syarat clearing itu yang membuat pelambatan HANYA terjadi di antara
-        // clear (saat ResolveBoard berjalan), bukan saat pemain sedang bermain.
-        // Tameng item dan gate ini tujuannya BERLAWANAN -- gate memperlambat
-        // animasi, tameng justru ingin animasi item jalan penuh -- jadi
-        // keduanya dikunci agar tidak pernah aktif bersamaan.
-        bool wantGate = kubikaComboGate
-                     && kbtHoldLeft > 0f
-                     && clearing
-                     && alive
-                     && !shield
-                     && !KubikaHitStopActive   // hit-stop Batch F pemilik lain timeScale
-                     && !BubbleClaimOpen;      // klaim gelembung menyetel timeScale = 0
-
-        if (wantGate)
-        {
-            // Jangan pernah menimpa timeScale = 0 milik orang lain.
-            if (Time.timeScale > 0.001f)
-            {
-                Time.timeScale = slow;
-                kbtOwnsTime = true;
-                kbtRestoreWait = 0f;
-            }
-        }
-        else if (kbtOwnsTime)
-        {
-            // Aturan kepemilikan meniru KubikaHitStop() di Impact.cs: hanya
-            // kembalikan kalau nilainya MASIH milik kita, dan jangan pernah
-            // melepas kepemilikan tanpa benar-benar mengembalikannya (kalau
-            // dilepas mentah-mentah, hit-stop yang mengambil alih akan
-            // memulihkan ke 0.35 dan tidak ada lagi yang mengembalikan ke 1).
-            float ts = Time.timeScale;
-            if (ts >= 0.999f)
-            {
-                kbtOwnsTime = false; kbtRestoreWait = 0f;              // sudah normal
-            }
-            else if (Mathf.Abs(ts - slow) < 0.05f)
-            {
-                Time.timeScale = 1f; kbtOwnsTime = false; kbtRestoreWait = 0f;
-            }
-            else
-            {
-                kbtRestoreWait += dt;
-                if (kbtRestoreWait > KBT_RESTORE_TO && !BubbleClaimOpen && !KubikaHitStopActive)
-                {
-                    Time.timeScale = 1f; kbtOwnsTime = false; kbtRestoreWait = 0f;
-                }
-            }
-        }
+        // ---------- 5. Time.timeScale: TIDAK DISENTUH SAMA SEKALI ----------
+        // Seluruh gate pelambatan Batch M (kbtHoldLeft / kbtOwnsTime /
+        // kbtRestoreWait / kubikaGateSlow / kubikaGateMaxHold) DIHAPUS.
+        // Jeda sekarang dikerjakan KbtWaitPraise() dari dalam loop cascade,
+        // jadi file ini bukan lagi salah satu pemilik timeScale. Yang tersisa
+        // cuma dua: klaim gelembung (0/1) dan hit-stop Batch F (0,08).
     }
 
     // Jaring pengaman statis, dipakai driver kalau instance game hilang
-    // (ganti scene / dihancurkan) sementara timeScale masih tertahan.
-    // Pola yang sama dengan KubikaEndHitStop() di Impact.cs.
+    // (ganti scene / dihancurkan) sementara timeScale masih tertahan oleh
+    // pemilik lain yang ikut hilang. Pola yang sama dengan KubikaEndHitStop().
     public static void KubikaEndBeatGate()
     {
         if (Time.timeScale > 0.001f && Time.timeScale < 0.999f) Time.timeScale = 1f;
