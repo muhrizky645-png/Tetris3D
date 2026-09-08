@@ -20,6 +20,15 @@ using UnityEngine;
 //  yang SENYAP menjadi laporan yang bisa dibaca - tanpa mengubah satu pun
 //  perilaku rilis.
 //
+//  == HASIL AKHIR DIAGNOSIS (8 September 2026) ==
+//  Ternyata BUKAN dua tersangka di atas. mp3-nya terpasang benar dan
+//  tombol suaranya menyala; yang salah adalah volume di sisi perangkat
+//  (kekecilan), jadi suaranya memang diputar tapi tidak terdengar.
+//  Pelajarannya: sebelum menyalahkan aset atau kode, pastikan dulu
+//  volume perangkat - laporan ini memang tidak bisa melihat ke sana,
+//  karena AudioListener.volume di dalam game bisa 1 sementara volume
+//  media HP-nya nol.
+//
 //  CATATAN: file ini TIDAK memakai 'using System;'. Lihat CS0104 yang
 //  baru kena di Tetris3D.Music.cs - System membuat nama pendek 'Object'
 //  jadi ambigu. StringBuilder ditulis lengkap System.Text.StringBuilder.
@@ -27,7 +36,22 @@ using UnityEngine;
 
 public partial class Tetris3D
 {
-    public bool kubikaAudioReport = true;   // set false kalau sudah tidak perlu
+    // DIMATIKAN 8 September 2026 - urusan "pujian bisu" sudah tuntas, jadi
+    // laporan ini tidak perlu lagi mengotori Console tiap sesi.
+    //
+    // SENGAJA TIDAK DIHAPUS: kalau nanti muncul lagi gejala audio senyap,
+    // menyalakan satu centang jauh lebih cepat daripada menulis ulang alat
+    // ukurnya. Isi laporannya juga masih relevan (tombol suara, listener,
+    // AudioSource, klip prosedural, 7 mp3 pujian).
+    //
+    // JEBAKAN INSPECTOR - baca kalau laporannya MASIH muncul sesudah pull:
+    // field ini sempat hidup dengan default 'true', jadi kalau SampleScene
+    // pernah disimpan sesudah commit 0e4e8dea, nilai 'true' itu sudah
+    // ter-serialize di GameObject Game dan akan MENGALAHKAN default 'false'
+    // di bawah. Obatnya: buka SampleScene -> pilih GameObject Game ->
+    // komponen Tetris3D -> hilangkan centang "Kubika Audio Report" ->
+    // simpan scene. Sesudah itu tidak perlu disentuh lagi.
+    public bool kubikaAudioReport = false;
 
     bool kadDone;
     float kadT0;
@@ -63,6 +87,8 @@ public partial class Tetris3D
             : lis.gameObject.name + " (enabled=" + lis.enabled + ")"));
         sb.AppendLine("    AudioListener.volume=" + AudioListener.volume.ToString("0.###") +
                       "  AudioListener.pause=" + AudioListener.pause);
+        sb.AppendLine("    CATATAN: angka di atas TIDAK bisa melihat volume media perangkat.");
+        sb.AppendLine("    Kalau semuanya OK tapi tetap tidak terdengar, cek volume HP dulu.");
         if (lis == null) { sb.AppendLine("    >>> PENYEBAB: tanpa AudioListener, TIDAK ADA suara apa pun yang bisa terdengar."); bad = true; }
         else if (!lis.enabled) { sb.AppendLine("    >>> PENYEBAB: AudioListener mati."); bad = true; }
         if (AudioListener.volume <= 0.001f) { sb.AppendLine("    >>> PENYEBAB: volume global 0 (ini TIDAK terlihat di Inspector Game)."); bad = true; }
@@ -156,6 +182,10 @@ public partial class Tetris3D
 //  Paling belakang dari semua driver Kubika (Bg 25000, Fx 25100,
 //  Balance 25150, Praise 25200, Music 25250) supaya yang terbaca adalah
 //  keadaan SESUDAH semua pihak selesai menyentuh audio di frame itu.
+//
+//  Driver ini tetap hidup walau kubikaAudioReport=false: biayanya nol
+//  karena KadTickReport() langsung menyetel kadDone dan berhenti pada
+//  pemanggilan pertama.
 // =====================================================================
 [DefaultExecutionOrder(25300)]
 public class KubikaAudioDebugDriver : MonoBehaviour
