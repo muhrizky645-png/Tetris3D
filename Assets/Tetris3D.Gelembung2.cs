@@ -278,6 +278,15 @@ public partial class Tetris3D
         {
             var full = FindFullRows();
             if (full.Count == 0) break;
+
+            // BATCH N: JEDA ANTAR CINCIN, sama seperti di ResolveBoard(). Cascade
+            // akibat Bom/Palu/Garis harus ikut menunggu kata pujiannya habis; kalau
+            // tidak, jalur item tetap terasa susul-susulan sementara jalur combo
+            // normal sudah rapi. Cincin pertama tidak menunggu (belum ada kata) dan
+            // cincin terakhir tidak menunda spawn (loop sudah keluar lewat break).
+            // Lihat Tetris3D.Beat.cs (KbtWaitPraise).
+            yield return StartCoroutine(KbtWaitPraise());
+
             yield return StartCoroutine(FlashClear(full));
 
             if (comboExpire > 0f) comboCount++; else comboCount = 1;
