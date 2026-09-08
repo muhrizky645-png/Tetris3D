@@ -445,6 +445,23 @@ public partial class Tetris3D
         {
             var full = FindFullRows();
             if (full.Count == 0) break;
+
+            // BATCH N: JEDA ANTAR CINCIN. Satu baris ini yang mewujudkan permintaan
+            // "biarkan ketika satu cincin hancur, game seperti terjeda sampai efek
+            // suara pujian + visualnya selesai, baru lanjut ke combo selanjutnya".
+            //
+            // Sengaja di ATAS FlashClear, bukan di bawah ClearedRowGravity:
+            //   * pada cincin PERTAMA belum ada kata untuk ditunggu, jadi fungsi ini
+            //     langsung selesai -> hancurnya cincin pertama tetap instan;
+            //   * sesudah cincin TERAKHIR loop sudah keluar lewat break di atas,
+            //     jadi SpawnPiece() tidak pernah tertunda oleh jeda.
+            //
+            // Selagi menunggu, clearing masih true dan Part3.Update() sudah punya
+            // "if (clearing) return;" di awal -> balok jatuh, lock delay, input, dan
+            // hitung mundur combo semuanya berhenti sendiri. Time.timeScale TIDAK
+            // disentuh sama sekali. Lihat Tetris3D.Beat.cs (KbtWaitPraise).
+            yield return StartCoroutine(KbtWaitPraise());
+
             yield return StartCoroutine(FlashClear(full));
 
             // COMBO: tiap cincin hancur dalam <comboSeconds> detik dari yang sebelumnya -> streak naik
