@@ -55,6 +55,28 @@ using UnityEngine;
 //     random AudioSource.pitch, karena menulis pitch akan MEMBENGKOKKAN
 //     semua PlayOneShot yang masih berbunyi di source yang sama -- itu
 //     justru penyakit yang dicatat KubikaSfx sebagai biang kerusakan.
+//
+//  ---------------------------------------------------------------------
+//  PEMBARUAN BATCH M - NADA PERMATA TERLALU TINGGI SAAT COMBO PANJANG
+//  ---------------------------------------------------------------------
+//  Keluhan: "permata kayak ketinggian kalau banyak combonya".
+//  Tangga nada lama = Min(1.9f, 1 + i * 0.055f):
+//     * plafon 1.9 itu +11,2 semitone (hampir satu oktaf penuh) di atas
+//       C6 yang sudah tinggi -> masuk wilayah yang terdengar MENJERIT
+//     * plafon baru tercapai di butir ke-17, padahal peredupan volume
+//       (KSF_GEM_SPAN = 12) sudah habis di butir ke-12. Jadi ada rentang
+//       butir 12-17 yang nadanya masih naik sementara volumenya sudah
+//       mentok pelan -> justru bagian paling melengking & paling aneh.
+//  Sekarang = Min(KSF_GEM_TOP, 1 + i * KSF_GEM_STEP) dengan plafon 1.45
+//  (+6,4 semitone, kira-kira kuint) dan langkah 0.038. Plafon tercapai
+//  tepat di butir ke-12, jadi tangga nada dan peredupan volume berakhir
+//  di titik yang SAMA. Rasa "sedang mengumpulkan" tetap ada karena naik
+//  12 langkah, tapi puncaknya tidak lagi menusuk.
+//
+//  Kalau nanti ingin lebih musikal lagi, ada tuas lanjutan di
+//  HANDOFF-BATCH-M.md: kuantisasi pentatonik {0,2,4,7,9} seperti
+//  ClearCascade milik KubikaBlast. Sengaja BELUM dipasang supaya
+//  perubahan batch ini tetap satu variabel yang mudah dinilai.
 // =====================================================================
 
 public partial class Tetris3D
@@ -71,6 +93,8 @@ public partial class Tetris3D
     const float KSF_TAIL     = 0.003f;   // fade ekor 3 ms = anti-klik
     const float KSF_GEM_GAP  = 0.035f;   // rate-limit bel permata
     const float KSF_GEM_SPAN = 12f;      // butir ke-12 = volume terendah
+    const float KSF_GEM_TOP  = 1.45f;    // BATCH M: plafon nada bel (dulu 1.9f)
+    const float KSF_GEM_STEP = 0.038f;   // BATCH M: langkah nada per butir (dulu 0.055f)
 
     // ---------- state ----------
     bool  ksfReady;
@@ -254,7 +278,8 @@ public partial class Tetris3D
     // tepi naik curGemPulse selagi curGemPhase == 2 (fase naik satu per satu).
     //
     // Tiga hal yang membuatnya terbaca sebagai "sedang mengumpulkan":
-    //   * nada NAIK per butir: 1 + i * 0.055 (dibatasi 1.9)
+    //   * nada NAIK per butir: 1 + i * KSF_GEM_STEP, dibatasi KSF_GEM_TOP
+    //     (BATCH M: 1 + i * 0.038 dengan plafon 1.45; dulu 0.055 / 1.9)
     //   * volume MEREDUP per butir supaya combo besar tidak menjerit
     //   * rate-limit 35 ms supaya rentetan tidak jadi bubur
     // Dimainkan di ksfGemSrc, AudioSource MILIK SENDIRI -- inilah yang bikin
@@ -272,7 +297,9 @@ public partial class Tetris3D
         int i = ksfGemIndex;
         ksfGemIndex = i + 1;
 
-        ksfGemSrc.pitch = Mathf.Min(1.9f, 1f + i * 0.055f);
+        // BATCH M: plafon & langkah dipindah ke konstanta supaya satu tempat saja
+        // yang perlu disetel kalau nadanya masih terasa terlalu tinggi/rendah.
+        ksfGemSrc.pitch = Mathf.Min(KSF_GEM_TOP, 1f + i * KSF_GEM_STEP);
         float lvl = Mathf.Lerp(0.78f, 0.42f, Mathf.Clamp01(i / KSF_GEM_SPAN))
                   * kubikaGemVolume;
         // sfxVolume default 0.5 -> dinormalkan supaya slider tetap berpengaruh
