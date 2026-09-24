@@ -33,6 +33,19 @@ public partial class Tetris3D
         }
     }
 
+    // Banner standar di bawah gameplay, seperti pola Block Blast.
+    // Tidak tampil di menu, pause, revive, game over, atau leaderboard.
+    public bool GameplayBannerShouldShow
+    {
+        get
+        {
+            if (!started) return false;
+            if (paused || gameOver) return false;
+            if (showRanks || showProfile) return false;
+            return true;
+        }
+    }
+
     // ---------------------------------------------------------------
     //  IKLAN FULLSCREEN "BENAR-BENAR DI DEPAN"
     //  Set true selama iklan fullscreen (rewarded/interstitial) tampil.
@@ -236,5 +249,113 @@ public class KubikaMrecDriver : MonoBehaviour
         shown = want;
         if (want) KubikaMrec.Instance.ShowMrec();
         else KubikaMrec.Instance.HideMrec();
+    }
+}
+
+
+// =====================================================================
+//  BANNER GAMEPLAY (320x50)
+//  Unit iklan dibuat khusus untuk banner bawah gameplay.
+// =====================================================================
+public class KubikaBanner : MonoBehaviour
+{
+    const string AD_UNIT_BANNER = "ca-app-pub-3186700509396792/5299956509";
+    const string AD_UNIT_TEST   = "ca-app-pub-3940256099942544/6300978111"; // test banner resmi Google
+    const bool   USE_TEST_ADS   = false;
+
+    static KubikaBanner _inst;
+    public static KubikaBanner Instance
+    {
+        get
+        {
+            if (_inst == null)
+            {
+                var go = new GameObject("KubikaBanner");
+                DontDestroyOnLoad(go);
+                _inst = go.AddComponent<KubikaBanner>();
+            }
+            return _inst;
+        }
+    }
+
+#if KUBIKA_ADMOB
+    BannerView _view;
+    bool _init;
+    bool _visible;
+
+    string Unit() { return USE_TEST_ADS ? AD_UNIT_TEST : AD_UNIT_BANNER; }
+
+    void EnsureInit()
+    {
+        if (_init) return;
+        _init = true;
+        MobileAds.Initialize(_ => CreateView());
+    }
+
+    void CreateView()
+    {
+        if (_view != null) return;
+        _view = new BannerView(Unit(), AdSize.Banner, AdPosition.Bottom);
+        _view.OnBannerAdLoaded += () =>
+        {
+            if (_visible) _view.Show();
+            else _view.Hide();
+        };
+        _view.LoadAd(new AdRequest());
+        if (!_visible) _view.Hide();
+    }
+
+    public void ShowBanner()
+    {
+        _visible = true;
+        EnsureInit();
+        if (_view != null) _view.Show();
+    }
+
+    public void HideBanner()
+    {
+        _visible = false;
+        if (_view != null) _view.Hide();
+    }
+
+    void OnDestroy()
+    {
+        if (_view != null)
+        {
+            _view.Destroy();
+            _view = null;
+        }
+    }
+#else
+    public void ShowBanner() { }
+    public void HideBanner() { }
+#endif
+}
+
+// =====================================================================
+//  Driver: tampilkan banner standar hanya selama gameplay aktif.
+// =====================================================================
+[DefaultExecutionOrder(-23900)]
+public class KubikaBannerDriver : MonoBehaviour
+{
+    Tetris3D game;
+    bool shown;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Bootstrap()
+    {
+        var go = new GameObject("KubikaBannerDriver");
+        DontDestroyOnLoad(go);
+        go.AddComponent<KubikaBannerDriver>();
+    }
+
+    void Update()
+    {
+        if (game == null) game = Object.FindFirstObjectByType<Tetris3D>();
+        bool want = game != null && game.GameplayBannerShouldShow && !Tetris3D.AdFullscreenShowing;
+        if (want == shown) return;
+        shown = want;
+        if (want) KubikaBanner.Instance.ShowBanner();
+        else KubikaBanner.Instance.HideBanner();
     }
 }

@@ -579,7 +579,9 @@ public partial class Tetris3D
         float bw = Mathf.Min(VW * 0.20f, 168f);
         float bh = bw;
         float pad = 16f;
-        float y = VH - bh - pad;
+        // Banner native berada di luar viewport Unity pada sisi bawah.
+        // Naikkan kontrol agar tidak tertutup banner dan tetap mudah disentuh.
+        float y = VH - bh - pad - GameplayBannerInsetLogical;
 
         // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
         // dihancurkan (coroutine ResolveBoard) atau saat belum ada balok aktif.
