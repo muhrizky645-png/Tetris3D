@@ -42,7 +42,7 @@ public partial class Tetris3D
     // supaya kontrol bawah tidak menempel ke iklan. Nilai ini dikonversi
     // ke ruang logis UI agar tetap proporsional di semua resolusi portrait.
     public const float GAMEPLAY_BANNER_HEIGHT_DP = 50f;
-    public const float GAMEPLAY_BANNER_GAP_DP = 10f;
+    public const float GAMEPLAY_BANNER_GAP_DP = 20f;
 
     float DpToLogical(float dp)
     {
