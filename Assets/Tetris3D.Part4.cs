@@ -610,7 +610,7 @@ public partial class Tetris3D
         float totalH = 3f * bh + 2f * sideGap;
         float minY = 120f;
         float maxY = Mathf.Max(minY, VH - totalH - GameplayBannerInsetLogical - 100f);
-        float y = Mathf.Clamp(VH * 0.56f - totalH * 0.5f, minY, maxY);
+        float y = Mathf.Clamp(VH * 0.64f - totalH * 0.5f, minY, maxY);
         float x = ControlsOnRight ? VW - bw - 16f : 16f;
 
         // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
