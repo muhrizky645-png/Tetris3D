@@ -261,7 +261,7 @@ public class KubikaBanner : MonoBehaviour
 {
     const string AD_UNIT_BANNER = "ca-app-pub-3186700509396792/5299956509";
     const string AD_UNIT_TEST   = "ca-app-pub-3940256099942544/6300978111"; // test banner resmi Google
-    const bool   USE_TEST_ADS   = false;
+    const bool   USE_TEST_ADS   = true;  // sementara untuk verifikasi di HP
 
     // Tinggi banner aktual dari SDK dalam pixel. Dipakai layout UI agar
     // tidak bergantung pada Screen.dpi yang kadang salah di perangkat.
