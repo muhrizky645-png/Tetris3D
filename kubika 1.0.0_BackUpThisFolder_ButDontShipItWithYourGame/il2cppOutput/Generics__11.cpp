@@ -22541,7 +22541,7 @@ IL2CPP_EXTERN_C IL2CPP_METHOD_ATTR PolygonGeometryElement_t4D6D06844AC5A1A51A7DD
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
 #pragma clang diagnostic ignored "-Wunused-variable"
 #endif
-// Method Definition Index: 86210
+// Method Definition Index: 86218
 IL2CPP_EXTERN_C IL2CPP_METHOD_ATTR void BypassCertificateHandler__ctor_mEC6BAA7FCC9383A008A921C1282B8CFE60DCF77B_gshared (BypassCertificateHandler_t7F0677655092222FB1030AF6D172B3E5A4CB8CE2* __this, const RuntimeMethod* method) 
 {
 	//<source_info:<no-source>:1>
@@ -22550,7 +22550,7 @@ IL2CPP_EXTERN_C IL2CPP_METHOD_ATTR void BypassCertificateHandler__ctor_mEC6BAA7F
 		return;
 	}
 }
-// Method Definition Index: 86211
+// Method Definition Index: 86219
 IL2CPP_EXTERN_C IL2CPP_METHOD_ATTR bool BypassCertificateHandler_ValidateCertificate_m0BFCFA071C0A4A4581C08747DEC6584998730AC4_gshared (BypassCertificateHandler_t7F0677655092222FB1030AF6D172B3E5A4CB8CE2* __this, ByteU5BU5D_tA6237BF417AE52AD70CFB4EF24A7A82613DF9031* ___0_certificateData, const RuntimeMethod* method) 
 {
 	//<source_info:<no-source>:1>
