@@ -311,8 +311,13 @@ public class KubikaBanner : MonoBehaviour
         _view = new BannerView(Unit(), AdSize.Banner, AdPosition.Bottom);
         _view.OnBannerAdLoaded += () =>
         {
+            Debug.Log("[KubikaBanner] loaded. heightPx=" + _view.GetHeightInPixels());
             if (_visible) _view.Show();
             else _view.Hide();
+        };
+        _view.OnBannerAdLoadFailed += error =>
+        {
+            Debug.LogWarning("[KubikaBanner] load failed: " + error);
         };
         _view.LoadAd(new AdRequest());
         if (!_visible) _view.Hide();

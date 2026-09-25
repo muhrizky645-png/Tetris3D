@@ -157,7 +157,7 @@ public partial class Tetris3D
         float slot = Mathf.Min(VW * 0.15f, 96f);
         float gap = 14f;
         float totalH = 3f * slot + 2f * gap;
-        float sx = 12f;
+        float sx = ControlsOnRight ? 12f : VW - 12f - slot;
         float sy = VH * 0.5f - totalH * 0.5f;
         for (int i = 0; i < 3; i++)
         {
