@@ -315,6 +315,12 @@ public partial class Tetris3D
         if (newHaptic != hapticOn) { hapticOn = newHaptic; SaveHaptic(); }
         by += 58f + gap;
 
+        // Posisi kontrol: tombol di kanan/kiri, inventaris buff otomatis
+        // pindah ke sisi berlawanan agar kedua sisi tetap seimbang.
+        if (Btn3D(new Rect(bx, by, bw, 58f), ControlSideLabel, new Color(0.30f, 0.40f, 0.62f), false))
+            ToggleControlSide();
+        by += 58f + gap;
+
         // Slider sensitivitas geser (kiri: Santai, kanan: Sensitif)
         float sVal = Mathf.InverseLerp(0.14f, 0.05f, dragStep);
         float sNew = DrawSlider(new Rect(bx, by, bw, 74f), T("sens"), sVal, T("sensLow"), T("sensHigh"));
@@ -596,15 +602,16 @@ public partial class Tetris3D
         // Tombol JEDA / pengaturan (pojok kanan baris atas)
         if (Btn3D(pauseRect, T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
 
-        // Tombol diperkecil sekitar 30% agar gameplay lebih lapang dan
-        // jaraknya dari banner tetap nyaman.
+        // Kontrol utama ditumpuk vertikal di sisi yang dipilih. Default kanan
+        // supaya area bawah bebas dari banner dan ibu jari mudah menjangkaunya.
         float bw = Mathf.Min(VW * 0.20f, 168f) * 0.70f;
         float bh = bw;
-        float pad = 16f;
-        // Banner native berada di luar viewport Unity pada sisi bawah.
-        // Sisakan ruang ekstra untuk bayangan/depth tombol agar tidak menyentuh
-        // banner pada skala Game View maupun ukuran layar perangkat.
-        float y = VH - bh - pad - GameplayBannerInsetLogical - 36f;
+        float sideGap = Mathf.Max(10f, bw * 0.10f);
+        float totalH = 3f * bh + 2f * sideGap;
+        float minY = 120f;
+        float maxY = Mathf.Max(minY, VH - totalH - GameplayBannerInsetLogical - 100f);
+        float y = Mathf.Clamp(VH * 0.56f - totalH * 0.5f, minY, maxY);
+        float x = ControlsOnRight ? VW - bw - 16f : 16f;
 
         // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
         // dihancurkan (coroutine ResolveBoard) atau saat belum ada balok aktif.
@@ -614,9 +621,12 @@ public partial class Tetris3D
         // Tombol tetap DIGAMBAR (Btn3D dipanggil lebih dulu), hanya aksinya diabaikan.
         bool ctrlReady = !clearing && active != null && !gameOver && !paused;
 
-        if (Btn3D(new Rect(pad, y, bw, bh), T("rotate"), new Color(0.16f, 0.78f, 0.40f), false) && ctrlReady) Rotate();
-        if (Btn3D(new Rect(VW / 2f - bw / 2f, y, bw, bh), T("drop"), new Color(0.10f, 0.62f, 0.32f), false) && ctrlReady) HardDrop();
-        if (Btn3D(new Rect(VW - bw - pad, y, bw, bh), T("down"), new Color(0.22f, 0.85f, 0.48f), true) && ctrlReady) btnSoftDrop = true; // tahan buat turun cepat
+        Rect rotateRect = new Rect(x, y, bw, bh);
+        Rect dropRect = new Rect(x, y + bh + sideGap, bw, bh);
+        Rect downRect = new Rect(x, y + 2f * (bh + sideGap), bw, bh);
+        if (Btn3D(rotateRect, T("rotate"), new Color(0.16f, 0.78f, 0.40f), false) && ctrlReady) Rotate();
+        if (Btn3D(dropRect, T("drop"), new Color(0.10f, 0.62f, 0.32f), false) && ctrlReady) HardDrop();
+        if (Btn3D(downRect, T("down"), new Color(0.22f, 0.85f, 0.48f), true) && ctrlReady) btnSoftDrop = true; // tahan buat turun cepat
 
         // ---- Kotak preview: bentuk balok BERIKUTNYA (di bawah tombol Jeda) ----
         {
