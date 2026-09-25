@@ -263,6 +263,19 @@ public class KubikaBanner : MonoBehaviour
     const string AD_UNIT_TEST   = "ca-app-pub-3940256099942544/6300978111"; // test banner resmi Google
     const bool   USE_TEST_ADS   = false;
 
+    // Tinggi banner aktual dari SDK dalam pixel. Dipakai layout UI agar
+    // tidak bergantung pada Screen.dpi yang kadang salah di perangkat.
+    public static float CurrentHeightPixels
+    {
+        get
+        {
+#if KUBIKA_ADMOB
+            if (_inst != null && _inst._view != null) return _inst._view.GetHeightInPixels();
+#endif
+            return 0f;
+        }
+    }
+
     static KubikaBanner _inst;
     public static KubikaBanner Instance
     {

@@ -50,7 +50,14 @@ public partial class Tetris3D
         return (dp * (dpi / 160f)) / UiScale;
     }
 
-    public float GameplayBannerHeightLogical { get { return DpToLogical(GAMEPLAY_BANNER_HEIGHT_DP); } }
+    public float GameplayBannerHeightLogical
+    {
+        get
+        {
+            float actualPx = KubikaBanner.CurrentHeightPixels;
+            return actualPx > 0f ? actualPx / UiScale : DpToLogical(GAMEPLAY_BANNER_HEIGHT_DP);
+        }
+    }
     public float GameplayBannerGapLogical { get { return DpToLogical(GAMEPLAY_BANNER_GAP_DP); } }
 
     public float GameplayBannerInsetLogical
