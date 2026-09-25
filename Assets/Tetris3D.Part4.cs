@@ -600,8 +600,9 @@ public partial class Tetris3D
         float bh = bw;
         float pad = 16f;
         // Banner native berada di luar viewport Unity pada sisi bawah.
-        // Naikkan kontrol agar tidak tertutup banner dan tetap mudah disentuh.
-        float y = VH - bh - pad - GameplayBannerInsetLogical - 8f;
+        // Sisakan ruang ekstra untuk bayangan/depth tombol agar tidak menyentuh
+        // banner pada skala Game View maupun ukuran layar perangkat.
+        float y = VH - bh - pad - GameplayBannerInsetLogical - 36f;
 
         // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
         // dihancurkan (coroutine ResolveBoard) atau saat belum ada balok aktif.
