@@ -44,15 +44,22 @@ public partial class Tetris3D
     public const float GAMEPLAY_BANNER_HEIGHT_DP = 50f;
     public const float GAMEPLAY_BANNER_GAP_DP = 10f;
 
+    float DpToLogical(float dp)
+    {
+        float dpi = Screen.dpi <= 1f ? 160f : Screen.dpi;
+        return (dp * (dpi / 160f)) / UiScale;
+    }
+
+    public float GameplayBannerHeightLogical { get { return DpToLogical(GAMEPLAY_BANNER_HEIGHT_DP); } }
+    public float GameplayBannerGapLogical { get { return DpToLogical(GAMEPLAY_BANNER_GAP_DP); } }
+
     public float GameplayBannerInsetLogical
     {
         get
         {
-#if KUBIKA_ADMOB
+#if KUBIKA_ADMOB || UNITY_EDITOR
             if (!GameplayBannerShouldShow || AdFullscreenShowing) return 0f;
-            float dpi = Screen.dpi <= 1f ? 160f : Screen.dpi;
-            float px = (GAMEPLAY_BANNER_HEIGHT_DP + GAMEPLAY_BANNER_GAP_DP) * (dpi / 160f);
-            return px / UiScale;
+            return GameplayBannerHeightLogical + GameplayBannerGapLogical;
 #else
             return 0f;
 #endif
