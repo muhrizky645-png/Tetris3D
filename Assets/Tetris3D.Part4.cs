@@ -98,6 +98,22 @@ public partial class Tetris3D
             new Color(light.r, light.g, light.b, 0.7f), rad * 0.6f);                            // kilau
     }
 
+#if UNITY_EDITOR && !KUBIKA_ADMOB
+    // Native AdMob tidak dirender di Unity Editor. Placeholder ini hanya
+    // untuk memverifikasi posisi ruang banner dan tombol gameplay sebelum
+    // build Android dipasang ke perangkat.
+    void DrawGameplayBannerPreview()
+    {
+        float h = GameplayBannerHeightLogical;
+        float y = VH - h;
+        FillRect(new Rect(0f, y, VW, h), new Color(0.08f, 0.09f, 0.12f, 0.96f));
+        RoundRect(new Rect(12f, y + 8f, VW - 24f, Mathf.Max(12f, h - 16f)),
+            new Color(0.16f, 0.18f, 0.22f, 1f), 10f);
+        GuiText(new Rect(0f, y, VW, h), "BANNER AD PREVIEW  •  320 x 50", 18,
+            new Color(0.78f, 0.84f, 0.92f), TextAnchor.MiddleCenter);
+    }
+#endif
+
     // ---- Menu depan (start screen) ----
     void DrawStartMenu()
     {
@@ -514,6 +530,10 @@ public partial class Tetris3D
         // Menu jeda - gambar & stop di sini selagi paused
         if (paused) { DrawPauseMenu(); return; }
 
+#if UNITY_EDITOR && !KUBIKA_ADMOB
+        DrawGameplayBannerPreview();
+#endif
+
         // ---- HUD atas ala Block Blast: [skor tertinggi] [permata] [koin] [jeda] ----
         // Permata & koin digambar komponen terpisah (KubikaCurrencyHUD) di gemRect/coinRect.
         Rect hsRect, gemRect, coinRect, pauseRect;
@@ -579,7 +599,9 @@ public partial class Tetris3D
         float bw = Mathf.Min(VW * 0.20f, 168f);
         float bh = bw;
         float pad = 16f;
-        float y = VH - bh - pad;
+        // Banner native berada di luar viewport Unity pada sisi bawah.
+        // Naikkan kontrol agar tidak tertutup banner dan tetap mudah disentuh.
+        float y = VH - bh - pad - GameplayBannerInsetLogical;
 
         // F1: kunci aksi tombol ROTASI / JATUH / TURUN selagi cincin sedang
         // dihancurkan (coroutine ResolveBoard) atau saat belum ada balok aktif.

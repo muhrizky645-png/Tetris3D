@@ -38,6 +38,41 @@ public partial class Tetris3D
     public float VW { get { return UI_REF_WIDTH; } }
     public float VH { get { return Screen.height / UiScale; } }
 
+    // AdMob banner standar = 320x50 dp. Sisakan napas 10 dp di atasnya
+    // supaya kontrol bawah tidak menempel ke iklan. Nilai ini dikonversi
+    // ke ruang logis UI agar tetap proporsional di semua resolusi portrait.
+    public const float GAMEPLAY_BANNER_HEIGHT_DP = 50f;
+    public const float GAMEPLAY_BANNER_GAP_DP = 10f;
+
+    float DpToLogical(float dp)
+    {
+        float dpi = Screen.dpi <= 1f ? 160f : Screen.dpi;
+        return (dp * (dpi / 160f)) / UiScale;
+    }
+
+    public float GameplayBannerHeightLogical { get { return DpToLogical(GAMEPLAY_BANNER_HEIGHT_DP); } }
+    public float GameplayBannerGapLogical { get { return DpToLogical(GAMEPLAY_BANNER_GAP_DP); } }
+
+    public float GameplayBannerInsetLogical
+    {
+        get
+        {
+#if KUBIKA_ADMOB || UNITY_EDITOR
+            if (!GameplayBannerShouldShow || AdFullscreenShowing) return 0f;
+            return GameplayBannerHeightLogical + GameplayBannerGapLogical;
+#else
+            return 0f;
+#endif
+        }
+    }
+
+    // Sedikit dorongan kamera ke atas agar bagian bawah menara tidak tertutup
+    // banner native yang berada di luar viewport Unity.
+    public float GameplayBannerLift01
+    {
+        get { return VH <= 1f ? 0f : Mathf.Clamp01(GameplayBannerInsetLogical / VH); }
+    }
+
     // Panggil di awal SETIAP OnGUI sebelum menggambar apa pun.
     public void ApplyUiScale()
     {

@@ -835,6 +835,9 @@ public partial class Tetris3D
     {
         if (started) return;
         started = true;
+        // Setelah started=true, ruang banner mulai dihitung. Terapkan ulang
+        // kamera sebelum balok pertama muncul supaya gameplay langsung naik.
+        ApplyGeometry();
         SpawnPiece();
     }
 
