@@ -596,7 +596,9 @@ public partial class Tetris3D
         // Tombol JEDA / pengaturan (pojok kanan baris atas)
         if (Btn3D(pauseRect, T("pause"), new Color(0.30f, 0.55f, 0.95f), false)) paused = true;
 
-        float bw = Mathf.Min(VW * 0.20f, 168f);
+        // Tombol diperkecil sekitar 30% agar gameplay lebih lapang dan
+        // jaraknya dari banner tetap nyaman.
+        float bw = Mathf.Min(VW * 0.20f, 168f) * 0.70f;
         float bh = bw;
         float pad = 16f;
         // Banner native berada di luar viewport Unity pada sisi bawah.
